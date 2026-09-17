@@ -66,9 +66,16 @@ export interface DormSettings {
   studyEnd: string;          // evening study period end, e.g. "21:30"
   curfewTime: string;        // e.g. "21:00"
   lightsOutTime: string;     // e.g. "22:00"
-  departureStart: string;    // school exit window start, e.g. "07:00"
-  departureEnd: string;      // school exit window end, e.g. "07:35"
+  /** Morning school exit window, e.g. "07:00" - "07:35". */
+  departureStart: string;
+  departureEnd: string;
+  /** Afternoon school exit window, e.g. "13:00" - "13:35". */
+  departureAfternoonStart: string;
+  departureAfternoonEnd: string;
 }
+
+/** The two daily school departures; each has its own window in DormSettings. */
+export type DepartureSession = 'morning' | 'afternoon';
 
 export type WorshipType =
   | 'morning_worship'
@@ -112,6 +119,9 @@ export interface SchoolUniformLog {
   studentId: string;
   studentName: string;
   roomNumber: string;
+  /** Which of the day's two departures this covers. Optional: records saved
+   *  before the afternoon departure existed are all morning departures. */
+  session?: DepartureSession;
   departureTime: string; // e.g. "07:15"
   uniformCompliant: boolean;
   hairGroomingCompliant: boolean;
@@ -137,17 +147,31 @@ export interface StudyHoursLog {
   recordedBy: string;
 }
 
-export interface ChoreAssignment {
-  id: string;
-  weekRange: string;
-  dutyArea: 'Corridor & Stairs' | 'CR & Bathroom Sanitation' | 'Waste Management & Segregation' | 'Dorm Grounds & Yard' | 'Common Lounge & Study Hall' | 'Water Refill & Sink Area';
+/** One resident of the room on cleaning duty, and whether they turned up. */
+export interface CleaningHelperCheck {
   studentId: string;
   studentName: string;
-  roomNumber: string;
-  daySchedule: string;
-  status: 'pending' | 'completed' | 'inspected_approved' | 'failed';
-  inspectorRemarks?: string;
-  verifiedBy?: string;
+  helped: boolean;
+}
+
+/**
+ * One day of the cleaning rotation: a single room is the day's cleaning crew.
+ * Each of its residents is checked individually for helping, and the room is
+ * rated as a whole for how clean the dorm was left, garbage included.
+ */
+export interface CleaningDutyRecord {
+  id: string;
+  date: string;       // YYYY-MM-DD — one duty room per day
+  roomNumber: string; // the room rostered to clean that day
+  helpers: CleaningHelperCheck[];
+  /** 1 (poor) to 5 (excellent) rating of the cleaning work. */
+  rating: number;
+  garbageDisposed: boolean;
+  status: 'assigned' | 'completed';
+  remarks?: string;
+  assignedBy: string;
+  recordedBy?: string;
+  timestamp: string;
 }
 
 export interface LightsOutLog {
@@ -161,6 +185,19 @@ export interface LightsOutLog {
   status: 'compliant' | 'violation';
   violatorRemarks?: string;
   inspectedBy: string;
+}
+
+/** Nightly/weekly per-resident phone deposit roll call, checked room by room. */
+export interface PhoneDepositLog {
+  id: string;
+  date: string;
+  studentId: string;
+  studentName: string;
+  roomNumber: string;
+  status: 'deposited' | 'late' | 'not_deposited';
+  depositTime: string; // e.g. "18:30"
+  remarks?: string;
+  recordedBy: string;
 }
 
 export interface CellphoneCustody {
@@ -207,6 +244,9 @@ export interface Violation {
   reportedBy: string;
   status: 'pending_settlement' | 'appealed' | 'cleared_service' | 'confirmed';
   actionRequired?: string;
+  /** Id of the record that auto-logged this violation, so re-saving that
+   *  record can replace its own violations instead of stacking new ones. */
+  sourceId?: string;
   createdAt: string;
 }
 
@@ -242,10 +282,13 @@ export interface GatePassRecord {
   studentId: string;
   studentName: string;
   roomNumber: string;
-  passType: 'weekend_home' | 'church_event' | 'medical_visit' | 'family_emergency' | 'academic';
+  passType: 'weekend_home' | 'church_event' | 'medical_visit' | 'family_emergency' | 'academic' | 'personal_matters';
   destination: string;
   departureDate: string;
   expectedReturnDate: string;
+  /** Time of day the resident is due back, e.g. "17:30". Optional: passes
+   *  issued before return times existed only carry the date. */
+  expectedReturnTime?: string;
   actualReturnDate?: string;
   parentConsentVerified: boolean;
   parentPhone: string;

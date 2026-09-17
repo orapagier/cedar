@@ -8,9 +8,11 @@ import {
   CurfewRecord,
   SchoolUniformLog,
   StudyHoursLog,
-  ChoreAssignment,
+  CleaningDutyRecord,
+  CleaningHelperCheck,
   LightsOutLog,
   CellphoneCustody,
+  PhoneDepositLog,
   Violation,
   MedicalExcuseSlip,
   GatePassRecord,
@@ -27,9 +29,10 @@ import {
   INITIAL_CURFEW,
   INITIAL_UNIFORM_LOGS,
   INITIAL_STUDY_LOGS,
-  INITIAL_CHORES,
+  INITIAL_CLEANING_DUTIES,
   INITIAL_LIGHTS_OUT,
   INITIAL_CELLPHONES,
+  INITIAL_PHONE_DEPOSITS,
   INITIAL_VIOLATIONS,
   INITIAL_MEDICAL_SLIPS,
   INITIAL_GATE_PASSES,
@@ -54,9 +57,10 @@ interface DormContextType {
   curfewRecords: CurfewRecord[];
   uniformLogs: SchoolUniformLog[];
   studyLogs: StudyHoursLog[];
-  chores: ChoreAssignment[];
+  cleaningDuties: CleaningDutyRecord[];
   lightsOutLogs: LightsOutLog[];
   cellphones: CellphoneCustody[];
+  phoneDeposits: PhoneDepositLog[];
   violations: Violation[];
   settings: DormSettings;
   updateSettings: (updates: Partial<DormSettings>) => void;
@@ -134,10 +138,20 @@ interface DormContextType {
   saveCurfewRecord: (rec: Omit<CurfewRecord, 'id'>) => void;
   saveUniformLog: (log: Omit<SchoolUniformLog, 'id'>) => void;
   saveStudyLog: (log: Omit<StudyHoursLog, 'id'>) => void;
-  saveChore: (chore: Omit<ChoreAssignment, 'id'>) => void;
-  updateChoreStatus: (choreId: string, status: ChoreAssignment['status'], remarks?: string) => void;
+  /** Roster a room as the day's cleaning crew (one room per day). */
+  assignCleaningDuty: (date: string, roomNumber: string) => void;
+  /** Record who helped and how clean the work was; logs the day's violations. */
+  saveCleaningDuty: (entry: {
+    date: string;
+    roomNumber: string;
+    helpers: CleaningHelperCheck[];
+    rating: number;
+    garbageDisposed: boolean;
+    remarks?: string;
+  }) => void;
   saveLightsOutLog: (log: Omit<LightsOutLog, 'id'>) => void;
   updateCellphoneStatus: (id: string, updates: Partial<CellphoneCustody>) => void;
+  savePhoneDepositBatch: (records: Omit<PhoneDepositLog, 'id'>[]) => void;
   saveViolation: (viol: Omit<Violation, 'id' | 'createdAt'>) => void;
   updateViolationStatus: (id: string, status: Violation['status'], actionRequired?: string) => void;
   resetAllData: () => void;
@@ -282,10 +296,9 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return loaded.filter(s => !TEST_LOG_IDS.has(s.id) && !TEST_USER_IDS.has(s.studentId) && !TEST_NAMES.has(s.studentName));
   });
 
-  const [chores, setChores] = useState<ChoreAssignment[]>(() => {
-    const loaded = loadFromStorage<ChoreAssignment[]>('chores', INITIAL_CHORES);
-    return loaded.filter(c => !TEST_LOG_IDS.has(c.id) && !TEST_USER_IDS.has(c.studentId) && !TEST_NAMES.has(c.studentName));
-  });
+  const [cleaningDuties, setCleaningDuties] = useState<CleaningDutyRecord[]>(() =>
+    loadFromStorage<CleaningDutyRecord[]>('cleaning_duties', INITIAL_CLEANING_DUTIES)
+  );
 
   const [lightsOutLogs, setLightsOutLogs] = useState<LightsOutLog[]>(() => {
     const loaded = loadFromStorage<LightsOutLog[]>('lights_out', INITIAL_LIGHTS_OUT);
@@ -295,6 +308,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cellphones, setCellphones] = useState<CellphoneCustody[]>(() => {
     const loaded = loadFromStorage<CellphoneCustody[]>('cellphones', INITIAL_CELLPHONES);
     return loaded.filter(c => !TEST_LOG_IDS.has(c.id) && !TEST_USER_IDS.has(c.studentId) && !TEST_NAMES.has(c.studentName));
+  });
+
+  const [phoneDeposits, setPhoneDeposits] = useState<PhoneDepositLog[]>(() => {
+    const loaded = loadFromStorage<PhoneDepositLog[]>('phone_deposits', INITIAL_PHONE_DEPOSITS);
+    return loaded.filter(d => !TEST_USER_IDS.has(d.studentId) && !TEST_NAMES.has(d.studentName));
   });
 
   const [violations, setViolations] = useState<Violation[]>(() => {
@@ -348,9 +366,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => saveToStorage('curfew', curfewRecords), [curfewRecords]);
   useEffect(() => saveToStorage('uniform', uniformLogs), [uniformLogs]);
   useEffect(() => saveToStorage('study', studyLogs), [studyLogs]);
-  useEffect(() => saveToStorage('chores', chores), [chores]);
+  useEffect(() => saveToStorage('cleaning_duties', cleaningDuties), [cleaningDuties]);
   useEffect(() => saveToStorage('lights_out', lightsOutLogs), [lightsOutLogs]);
   useEffect(() => saveToStorage('cellphones', cellphones), [cellphones]);
+  useEffect(() => saveToStorage('phone_deposits', phoneDeposits), [phoneDeposits]);
   useEffect(() => saveToStorage('violations', violations), [violations]);
   useEffect(() => saveToStorage('medical_slips', medicalSlips), [medicalSlips]);
   useEffect(() => saveToStorage('gate_passes', gatePasses), [gatePasses]);
@@ -375,9 +394,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         curfewRecords,
         uniformLogs,
         studyLogs,
-        chores,
+        cleaningDuties,
         lightsOutLogs,
         cellphones,
+        phoneDeposits,
         violations,
         medicalSlips,
         gatePasses,
@@ -413,10 +433,9 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
     };
-  }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, chores, lightsOutLogs, cellphones, violations,
-        settings,
-        updateSettings,
-        medicalSlips, gatePasses, demeritClearances, confiscatedItems, studentMedicals, settings]);
+  }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, cleaningDuties, lightsOutLogs,
+        cellphones, phoneDeposits, violations, settings,
+        medicalSlips, gatePasses, demeritClearances, confiscatedItems, studentMedicals]);
 
   // Pull the shared state on load, then poll for updates from other devices.
   useEffect(() => {
@@ -452,9 +471,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.curfewRecords) setCurfewRecords(d.curfewRecords as CurfewRecord[]);
           if (d.uniformLogs) setUniformLogs(d.uniformLogs as SchoolUniformLog[]);
           if (d.studyLogs) setStudyLogs(d.studyLogs as StudyHoursLog[]);
-          if (d.chores) setChores(d.chores as ChoreAssignment[]);
+          if (d.cleaningDuties) setCleaningDuties(d.cleaningDuties as CleaningDutyRecord[]);
           if (d.lightsOutLogs) setLightsOutLogs(d.lightsOutLogs as LightsOutLog[]);
           if (d.cellphones) setCellphones(d.cellphones as CellphoneCustody[]);
+          if (d.phoneDeposits) setPhoneDeposits(d.phoneDeposits as PhoneDepositLog[]);
           if (d.violations) setViolations(d.violations as Violation[]);
           if (d.medicalSlips) setMedicalSlips(d.medicalSlips as MedicalExcuseSlip[]);
           if (d.gatePasses) setGatePasses(d.gatePasses as GatePassRecord[]);
@@ -759,46 +779,135 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const saveChore = (chore: Omit<ChoreAssignment, 'id'>) => {
+  /** Drop the violations a given record auto-logged, before it logs them again. */
+  const clearViolationsFrom = (sourceId: string) =>
+    setViolations(prev => prev.filter(v => v.sourceId !== sourceId));
+
+  // The cleaning rotation runs one crew per day, so rostering a room takes over
+  // that date: re-rostering a day that was already checked starts it fresh.
+  const assignCleaningDuty = (date: string, roomNumber: string) => {
     if (!canEdit) return;
-    const newRecord: ChoreAssignment = {
-      ...chore,
-      id: 'chr-' + Date.now(),
+    const existing = cleaningDuties.find(d => d.date === date);
+    if (existing?.roomNumber === roomNumber) return;
+
+    if (existing) {
+      // A different room now owns the day, so the old crew's marks go with it.
+      clearViolationsFrom(existing.id);
+      setCleaningDuties(prev =>
+        prev.map(d =>
+          d.id === existing.id
+            ? {
+                ...d,
+                roomNumber,
+                helpers: [],
+                rating: 5,
+                garbageDisposed: true,
+                status: 'assigned' as const,
+                remarks: undefined,
+                recordedBy: undefined,
+                assignedBy: currentUser.name,
+                timestamp: manilaTime(),
+              }
+            : d
+        )
+      );
+      return;
+    }
+
+    const record: CleaningDutyRecord = {
+      id: 'clean-' + Date.now(),
+      date,
+      roomNumber,
+      helpers: [],
+      rating: 5,
+      garbageDisposed: true,
+      status: 'assigned',
+      assignedBy: currentUser.name,
+      timestamp: manilaTime(),
     };
-    setChores(prev => [newRecord, ...prev]);
+    setCleaningDuties(prev => [record, ...prev]);
   };
 
-  const updateChoreStatus = (choreId: string, status: ChoreAssignment['status'], remarks?: string) => {
+  const saveCleaningDuty = (entry: {
+    date: string;
+    roomNumber: string;
+    helpers: CleaningHelperCheck[];
+    rating: number;
+    garbageDisposed: boolean;
+    remarks?: string;
+  }) => {
     if (!canEdit) return;
-    setChores(prev =>
-      prev.map(c => {
-        if (c.id === choreId) {
-          const updated = {
-            ...c,
-            status,
-            inspectorRemarks: remarks || c.inspectorRemarks,
-            verifiedBy: currentUser.name,
-          };
-          if (status === 'failed') {
-            saveViolation({
-              date: manilaToday(),
-              studentId: c.studentId,
-              studentName: c.studentName,
-              roomNumber: c.roomNumber,
-              category: 'chore_neglect',
-              severity: 'minor',
-              description: `Neglected assigned maintenance chore duty (${c.dutyArea}): ${remarks || 'Incomplete inspection'}`,
-              demeritPoints: VIOLATION_POINTS,
-              reportedBy: currentUser.name,
-              status: 'pending_settlement',
-              actionRequired: 'Repeat chore task under monitor sign-off.',
-            });
-          }
-          return updated;
-        }
-        return c;
-      })
+    const timeStr = manilaTime();
+    const existing = cleaningDuties.find(d => d.date === entry.date);
+    const dutyId = existing?.id ?? 'clean-' + Date.now();
+
+    const completed: CleaningDutyRecord = {
+      id: dutyId,
+      date: entry.date,
+      roomNumber: entry.roomNumber,
+      helpers: entry.helpers,
+      rating: entry.rating,
+      garbageDisposed: entry.garbageDisposed,
+      status: 'completed',
+      remarks: entry.remarks,
+      assignedBy: existing?.assignedBy ?? currentUser.name,
+      recordedBy: currentUser.name,
+      timestamp: timeStr,
+    };
+    setCleaningDuties(prev =>
+      prev.some(d => d.id === dutyId) ? prev.map(d => (d.id === dutyId ? completed : d)) : [completed, ...prev]
     );
+
+    // Correcting a day that was already checked replaces the violations that
+    // check produced, so nobody is charged twice for the same cleaning day.
+    clearViolationsFrom(dutyId);
+
+    // Missing your room's cleaning day is the resident's own infraction.
+    entry.helpers
+      .filter(h => !h.helped)
+      .forEach(h =>
+        saveViolation({
+          date: entry.date,
+          studentId: h.studentId,
+          studentName: h.studentName,
+          roomNumber: entry.roomNumber,
+          category: 'chore_neglect',
+          severity: 'minor',
+          description: `Did not help with Room ${entry.roomNumber}'s dorm cleaning duty.${entry.remarks ? ` ${entry.remarks}` : ''}`,
+          demeritPoints: VIOLATION_POINTS,
+          reportedBy: currentUser.name,
+          status: 'pending_settlement',
+          actionRequired: 'Serve the next cleaning rotation under monitor sign-off.',
+          sourceId: dutyId,
+        })
+      );
+
+    // Poor work falls on the crew that actually showed up; the residents who
+    // skipped are already answering for the same day above.
+    const poorWork = entry.rating <= 2 || !entry.garbageDisposed;
+    if (poorWork) {
+      const reason = !entry.garbageDisposed
+        ? 'garbage not disposed'
+        : `cleaning rated ${entry.rating}/5`;
+      entry.helpers
+        .filter(h => h.helped)
+        .forEach(h =>
+          saveViolation({
+            date: entry.date,
+            studentId: h.studentId,
+            studentName: h.studentName,
+            roomNumber: entry.roomNumber,
+            category: 'cleanliness',
+            severity: 'minor',
+            description: `Dorm cleaning duty below standard (${reason}).${entry.remarks ? ` ${entry.remarks}` : ''}`,
+            demeritPoints: VIOLATION_POINTS,
+            reportedBy: currentUser.name,
+            status: 'pending_settlement',
+            actionRequired: 'Redo the assigned area before the next inspection.',
+            sourceId: dutyId,
+          })
+        );
+    }
   };
 
   const saveLightsOutLog = (log: Omit<LightsOutLog, 'id'>) => {
@@ -840,6 +949,54 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  // A room's deposit roll call: it records who handed a phone in, moves the
+  // matching custody entries, and flags late or withheld phones.
+  const savePhoneDepositBatch = (records: Omit<PhoneDepositLog, 'id'>[]) => {
+    if (!canEdit) return;
+    const stamped: PhoneDepositLog[] = records.map((r, idx) => ({
+      ...r,
+      id: `dep-${Date.now()}-${idx}`,
+    }));
+    setPhoneDeposits(prev => [...stamped, ...prev]);
+
+    setCellphones(prev =>
+      prev.map(c => {
+        const rec = records.find(r => r.studentId === c.studentId);
+        // Confiscated and exempted devices are not part of the nightly vault run.
+        if (!rec || c.custodyStatus === 'confiscated' || c.custodyStatus === 'exempted') return c;
+        const inVault = rec.status !== 'not_deposited';
+        return {
+          ...c,
+          turnedOverSunday: inVault,
+          turnOverTime: inVault ? rec.depositTime : c.turnOverTime,
+          returnedFriday: inVault ? false : c.returnedFriday,
+          custodyStatus: inVault ? 'in_vault' : 'with_student',
+        };
+      })
+    );
+
+    records.forEach(r => {
+      if (r.status === 'deposited') return;
+      saveViolation({
+        date: r.date,
+        studentId: r.studentId,
+        studentName: r.studentName,
+        roomNumber: r.roomNumber,
+        category: 'cellphone_policy_breach',
+        severity: r.status === 'late' ? 'minor' : 'moderate',
+        description: r.status === 'late'
+          ? `Late phone deposit (logged ${r.depositTime}).${r.remarks ? ` ${r.remarks}` : ''}`
+          : `Did not deposit phone at vault check (${r.depositTime}).${r.remarks ? ` ${r.remarks}` : ''}`,
+        demeritPoints: VIOLATION_POINTS,
+        reportedBy: currentUser.name,
+        status: 'pending_settlement',
+        actionRequired: r.status === 'late'
+          ? 'Deposit on time at the next vault run.'
+          : 'Surrender the device to the Dean immediately.',
+      });
+    });
+  };
+
   const saveViolation = (viol: Omit<Violation, 'id' | 'createdAt'>) => {
     if (!canEdit) return;
     const timeStr = manilaTime();
@@ -867,9 +1024,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurfewRecords(INITIAL_CURFEW);
     setUniformLogs(INITIAL_UNIFORM_LOGS);
     setStudyLogs(INITIAL_STUDY_LOGS);
-    setChores(INITIAL_CHORES);
+    setCleaningDuties(INITIAL_CLEANING_DUTIES);
     setLightsOutLogs(INITIAL_LIGHTS_OUT);
     setCellphones(INITIAL_CELLPHONES);
+    setPhoneDeposits(INITIAL_PHONE_DEPOSITS);
     setViolations(INITIAL_VIOLATIONS);
     localStorage.clear();
   };
@@ -1175,9 +1333,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurfewRecords([]);
     setUniformLogs([]);
     setStudyLogs([]);
-    setChores([]);
+    setCleaningDuties([]);
     setLightsOutLogs([]);
     setCellphones([]);
+    setPhoneDeposits([]);
     setViolations([]);
     setMedicalSlips([]);
     setGatePasses([]);
@@ -1196,9 +1355,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurfewRecords(INITIAL_CURFEW);
     setUniformLogs(INITIAL_UNIFORM_LOGS);
     setStudyLogs(INITIAL_STUDY_LOGS);
-    setChores(INITIAL_CHORES);
+    setCleaningDuties(INITIAL_CLEANING_DUTIES);
     setLightsOutLogs(INITIAL_LIGHTS_OUT);
     setCellphones(INITIAL_CELLPHONES);
+    setPhoneDeposits(INITIAL_PHONE_DEPOSITS);
     setViolations(INITIAL_VIOLATIONS);
     setMedicalSlips(INITIAL_MEDICAL_SLIPS);
     setGatePasses(INITIAL_GATE_PASSES);
@@ -1222,9 +1382,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         curfewRecords,
         uniformLogs,
         studyLogs,
-        chores,
+        cleaningDuties,
         lightsOutLogs,
         cellphones,
+        phoneDeposits,
         violations,
         settings,
         updateSettings,
@@ -1253,10 +1414,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveCurfewRecord,
         saveUniformLog,
         saveStudyLog,
-        saveChore,
-        updateChoreStatus,
+        assignCleaningDuty,
+        saveCleaningDuty,
         saveLightsOutLog,
         updateCellphoneStatus,
+        savePhoneDepositBatch,
         saveViolation,
         updateViolationStatus,
         resetAllData,

@@ -22,7 +22,7 @@ const standingFor = (points: number) =>
       : { label: 'Probation', classes: 'bg-rose-950 text-rose-300 border-rose-700' };
 
 export const ResidentPerformanceView: React.FC = () => {
-  const { users, rooms, violations, attendance, chores, cellphones, saveViolation, updateViolationStatus, canEdit, currentUser } = useDorm();
+  const { users, rooms, violations, attendance, cleaningDuties, cellphones, saveViolation, updateViolationStatus, canEdit, currentUser } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showAddModal, setShowAddModal] = useState(false);
@@ -130,7 +130,15 @@ export const ResidentPerformanceView: React.FC = () => {
                 const biblePct = worshipAll.length
                   ? Math.round((worshipAll.filter(a => a.broughtBible).length / worshipAll.length) * 100)
                   : null;
-                const chore = chores.filter(c => c.studentId === occ.id).sort((a, b) => b.weekRange.localeCompare(a.weekRange))[0];
+                // Most recent cleaning day this resident's room was the crew.
+                const cleaningDays = cleaningDuties
+                  .filter(d => d.status === 'completed' && d.helpers.some(h => h.studentId === occ.id))
+                  .sort((a, b) => b.date.localeCompare(a.date));
+                const lastCleaning = cleaningDays[0];
+                const lastHelped = lastCleaning?.helpers.find(h => h.studentId === occ.id)?.helped;
+                const skippedCount = cleaningDays.filter(
+                  d => d.helpers.find(h => h.studentId === occ.id)?.helped === false
+                ).length;
                 const phone = cellphones.find(c => c.studentId === occ.id);
 
                 return (
@@ -163,10 +171,15 @@ export const ResidentPerformanceView: React.FC = () => {
                             <p className="text-sm font-bold text-white">{biblePct !== null ? `${biblePct}%` : '—'}</p>
                           </div>
                           <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-2.5">
-                            <p className="text-[10px] text-slate-400 flex items-center gap-1"><Brush className="w-3 h-3" /> Chore duty</p>
-                            <p className={`text-sm font-bold truncate ${chore ? (chore.status === 'failed' ? 'text-rose-400' : chore.status === 'inspected_approved' ? 'text-emerald-400' : 'text-white') : 'text-slate-500'}`}>
-                              {chore ? chore.status.replace('_', ' ') : 'None'}
+                            <p className="text-[10px] text-slate-400 flex items-center gap-1"><Brush className="w-3 h-3" /> Cleaning duty</p>
+                            <p className={`text-sm font-bold truncate ${
+                              lastCleaning ? (lastHelped ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'
+                            }`}>
+                              {lastCleaning ? (lastHelped ? 'Helped' : 'Skipped') : 'None'}
                             </p>
+                            {skippedCount > 0 && (
+                              <p className="text-[10px] text-rose-400/80">{skippedCount} missed</p>
+                            )}
                           </div>
                           <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-2.5">
                             <p className="text-[10px] text-slate-400 flex items-center gap-1"><Smartphone className="w-3 h-3" /> Phone</p>

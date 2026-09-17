@@ -7,9 +7,10 @@ import {
   CurfewRecord, 
   SchoolUniformLog, 
   StudyHoursLog, 
-  ChoreAssignment, 
+  CleaningDutyRecord, 
   LightsOutLog, 
   CellphoneCustody, 
+  PhoneDepositLog, 
   Violation,
   MedicalExcuseSlip,
   GatePassRecord,
@@ -172,14 +173,17 @@ export const INITIAL_SETTINGS: DormSettings = {
   lightsOutTime: '22:00',
   departureStart: '07:00',
   departureEnd: '07:35',
+  departureAfternoonStart: '13:00',
+  departureAfternoonEnd: '13:35',
 };
 export const INITIAL_ATTENDANCE: AttendanceRecord[] = [];
 export const INITIAL_CURFEW: CurfewRecord[] = [];
 export const INITIAL_UNIFORM_LOGS: SchoolUniformLog[] = [];
 export const INITIAL_STUDY_LOGS: StudyHoursLog[] = [];
-export const INITIAL_CHORES: ChoreAssignment[] = [];
+export const INITIAL_CLEANING_DUTIES: CleaningDutyRecord[] = [];
 export const INITIAL_LIGHTS_OUT: LightsOutLog[] = [];
 export const INITIAL_CELLPHONES: CellphoneCustody[] = [];
+export const INITIAL_PHONE_DEPOSITS: PhoneDepositLog[] = [];
 export const INITIAL_VIOLATIONS: Violation[] = [];
 export const INITIAL_MEDICAL_SLIPS: MedicalExcuseSlip[] = [];
 export const INITIAL_GATE_PASSES: GatePassRecord[] = [];

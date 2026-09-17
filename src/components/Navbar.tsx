@@ -46,7 +46,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'study', label: 'Study Time', icon: BookOpen, group: 'checks' },
   { id: 'curfew', label: 'Curfew & Lights Out', icon: Moon, group: 'checks' },
   { id: 'uniform', label: 'Departure & Uniform', icon: UserCheck, group: 'checks' },
-  { id: 'chores', label: 'Weekly Chores', icon: Brush, group: 'checks' },
+  { id: 'cleaning', label: 'Daily Cleaning', icon: Brush, group: 'checks' },
   { id: 'cellphones', label: 'Phone Vault', icon: Smartphone, group: 'checks' },
   { id: 'performance', label: 'Resident Performance', icon: Users, group: 'residents' },
   { id: 'occupant-records', label: 'Occupant Records', icon: ClipboardList, group: 'residents' },

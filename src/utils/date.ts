@@ -38,6 +38,15 @@ export const manilaToday = (date: Date = new Date()) => {
 /** Clock time in Asia/Manila as hh:mm AM/PM. */
 export const manilaTime = (date: Date = new Date()) => timeFormatter.format(date);
 
+/**
+ * Clock time in Asia/Manila as a 24-hour "HH:MM" value — the same shape the
+ * schedule settings store, so the two compare directly as strings.
+ */
+export const manilaTimeValue = (date: Date = new Date()) => {
+  const { hour, minute } = manilaParts(date);
+  return `${String(Number(hour) % 24).padStart(2, '0')}:${minute}`;
+};
+
 /** Hour of day (0-23) in Asia/Manila. */
 export const manilaHour = (date: Date = new Date()) => Number(manilaParts(date).hour) % 24;
 

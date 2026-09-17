@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   BookOpen,
   CalendarDays,
+  Sun,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { formatFullDate, formatTime12h } from '../utils/date';
@@ -74,12 +75,21 @@ export const ScheduleSettingsView: React.FC = () => {
       ],
     },
     {
-      title: 'School Departure Window',
+      title: 'Morning School Departure',
       icon: UserCheck,
-      desc: 'Morning exit window checked in Departure & Uniform.',
+      desc: 'First exit window of the day, checked in Departure & Uniform.',
       fields: [
         { key: 'departureStart', label: 'Window Start', hint: 'e.g. 07:00' },
         { key: 'departureEnd', label: 'Window End', hint: 'e.g. 07:35' },
+      ],
+    },
+    {
+      title: 'Afternoon School Departure',
+      icon: Sun,
+      desc: 'Second exit window, for residents leaving after lunch.',
+      fields: [
+        { key: 'departureAfternoonStart', label: 'Window Start', hint: 'e.g. 13:00' },
+        { key: 'departureAfternoonEnd', label: 'Window End', hint: 'e.g. 13:35' },
       ],
     },
   ];
@@ -172,8 +182,12 @@ export const ScheduleSettingsView: React.FC = () => {
               <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.lightsOutTime)}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
-              <p className="text-slate-500 text-[10px] uppercase tracking-wide">Departure Window</p>
+              <p className="text-slate-500 text-[10px] uppercase tracking-wide">Morning Departure</p>
               <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.departureStart)} – {formatTime12h(settings.departureEnd)}</p>
+            </div>
+            <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wide">Afternoon Departure</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.departureAfternoonStart)} – {formatTime12h(settings.departureAfternoonEnd)}</p>
             </div>
           </div>
         </div>

@@ -162,7 +162,7 @@ export const AdminManagementView: React.FC = () => {
             <ul className="text-slate-400 space-y-1.5 text-[11px] list-disc list-inside">
               <li>Save & score room inspections and cleanliness</li>
               <li>Record worship attendance & curfew arrivals</li>
-              <li>Manage cellphone custody & duty chore rosters</li>
+              <li>Manage phone vault deposits & the daily cleaning rotation</li>
             </ul>
           </div>
           <div className="mt-4 pt-2.5 border-t border-slate-800/80 text-[10px] text-blue-400 font-mono font-semibold">
@@ -181,7 +181,7 @@ export const AdminManagementView: React.FC = () => {
             </p>
             <ul className="text-slate-400 space-y-1.5 text-[11px] list-disc list-inside">
               <li>Strictly View-Only access to personal standing</li>
-              <li>Inspect room scores & active chore duty dates</li>
+              <li>Inspect room scores & cleaning duty days</li>
               <li>Review medical slips & weekend leave status</li>
             </ul>
           </div>

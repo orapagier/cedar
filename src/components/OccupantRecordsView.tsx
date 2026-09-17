@@ -52,7 +52,7 @@ export const OccupantRecordsView: React.FC = () => {
           <h2 className="text-base sm:text-lg font-bold text-white">Occupant Records</h2>
         </div>
         <p className="text-xs text-slate-400 mt-1">
-          Select a resident to view their complete records — worship, study, curfew, uniform, chores, phone vault, gate passes, medical, and standing.
+          Select a resident to view their complete records — worship, study, curfew, departures, cleaning duty, phone vault, gate passes, medical, and standing.
         </p>
         <div className="relative mt-3">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />

@@ -48,7 +48,8 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
     studyLogs,
     curfewRecords,
     uniformLogs,
-    chores,
+    cleaningDuties,
+    phoneDeposits,
     cellphones,
     violations,
     gatePasses,
@@ -62,6 +63,12 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
   const demerits = activeViolations.reduce((s, v) => s + v.demeritPoints, 0);
   const lastInspection = childInspections[0];
   const phoneEntry = cellphones.find(c => c.studentId === studentId);
+  const myDeposits = phoneDeposits.filter(d => d.studentId === studentId);
+  // Cleaning duty is recorded per room-day; a resident appears in the days
+  // their own room was the crew.
+  const myCleaningDays = cleaningDuties
+    .filter(d => d.helpers.some(h => h.studentId === studentId))
+    .map(duty => ({ duty, helped: duty.helpers.find(h => h.studentId === studentId)?.helped ?? false }));
 
   const statusChip = (status: string) => {
     if (status === 'present' || status === 'cleared' || status === 'in_dorm' || status === 'official_pass' || status === 'returned_on_time' || status === 'inspected_approved' || status === 'recovered_cleared') return 'bg-emerald-950 text-emerald-300';
@@ -141,7 +148,10 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
         {uniformLogs.filter(u => u.studentId === studentId).slice(0, limit).map(u => (
           <div key={u.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white">{formatFullDate(u.date)} · {u.departureTime}</p>
+              <p className="text-xs font-semibold text-white">
+                {formatFullDate(u.date)} · {formatTime12h(u.departureTime)}
+                <span className="text-slate-500 font-normal"> · {u.session === 'afternoon' ? 'Afternoon' : 'Morning'}</span>
+              </p>
               <p className="text-[11px] text-slate-400">
                 Uniform {u.uniformCompliant ? '✓' : '✗'} · Hair {u.hairGroomingCompliant ? '✓' : '✗'} ·
                 ID {u.idBadgeCompliant ? '✓' : '✗'} · Shoes {u.shoesCompliant ? '✓' : '✗'}
@@ -153,20 +163,40 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
         {uniformLogs.filter(u => u.studentId === studentId).length === 0 && <Empty text="No departure records yet." />}
       </Section>
 
-      <Section icon={Brush} title="Weekly Chores">
-        {chores.filter(c => c.studentId === studentId).slice(0, limit).map(c => (
-          <div key={c.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
+      <Section icon={Brush} title="Cleaning Duty">
+        {myCleaningDays.slice(0, limit).map(({ duty, helped }) => (
+          <div key={duty.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white">{c.dutyArea}</p>
-              <p className="text-[11px] text-slate-400">Week {c.weekRange} · {c.daySchedule}</p>
+              <p className="text-xs font-semibold text-white">Room {duty.roomNumber} cleaning day</p>
+              <p className="text-[11px] text-slate-400">
+                {formatFullDate(duty.date)} · rated {duty.rating}/5 · garbage {duty.garbageDisposed ? '✓' : '✗'}
+              </p>
             </div>
-            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusChip(c.status)}`}>{c.status.replace(/_/g, ' ')}</span>
+            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+              helped ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
+            }`}>
+              {helped ? 'helped' : 'did not help'}
+            </span>
           </div>
         ))}
-        {chores.filter(c => c.studentId === studentId).length === 0 && <Empty text="No chore assignments yet." />}
+        {myCleaningDays.length === 0 && <Empty text="No cleaning duty days yet." />}
       </Section>
 
       <Section icon={Smartphone} title="Phone Vault">
+        {myDeposits.slice(0, limit).map(d => (
+          <div key={d.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white">Deposit check</p>
+              <p className="text-[11px] text-slate-400">{formatFullDate(d.date)} · {formatTime12h(d.depositTime)}</p>
+            </div>
+            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+              d.status === 'deposited' ? 'bg-emerald-950 text-emerald-300' :
+              d.status === 'late' ? 'bg-amber-950 text-amber-300' : 'bg-rose-950 text-rose-300'
+            }`}>
+              {d.status.replace(/_/g, ' ')}
+            </span>
+          </div>
+        ))}
         {phoneEntry ? (
           <div className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">

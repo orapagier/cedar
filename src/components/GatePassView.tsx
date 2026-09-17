@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { manilaToday, formatFullDate } from '../utils/date';
+import { manilaToday, manilaTimeValue, formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 import {
   Luggage,
@@ -25,6 +25,17 @@ const PASS_TYPES: Record<GatePassRecord['passType'], string> = {
   medical_visit: 'Medical Visit',
   family_emergency: 'Family Emergency',
   academic: 'Academic / School Task',
+  personal_matters: 'Personal Matters / Errand',
+};
+
+/** Shown under the destination box so a short errand is easy to fill in. */
+const DESTINATION_HINTS: Record<GatePassRecord['passType'], string> = {
+  weekend_home: 'e.g. Home — Brgy. San Isidro',
+  church_event: 'e.g. Central SDA Church',
+  medical_visit: 'e.g. Provincial Hospital',
+  family_emergency: 'e.g. Home — family matter',
+  academic: 'e.g. School library, group work',
+  personal_matters: 'e.g. Buy school supplies at the market',
 };
 
 const STATUS_META: Record<GatePassRecord['status'], { label: string; classes: string }> = {
@@ -35,7 +46,7 @@ const STATUS_META: Record<GatePassRecord['status'], { label: string; classes: st
 };
 
 export const GatePassView: React.FC = () => {
-  const { gatePasses, users, rooms, saveGatePass, updateGatePassStatus, canEdit, currentUser } = useDorm();
+  const { gatePasses, users, rooms, saveGatePass, updateGatePassStatus, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
@@ -49,6 +60,7 @@ export const GatePassView: React.FC = () => {
   const [destination, setDestination] = useState('');
   const [departureDate, setDepartureDate] = useState(() => manilaToday());
   const [expectedReturnDate, setExpectedReturnDate] = useState(() => manilaToday());
+  const [expectedReturnTime, setExpectedReturnTime] = useState(settings.curfewTime || '17:00');
   const [parentConsent, setParentConsent] = useState(true);
   const [parentPhone, setParentPhone] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -63,6 +75,23 @@ export const GatePassView: React.FC = () => {
     setSavedMessage(message);
     setTimeout(() => setSavedMessage(null), 4000);
   };
+
+  // Passes are always issued from a resident's own row, so the form opens with
+  // that resident — and their parent's number — already filled in.
+  const openIssueFor = (student: typeof occupants[number]) => {
+    setStudentId(student.id);
+    setPassType('weekend_home');
+    setDestination('');
+    setDepartureDate(manilaToday());
+    setExpectedReturnDate(manilaToday());
+    setExpectedReturnTime(settings.curfewTime || '17:00');
+    setParentConsent(true);
+    setParentPhone(student.parentPhone || '');
+    setRemarks('');
+    setShowIssueModal(true);
+  };
+
+  const issuingStudent = occupants.find(o => o.id === studentId);
 
   const latestPassFor = (sid: string) =>
     gatePasses.filter(p => p.studentId === sid).sort((a, b) => b.departureDate.localeCompare(a.departureDate))[0];
@@ -80,6 +109,7 @@ export const GatePassView: React.FC = () => {
       destination: destination || PASS_TYPES[passType],
       departureDate,
       expectedReturnDate,
+      expectedReturnTime,
       parentConsentVerified: parentConsent,
       parentPhone: parentPhone || student.parentPhone || '—',
       approvedByDean: currentUser.name,
@@ -94,7 +124,15 @@ export const GatePassView: React.FC = () => {
 
   const today = useManilaToday();
   const activePasses = gatePasses.filter(p => p.status === 'approved' || p.status === 'departed');
-  const overdueCount = activePasses.filter(p => p.status === 'departed' && p.expectedReturnDate < today).length;
+  const nowTime = manilaTimeValue();
+  // A pass due back today is only overdue once its return time has passed.
+  const isPastDue = (p: GatePassRecord) =>
+    p.expectedReturnDate < today ||
+    (p.expectedReturnDate === today && !!p.expectedReturnTime && p.expectedReturnTime < nowTime);
+  const overdueCount = activePasses.filter(p => p.status === 'departed' && isPastDue(p)).length;
+
+  const returnLabel = (p: GatePassRecord) =>
+    `${formatFullDate(p.expectedReturnDate)}${p.expectedReturnTime ? ` · ${formatTime12h(p.expectedReturnTime)}` : ''}`;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -108,19 +146,11 @@ export const GatePassView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Tracking residents leaving campus and going home — weekend home leave, church, medical, and family passes.
+            Room by room, issue a pass beside each resident's name — home leave, church, medical, academic, or a quick personal errand.
           </p>
         </div>
 
-        {canEdit ? (
-          <button
-            onClick={() => setShowIssueModal(true)}
-            className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2 min-h-touch rounded-xl text-xs flex items-center gap-2 self-start sm:self-auto"
-          >
-            <PlusCircle className="w-4 h-4" />
-            Issue Gate Pass
-          </button>
-        ) : (
+        {!canEdit && (
           <div className="bg-slate-800 border border-slate-700 text-slate-400 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 self-start">
             <Lock className="w-3.5 h-3.5" />
             <span>View-only access</span>
@@ -189,41 +219,52 @@ export const GatePassView: React.FC = () => {
           {roomOccupants.map(student => {
             const pass = latestPassFor(student.id);
             return (
-              <div key={student.id} className="p-3 sm:p-4 flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white text-sm truncate">{student.name}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
-                  {pass ? (
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-300">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_META[pass.status].classes}`}>
-                        {STATUS_META[pass.status].label}
+              <div key={student.id} className="p-3 sm:p-4 space-y-2.5">
+                {/* Name on the left, its own Issue Pass button on the right */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-white text-sm truncate">{student.name}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
+                    {pass ? (
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-300">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_META[pass.status].classes}`}>
+                          {STATUS_META[pass.status].label}
+                        </span>
+                        <span className="text-slate-400">{PASS_TYPES[pass.passType]}</span>
+                      </div>
+                    ) : (
+                      <span className="mt-1 inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-500">
+                        No pass on file
                       </span>
-                      <span className="text-slate-400">{PASS_TYPES[pass.passType]}</span>
-                    </div>
-                  ) : (
-                    <span className="mt-1 inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-500">
-                      No pass on file
-                    </span>
+                    )}
+                  </div>
+
+                  {canEdit && (
+                    <button
+                      onClick={() => openIssueFor(student)}
+                      className="shrink-0 min-h-touch px-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-colors active:scale-95"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      Issue Pass
+                    </button>
                   )}
                 </div>
 
-                {pass ? (
-                  <div className="bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-400 space-y-0.5 min-w-0 md:max-w-[340px]">
+                {pass && (
+                  <div className="bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-400 space-y-0.5">
                     <p><span className="text-slate-500 font-medium">Destination:</span> {pass.destination}</p>
                     <p>
                       <span className="text-slate-500 font-medium">Out:</span> {formatFullDate(pass.departureDate)}
                       <span className="mx-1.5 text-slate-600">→</span>
-                      <span className="text-slate-500 font-medium">Back:</span> {formatFullDate(pass.expectedReturnDate)}
+                      <span className="text-slate-500 font-medium">Back:</span> {returnLabel(pass)}
                     </p>
                     <p><span className="text-slate-500 font-medium">Parent:</span> {pass.parentConsentVerified ? `Consent ✓ (${pass.parentPhone})` : 'Not verified'}</p>
                     {pass.remarks && <p className="italic text-slate-500">"{pass.remarks}"</p>}
                   </div>
-                ) : (
-                  <div className="text-[11px] text-slate-500">No departure records.</div>
                 )}
 
                 {canEdit && pass && (
-                  <div className="flex flex-wrap gap-1.5 shrink-0">
+                  <div className="flex flex-wrap gap-1.5">
                     <button
                       onClick={() => { updateGatePassStatus(pass.id, 'departed'); flash(`Marked ${student.name}'s pass as departed.`); }}
                       className="min-h-touch px-2.5 bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-700/50 rounded-lg text-[11px] font-semibold flex items-center gap-1"
@@ -277,7 +318,7 @@ export const GatePassView: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
-                Out {formatFullDate(p.departureDate)} · Back {formatFullDate(p.expectedReturnDate)} · Approved by {p.approvedByDean}
+                Out {formatFullDate(p.departureDate)} · Back {returnLabel(p)} · Approved by {p.approvedByDean}
               </p>
               {p.actualReturnDate && (
                 <p className="text-[11px] text-emerald-400 mt-0.5">Actual return: {formatFullDate(p.actualReturnDate)}</p>
@@ -292,56 +333,67 @@ export const GatePassView: React.FC = () => {
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-white">Issue Gate Pass</h3>
-                <p className="text-xs text-slate-400">Dean-approved campus exit / home leave</p>
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-white truncate">
+                  Issue Gate Pass{issuingStudent ? ` — ${issuingStudent.name}` : ''}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Room {issuingStudent?.roomNumber || '—'} · Dean-approved campus exit
+                </p>
               </div>
-              <button onClick={() => setShowIssueModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
+              <button onClick={() => setShowIssueModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2 shrink-0">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={submitPass} className="p-4 sm:p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-slate-300 mb-1">Resident</label>
-                  <select value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
-                    {occupants.map(o => (
-                      <option key={o.id} value={o.id}>{o.name} (Room {o.roomNumber})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-medium text-slate-300 mb-1">Pass Type</label>
-                  <select value={passType} onChange={e => setPassType(e.target.value as GatePassRecord['passType'])} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
-                    {(Object.keys(PASS_TYPES) as GatePassRecord['passType'][]).map(t => (
-                      <option key={t} value={t}>{PASS_TYPES[t]}</option>
-                    ))}
-                  </select>
-                </div>
+            <form onSubmit={submitPass} className="p-4 sm:p-6 space-y-3.5 text-xs">
+              <div>
+                <label className="block font-medium text-slate-300 mb-1">Pass Type</label>
+                <select value={passType} onChange={e => setPassType(e.target.value as GatePassRecord['passType'])} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                  {(Object.keys(PASS_TYPES) as GatePassRecord['passType'][]).map(t => (
+                    <option key={t} value={t}>{PASS_TYPES[t]}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
                 <label className="block font-medium text-slate-300 mb-1">Destination</label>
-                <input type="text" required placeholder="e.g. Home — Brgy. San Isidro" value={destination} onChange={e => setDestination(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+                <input type="text" required placeholder={DESTINATION_HINTS[passType]} value={destination} onChange={e => setDestination(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Departure Date</label>
                   <input type="date" value={departureDate} onChange={e => setDepartureDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
                 </div>
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Expected Return Date</label>
+                  <label className="block font-medium text-slate-300 mb-1">Expected Return</label>
                   <input type="date" value={expectedReturnDate} onChange={e => setExpectedReturnDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-300 mb-1">Return Time</label>
+                  <input type="time" value={expectedReturnTime} onChange={e => setExpectedReturnTime(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="flex items-center gap-2 px-3 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg cursor-pointer">
-                  <input type="checkbox" checked={parentConsent} onChange={e => setParentConsent(e.target.checked)} className="w-4 h-4 rounded text-sky-500 accent-sky-500" />
-                  <span className="font-medium text-slate-300">Parent consent verified</span>
-                </label>
+                {/* Same label-over-control shape and height as the fields around it */}
+                <div>
+                  <label className="block font-medium text-slate-300 mb-1">Parent consent</label>
+                  <button
+                    type="button"
+                    aria-pressed={parentConsent}
+                    onClick={() => setParentConsent(v => !v)}
+                    className={`w-full px-3 py-2 rounded-lg border flex items-center justify-between gap-2 font-semibold transition-colors ${
+                      parentConsent
+                        ? 'bg-emerald-950/70 border-emerald-700/60 text-emerald-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400'
+                    }`}
+                  >
+                    <span>{parentConsent ? 'Verified' : 'Not verified'}</span>
+                    {parentConsent ? <CheckCircle2 className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                  </button>
+                </div>
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Parent contact</label>
                   <input type="text" placeholder="+63 917 555 0000" value={parentPhone} onChange={e => setParentPhone(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
@@ -350,7 +402,7 @@ export const GatePassView: React.FC = () => {
 
               <div>
                 <label className="block font-medium text-slate-300 mb-1">Remarks</label>
-                <input type="text" placeholder="e.g. Must return before Sunday 6 PM" value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+                <input type="text" placeholder="e.g. Must return before curfew" value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
               </div>
 
               <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">

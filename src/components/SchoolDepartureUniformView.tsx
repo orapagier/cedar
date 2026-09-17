@@ -11,9 +11,19 @@ import {
   Save,
   Lock,
   Users,
+  Sunrise,
+  Sun,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
-import { manilaToday, formatFullDate } from '../utils/date';
+import { DepartureSession } from '../types/dorm';
+import { manilaToday, manilaHour, formatFullDate, formatTime12h } from '../utils/date';
+import { useManilaToday } from '../hooks/useManilaToday';
+import { Segmented } from './ui/Segmented';
+
+const SESSIONS: { id: DepartureSession; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'morning', label: 'Morning', icon: Sunrise },
+  { id: 'afternoon', label: 'Afternoon', icon: Sun },
+];
 
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40';
@@ -22,9 +32,14 @@ export const SchoolDepartureUniformView: React.FC = () => {
   const { uniformLogs, users, rooms, saveUniformLog, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
+  const today = useManilaToday();
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
   const [selectedRoom, setSelectedRoom] = useState(roomNumbers[0] || '');
-  const [departureTime, setDepartureTime] = useState('07:20');
+  // Opens on whichever run is current: the afternoon one from noon onwards.
+  const [session, setSession] = useState<DepartureSession>(() => (manilaHour() < 12 ? 'morning' : 'afternoon'));
+  const [departureTime, setDepartureTime] = useState(
+    () => (manilaHour() < 12 ? settings.departureStart : settings.departureAfternoonStart) || '07:00'
+  );
   const [remarks, setRemarks] = useState('');
   const [compliance, setCompliance] = useState<Record<string, { uniform: boolean; hair: boolean; idBadge: boolean; shoes: boolean }>>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -40,9 +55,26 @@ export const SchoolDepartureUniformView: React.FC = () => {
     setTimeout(() => setSavedMessage(null), 4000);
   };
 
-  const start = settings.departureStart || '07:00';
-  const end = settings.departureEnd || '07:35';
+  const start = (session === 'morning' ? settings.departureStart : settings.departureAfternoonStart)
+    || (session === 'morning' ? '07:00' : '13:00');
+  const end = (session === 'morning' ? settings.departureEnd : settings.departureAfternoonEnd)
+    || (session === 'morning' ? '07:35' : '13:35');
   const isTimeOnSchedule = departureTime >= start && departureTime <= end;
+
+  // Switching runs re-arms the clock with that run's scheduled start time.
+  const switchSession = (next: DepartureSession) => {
+    setSession(next);
+    setDepartureTime(
+      (next === 'morning' ? settings.departureStart : settings.departureAfternoonStart)
+        || (next === 'morning' ? '07:00' : '13:00')
+    );
+  };
+
+  /** What was already logged for this resident on this date and run. */
+  const loggedFor = (studentId: string) =>
+    uniformLogs.find(
+      l => l.studentId === studentId && l.date === today && (l.session ?? 'morning') === session
+    );
 
   const setFlag = (id: string, key: keyof (typeof compliance)[string], value: boolean) => {
     setCompliance(prev => ({
@@ -69,6 +101,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
         studentId: student.id,
         studentName: student.name,
         roomNumber: student.roomNumber || '—',
+        session,
         departureTime,
         uniformCompliant: flags.uniform,
         hairGroomingCompliant: flags.hair,
@@ -76,12 +109,14 @@ export const SchoolDepartureUniformView: React.FC = () => {
         shoesCompliant: flags.shoes,
         isDepartureOnSchedule: isTimeOnSchedule,
         status: fullyCompliant ? 'cleared' : 'flagged',
-        remarks: remarks || (!isTimeOnSchedule ? `Departed outside standard ${start}-${end} window (${departureTime})` : undefined),
+        remarks: remarks || (!isTimeOnSchedule
+          ? `Departed outside the ${session} window ${formatTime12h(start)}-${formatTime12h(end)} (${formatTime12h(departureTime)})`
+          : undefined),
         inspectedBy: currentUser.name,
       });
     });
     setRemarks('');
-    flash(`Saved gate clearance for ${roomOccupants.length} residents in Room ${selectedRoom}.`);
+    flash(`Saved ${session} gate clearance for ${roomOccupants.length} residents in Room ${selectedRoom}.`);
   };
 
   const checklist = [
@@ -99,11 +134,13 @@ export const SchoolDepartureUniformView: React.FC = () => {
           <div className="flex items-center space-x-2">
             <h2 className="text-base sm:text-lg font-bold text-white">Departure & Uniform Check</h2>
             <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">
-              Morning Gate Check
+              School Gate Check
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            School exit window ({start} - {end}) and daily uniform, ID badge, haircut, and shoe compliance.
+            Two school runs a day — morning {formatTime12h(settings.departureStart)} and afternoon{' '}
+            {formatTime12h(settings.departureAfternoonStart)} (set under Schedule Settings) — plus uniform, ID badge,
+            haircut, and shoe compliance.
           </p>
         </div>
 
@@ -124,23 +161,39 @@ export const SchoolDepartureUniformView: React.FC = () => {
 
       {/* By-room gate check */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-emerald-400" />
-            <h3 className="font-bold text-white text-sm">Departure Roll Call</h3>
+        <div className="p-4 border-b border-slate-800 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-emerald-400" />
+              <h3 className="font-bold text-white text-sm">
+                {session === 'morning' ? 'Morning' : 'Afternoon'} Departure Roll Call
+              </h3>
+            </div>
+            <select value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)} className={`${FIELD} sm:max-w-[220px]`}>
+              {roomNumbers.length === 0 ? (
+                <option value="">No residents on file</option>
+              ) : (
+                roomNumbers.map(room => (
+                  <option key={room} value={room}>
+                    Room {room}
+                    {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
-          <select value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)} className={`${FIELD} sm:max-w-[220px]`}>
-            {roomNumbers.length === 0 ? (
-              <option value="">No residents on file</option>
-            ) : (
-              roomNumbers.map(room => (
-                <option key={room} value={room}>
-                  Room {room}
-                  {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
-                </option>
-              ))
-            )}
-          </select>
+
+          <Segmented<DepartureSession>
+            ariaLabel="Departure run"
+            value={session}
+            onChange={switchSession}
+            options={SESSIONS.map(o => ({
+              value: o.id,
+              label: `${o.label} · ${formatTime12h(o.id === 'morning' ? settings.departureStart : settings.departureAfternoonStart)}`,
+              icon: o.icon,
+              activeClass: 'bg-emerald-600 text-white shadow-sm',
+            }))}
+          />
         </div>
 
         <div className="p-3 sm:p-4 border-b border-slate-800/70 flex flex-col sm:flex-row gap-3">
@@ -166,13 +219,16 @@ export const SchoolDepartureUniformView: React.FC = () => {
         {!isTimeOnSchedule && (
           <div className="px-4 py-2 bg-amber-950/40 border-b border-amber-800/40 text-amber-300 text-[11px] flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
-            Warning: Outside designated {start}-{end} school departure window.
+            Warning: Outside the {session} departure window ({formatTime12h(start)} - {formatTime12h(end)}).
           </div>
         )}
 
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
           <p className="text-xs text-slate-400">
             <span className="font-semibold text-white">Room {selectedRoom || '—'}</span> · {roomOccupants.length} residents
+          </p>
+          <p className="text-xs text-slate-400">
+            {roomOccupants.filter(o => loggedFor(o.id)).length}/{roomOccupants.length} logged this run
           </p>
         </div>
 
@@ -182,11 +238,19 @@ export const SchoolDepartureUniformView: React.FC = () => {
           )}
           {roomOccupants.map(student => {
             const flags = flagsFor(student.id);
+            const logged = loggedFor(student.id);
             return (
               <div key={student.id} className="p-3 sm:p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white text-sm truncate">{student.name}</p>
                   <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
+                  {logged && (
+                    <span className={`mt-1 inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
+                      logged.status === 'cleared' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
+                    }`}>
+                      {logged.status === 'cleared' ? 'Cleared' : 'Flagged'} · {formatTime12h(logged.departureTime)}
+                    </span>
+                  )}
                 </div>
 
                 {canEdit ? (
@@ -238,7 +302,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
               className="w-full min-h-touch bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
             >
               <Save className="w-4 h-4" />
-              <span>Save Room {selectedRoom} Departure</span>
+              <span>Save Room {selectedRoom} {session === 'morning' ? 'Morning' : 'Afternoon'} Departure</span>
             </button>
           </div>
         )}
@@ -269,11 +333,12 @@ export const SchoolDepartureUniformView: React.FC = () => {
                   </span>
                 </div>
                 <span className={`shrink-0 font-mono font-bold text-xs ${log.isDepartureOnSchedule ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {log.departureTime}
+                  {formatTime12h(log.departureTime)}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Room {log.roomNumber} · {formatFullDate(log.date)} · by {log.inspectedBy}
+                Room {log.roomNumber} · {log.session === 'afternoon' ? 'Afternoon' : 'Morning'} run ·{' '}
+                {formatFullDate(log.date)} · by {log.inspectedBy}
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {[

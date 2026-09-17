@@ -8,7 +8,7 @@ import { WorshipAttendanceView } from './components/WorshipAttendanceView';
 import { CurfewLightsOutView } from './components/CurfewLightsOutView';
 import { SchoolDepartureUniformView } from './components/SchoolDepartureUniformView';
 import { StudyHoursLibraryView } from './components/StudyHoursLibraryView';
-import { WeeklyChoresView } from './components/WeeklyChoresView';
+import { CleaningDutyView } from './components/CleaningDutyView';
 import { CellphoneCustodyView } from './components/CellphoneCustodyView';
 import { OccupantsDirectoryView } from './components/OccupantsDirectoryView';
 import { AdminManagementView } from './components/AdminManagementView';
@@ -42,7 +42,7 @@ function AppContent() {
         {!isGuest && !isParent && activeTab === 'study' && <StudyHoursLibraryView />}
         {!isGuest && !isParent && activeTab === 'curfew' && <CurfewLightsOutView />}
         {!isGuest && !isParent && activeTab === 'uniform' && <SchoolDepartureUniformView />}
-        {!isGuest && !isParent && activeTab === 'chores' && <WeeklyChoresView />}
+        {!isGuest && !isParent && activeTab === 'cleaning' && <CleaningDutyView />}
         {!isGuest && !isParent && activeTab === 'cellphones' && <CellphoneCustodyView />}
         {!isGuest && !isParent && activeTab === 'performance' && <ResidentPerformanceView />}
         {!isGuest && !isParent && activeTab === 'gatepass' && <GatePassView />}

@@ -26,9 +26,9 @@ const CHECKS: { id: string; label: string; sub: string; icon: React.ComponentTyp
   { id: 'worship', label: 'Worship Roll Call', sub: 'Bibles, lates, absences', icon: Church },
   { id: 'study', label: 'Study Time', sub: 'Evening study & library', icon: BookOpen },
   { id: 'curfew', label: 'Curfew & Lights Out', sub: 'Night check-in & lights out', icon: Moon },
-  { id: 'uniform', label: 'Departure & Uniform', sub: 'Morning gate check', icon: UserCheck },
-  { id: 'chores', label: 'Weekly Chores', sub: 'Maintenance duty roster', icon: Brush },
-  { id: 'cellphones', label: 'Phone Vault', sub: 'Sunday lockup, Friday return', icon: Smartphone },
+  { id: 'uniform', label: 'Departure & Uniform', sub: 'School gate check', icon: UserCheck },
+  { id: 'cleaning', label: 'Daily Cleaning', sub: 'Room rotation & garbage', icon: Brush },
+  { id: 'cellphones', label: 'Phone Vault', sub: 'Per-resident deposit check', icon: Smartphone },
   { id: 'gatepass', label: 'Gate Pass & Home Leave', sub: 'Campus exits & weekend leave', icon: Luggage },
 ];
 
@@ -44,7 +44,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     studyLogs,
     curfewRecords,
     uniformLogs,
-    chores,
+    cleaningDuties,
+    phoneDeposits,
     cellphones,
     gatePasses,
     violations,
@@ -66,14 +67,18 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
       ? Math.round(inspections.reduce((acc, i) => acc + i.score, 0) / inspections.length)
       : null;
 
+  const todayDuty = cleaningDuties.find(d => d.date === today);
+
   const todayStats: Record<string, string> = {
     inspections: `${inspections.filter(i => i.date === today).length}/${rooms.length} scored`,
     worship: `${attendance.filter(a => a.date === today).length} logged`,
     study: `${studyLogs.filter(l => l.date === today).length} logged`,
     curfew: `${curfewRecords.filter(c => c.date === today).length} checked in`,
     uniform: `${uniformLogs.filter(u => u.date === today).length} cleared`,
-    chores: `${chores.filter(c => c.status !== 'pending').length}/${chores.length} approved`,
-    cellphones: `${cellphones.filter(c => c.custodyStatus === 'in_vault').length} in vault`,
+    cleaning: todayDuty
+      ? `Room ${todayDuty.roomNumber}${todayDuty.status === 'completed' ? ' ✓' : ''}`
+      : 'No crew set',
+    cellphones: `${phoneDeposits.filter(d => d.date === today).length} checked`,
     gatepass: `${gatePasses.filter(p => p.status === 'approved' || p.status === 'departed').length} active`,
   };
 
@@ -82,6 +87,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
   const checkSubs: Record<string, string> = {
     curfew: `${formatTime12h(settings.curfewTime || '21:00')} in, ${formatTime12h(settings.lightsOutTime || '22:00')} dark`,
     study: `Evening study ${formatTime12h(settings.studyStart || '19:30')} - ${formatTime12h(settings.studyEnd || '21:30')}`,
+    uniform: `Morning ${formatTime12h(settings.departureStart || '07:00')} · Afternoon ${formatTime12h(settings.departureAfternoonStart || '13:00')}`,
   };
 
   const myRecord = occupants.find(o => o.id === currentUser.id);
