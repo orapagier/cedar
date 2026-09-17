@@ -2,6 +2,7 @@ import {
   User, 
   Room, 
   RoomInspection, 
+  DormSettings,
   AttendanceRecord, 
   CurfewRecord, 
   SchoolUniformLog, 
@@ -137,6 +138,17 @@ export const INITIAL_ROOMS: Room[] = [
 ];
 
 export const INITIAL_INSPECTIONS: RoomInspection[] = [];
+
+export const INITIAL_SETTINGS: DormSettings = {
+  worshipMorning: '05:30',
+  worshipEvening: '18:30',
+  churchMidweek: '18:00',
+  churchSabbath: '09:00',
+  curfewTime: '21:00',
+  lightsOutTime: '22:00',
+  departureStart: '07:00',
+  departureEnd: '07:35',
+};
 export const INITIAL_ATTENDANCE: AttendanceRecord[] = [];
 export const INITIAL_CURFEW: CurfewRecord[] = [];
 export const INITIAL_UNIFORM_LOGS: SchoolUniformLog[] = [];

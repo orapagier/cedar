@@ -18,7 +18,7 @@ const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40';
 
 export const SchoolDepartureUniformView: React.FC = () => {
-  const { uniformLogs, users, rooms, saveUniformLog, canEdit, currentUser } = useDorm();
+  const { uniformLogs, users, rooms, saveUniformLog, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
@@ -39,7 +39,9 @@ export const SchoolDepartureUniformView: React.FC = () => {
     setTimeout(() => setSavedMessage(null), 4000);
   };
 
-  const isTimeOnSchedule = departureTime >= '07:00' && departureTime <= '07:35';
+  const start = settings.departureStart || '07:00';
+  const end = settings.departureEnd || '07:35';
+  const isTimeOnSchedule = departureTime >= start && departureTime <= end;
 
   const setFlag = (id: string, key: keyof (typeof compliance)[string], value: boolean) => {
     setCompliance(prev => ({
@@ -73,7 +75,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
         shoesCompliant: flags.shoes,
         isDepartureOnSchedule: isTimeOnSchedule,
         status: fullyCompliant ? 'cleared' : 'flagged',
-        remarks: remarks || (!isTimeOnSchedule ? `Departed outside standard 07:00-07:35 window (${departureTime})` : undefined),
+        remarks: remarks || (!isTimeOnSchedule ? `Departed outside standard ${start}-${end} window (${departureTime})` : undefined),
         inspectedBy: currentUser.name,
       });
     });
@@ -100,7 +102,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            School exit window (07:00 - 07:35 AM) and daily uniform, ID badge, haircut, and shoe compliance.
+            School exit window ({start} - {end}) and daily uniform, ID badge, haircut, and shoe compliance.
           </p>
         </div>
 
@@ -163,7 +165,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
         {!isTimeOnSchedule && (
           <div className="px-4 py-2 bg-amber-950/40 border-b border-amber-800/40 text-amber-300 text-[11px] flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
-            Warning: Outside designated 7:00-7:35 AM school departure window.
+            Warning: Outside designated {start}-{end} school departure window.
           </div>
         )}
 

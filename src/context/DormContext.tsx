@@ -17,6 +17,7 @@ import {
   DemeritClearanceLog,
   ConfiscatedItemRecord,
   StudentMedicalRecord,
+  DormSettings,
 } from '../types/dorm';
 import {
   INITIAL_USERS,
@@ -35,6 +36,7 @@ import {
   INITIAL_DEMERIT_CLEARANCES,
   INITIAL_CONFISCATED_ITEMS,
   INITIAL_STUDENT_MEDICALS,
+  INITIAL_SETTINGS,
 } from '../data/dormSeed';
 
 interface DormContextType {
@@ -54,6 +56,8 @@ interface DormContextType {
   lightsOutLogs: LightsOutLog[];
   cellphones: CellphoneCustody[];
   violations: Violation[];
+  settings: DormSettings;
+  updateSettings: (updates: Partial<DormSettings>) => void;
   
   // Operational Checklist Modules
   medicalSlips: MedicalExcuseSlip[];
@@ -292,6 +296,13 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return loaded.filter(v => !TEST_LOG_IDS.has(v.id) && !TEST_USER_IDS.has(v.studentId) && !TEST_NAMES.has(v.studentName));
   });
 
+  const [settings, setSettings] = useState<DormSettings>(() => ({
+    ...INITIAL_SETTINGS,
+    ...loadFromStorage<Partial<DormSettings>>('settings', {}),
+  }));
+
+  const updateSettings = (updates: Partial<DormSettings>) => setSettings(prev => ({ ...prev, ...updates }));
+
   // Operational Checklist Modules
   const [medicalSlips, setMedicalSlips] = useState<MedicalExcuseSlip[]>(() => {
     const loaded = loadFromStorage<MedicalExcuseSlip[]>('medical_slips', INITIAL_MEDICAL_SLIPS);
@@ -340,6 +351,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => saveToStorage('demerit_clearances', demeritClearances), [demeritClearances]);
   useEffect(() => saveToStorage('confiscated_items', confiscatedItems), [confiscatedItems]);
   useEffect(() => saveToStorage('student_medicals', studentMedicals), [studentMedicals]);
+  useEffect(() => saveToStorage('settings', settings), [settings]);
 
   // ---- Cross-device sync (shared server is the source of truth) ----
   const initialPullDone = useRef(false);
@@ -366,6 +378,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         demeritClearances,
         confiscatedItems,
         studentMedicals,
+        settings,
       },
     };
     try {
@@ -394,7 +407,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
     };
-  }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, chores, lightsOutLogs, cellphones, violations, medicalSlips, gatePasses, demeritClearances, confiscatedItems, studentMedicals]);
+  }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, chores, lightsOutLogs, cellphones, violations,
+        settings,
+        updateSettings,
+        medicalSlips, gatePasses, demeritClearances, confiscatedItems, studentMedicals, settings]);
 
   // Pull the shared state on load, then poll for updates from other devices.
   useEffect(() => {
@@ -439,6 +455,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.demeritClearances) setDemeritClearances(d.demeritClearances as DemeritClearanceLog[]);
           if (d.confiscatedItems) setConfiscatedItems(d.confiscatedItems as ConfiscatedItemRecord[]);
           if (d.studentMedicals) setStudentMedicals(d.studentMedicals as StudentMedicalRecord[]);
+          if (d.settings) setSettings({ ...INITIAL_SETTINGS, ...(d.settings as Partial<DormSettings>) });
         }
         if (alive) initialPullDone.current = true;
       } catch {

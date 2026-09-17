@@ -16,6 +16,8 @@ import {
   Smartphone,
   UserCog,
   Luggage,
+  Settings,
+  ClipboardList,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 
@@ -46,9 +48,11 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'chores', label: 'Weekly Chores', icon: Brush, group: 'checks' },
   { id: 'cellphones', label: 'Phone Vault', icon: Smartphone, group: 'checks' },
   { id: 'performance', label: 'Resident Performance', icon: Users, group: 'residents' },
+  { id: 'occupant-records', label: 'Occupant Records', icon: ClipboardList, group: 'residents' },
   { id: 'gatepass', label: 'Gate Pass & Home Leave', icon: Luggage, group: 'residents' },
   { id: 'roster', label: 'Manage Roster', icon: UserCog, group: 'residents' },
   { id: 'rbac', label: 'Staff & Access', icon: Shield, group: 'admin' },
+  { id: 'settings', label: 'Schedule Settings', icon: Settings, group: 'admin' },
 ];
 
 const MENU_GROUPS: MenuGroup[] = [
@@ -95,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const visibleItems = isRestrictedView
     ? MENU_ITEMS.filter(item => item.id === 'overview')
     : MENU_ITEMS.filter(item =>
-        item.group === 'admin' ? canEdit : item.id === 'roster' ? canEdit : true
+        item.group === 'admin' ? canEdit : item.id === 'roster' || item.id === 'occupant-records' ? canEdit : true
       );
 
   return (
@@ -195,51 +199,67 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 space-y-5">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4 space-y-6">
             {MENU_GROUPS.map(group => {
               const items = visibleItems.filter(i => i.group === group.id);
               if (!items.length) return null;
               return (
-                <div key={group.id} className="space-y-1">
+                <div key={group.id}>
                   {group.title && (
-                    <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                       {group.title}
                     </p>
                   )}
-                  {items.map(item => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => goTo(item.id)}
-                        className={`w-full min-h-touch flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          isActive
-                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                            : 'text-slate-300 hover:bg-slate-800 active:bg-slate-800'
-                        }`}
-                      >
-                        <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-amber-300' : 'text-slate-400'}`} />
-                        <span className="flex-1 text-left">{item.label}</span>
-                      </button>
-                    );
-                  })}
+                  <div className="grid grid-cols-2 gap-2 px-1">
+                    {items.map(item => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => goTo(item.id)}
+                          className={`min-h-[72px] flex flex-col items-start justify-between gap-2 p-3 rounded-xl border text-left transition-all ${
+                            isActive
+                              ? 'bg-amber-500/15 border-amber-500/40 shadow-md'
+                              : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600 active:scale-[0.98]'
+                          }`}
+                        >
+                          <span className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
+                            isActive
+                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                              : 'bg-slate-900/70 border-slate-700 text-slate-400'
+                          }`}>
+                            <Icon className="w-[18px] h-[18px]" />
+                          </span>
+                          <span className={`text-xs leading-tight font-semibold ${isActive ? 'text-amber-200' : 'text-slate-200'}`}>
+                            {item.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
           </div>
 
           <div className="border-t border-slate-800 p-3 space-y-1 pb-safe">
-            <button
-              onClick={() => {
-                setDrawerOpen(false);
-                logout();
-              }}
-              className="w-full min-h-touch flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-rose-300 hover:bg-rose-950/50"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Sign Out</span>
-            </button>
+            <div className="flex items-center justify-between px-2 py-2">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-500 truncate">{currentUser.name}</p>
+                <p className="text-[10px] text-amber-300/80 font-medium">{roleLabel(currentUser.role)}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setDrawerOpen(false);
+                  logout();
+                }}
+                className="shrink-0 min-h-touch flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-300 bg-slate-800/60 hover:bg-rose-950/50 border border-slate-700"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
+            </div>
           </div>
         </aside>
       </div>

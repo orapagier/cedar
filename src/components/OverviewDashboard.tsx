@@ -49,10 +49,11 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
   } = useDorm();
 
   const occupants = users.filter(u => u.role === 'occupant');
+  const today = new Date().toISOString().split('T')[0];
+  const todayViolations = violations.filter(v => v.date === today);
   const activeViolations = violations.filter(
     v => v.status === 'pending_settlement' || v.status === 'confirmed'
   );
-  const today = new Date().toISOString().split('T')[0];
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -177,8 +178,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
       </div>
 
       {canEdit && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-2">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <h2 className="font-bold text-white text-sm">Recent Violations</h2>
             <button
               onClick={() => onNavigate('performance')}
@@ -187,34 +188,35 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
               Resident Performance <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="space-y-2">
-            {violations.length === 0 && (
-              <p className="text-xs text-slate-500 py-2">No violations logged.</p>
-            )}
-            {violations.slice(0, 4).map(v => (
-              <div key={v.id} className="flex items-start gap-2.5 bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2.5">
-                <span className={`mt-0.5 shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                  v.severity === 'major' ? 'bg-rose-950 text-rose-300' :
-                  v.severity === 'moderate' ? 'bg-amber-950 text-amber-300' : 'bg-blue-950 text-blue-300'
-                }`}>
-                  +{v.demeritPoints}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-white truncate">
-                    {v.studentName} <span className="text-slate-500 font-normal">· Room {v.roomNumber}</span>
-                  </p>
-                  <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
+          {todayViolations.length === 0 ? (
+            <p className="p-4 text-xs text-slate-500">No violations logged today.</p>
+          ) : (
+            <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-800/70">
+              {todayViolations.map(v => (
+                <div key={v.id} className="flex items-start gap-2.5 bg-slate-950/50 border-b border-slate-800/60 px-4 py-2.5">
+                  <span className={`mt-0.5 shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    v.severity === 'major' ? 'bg-rose-950 text-rose-300' :
+                    v.severity === 'moderate' ? 'bg-amber-950 text-amber-300' : 'bg-blue-950 text-blue-300'
+                  }`}>
+                    +{v.demeritPoints}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-white truncate">
+                      {v.studentName} <span className="text-slate-500 font-normal">· Room {v.roomNumber}</span>
+                    </p>
+                    <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
+                  </div>
+                  <span className={`ml-auto shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
+                    v.status === 'confirmed' ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50' :
+                    v.status === 'pending_settlement' ? 'bg-amber-900/40 text-amber-300 border border-amber-700/50' :
+                    'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50'
+                  }`}>
+                    {v.status.replace('_', ' ')}
+                  </span>
                 </div>
-                <span className={`ml-auto shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
-                  v.status === 'confirmed' ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50' :
-                  v.status === 'pending_settlement' ? 'bg-amber-900/40 text-amber-300 border border-amber-700/50' :
-                  'bg-emerald-900/40 text-emerald-300 border border-emerald-700/50'
-                }`}>
-                  {v.status.replace('_', ' ')}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

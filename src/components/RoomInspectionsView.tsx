@@ -10,28 +10,52 @@ import {
   PlusCircle,
   Calendar,
   Layers,
-  HelpCircle
+  HelpCircle,
+  BedDouble,
+  Boxes,
+  Shirt,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
-import { RoomInspection } from '../types/dorm';
+import { RoomInspection, OccupantInspectionCheck } from '../types/dorm';
+
+const INDIVIDUAL_ITEMS: { key: 'bedsOk' | 'lockersOk' | 'personalThingsOk'; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: 'bedsOk', label: 'Bed & Bedding', sub: 'Hospital corners, no dirty clothes', icon: BedDouble },
+  { key: 'lockersOk', label: 'Locker & Closet', sub: 'Shut and padlocked', icon: Boxes },
+  { key: 'personalThingsOk', label: 'Things & Desk', sub: 'Shoes racked, desk tidy', icon: Shirt },
+];
 
 export const RoomInspectionsView: React.FC = () => {
-  const { inspections, rooms, addInspection, canEdit, currentUser } = useDorm();
+  const { inspections, rooms, users, addInspection, canEdit, currentUser } = useDorm();
   const [showModal, setShowModal] = useState(false);
 
+  const occupantsIn = (roomNumber: string) =>
+    users.filter(
+      u => u.role === 'occupant' && rooms.find(r => r.roomNumber === roomNumber)?.occupantIds?.includes(u.id)
+    );
+
+  // Form states
+  const [selectedRoom, setSelectedRoom] = useState(rooms[0]?.roomNumber || '101');
+  const [occupantState, setOccupantState] = useState<Record<string, { bedsOk: boolean; lockersOk: boolean; personalThingsOk: boolean }>>({});
+  const [crCleanlinessOk, setCrCleanlinessOk] = useState(true);
+  const [overallFloorOk, setOverallFloorOk] = useState(true);
+  const [remarks, setRemarks] = useState('');
+
   const openInspect = (roomNumber: string) => {
+    const init: Record<string, { bedsOk: boolean; lockersOk: boolean; personalThingsOk: boolean }> = {};
+    occupantsIn(roomNumber).forEach(o => {
+      init[o.id] = { bedsOk: true, lockersOk: true, personalThingsOk: true };
+    });
+    setOccupantState(init);
+    setCrCleanlinessOk(true);
+    setOverallFloorOk(true);
+    setRemarks('');
     setSelectedRoom(roomNumber);
     setShowModal(true);
   };
 
-  // Form states
-  const [selectedRoom, setSelectedRoom] = useState(rooms[0]?.roomNumber || '101');
-  const [bedsOk, setBedsOk] = useState(true);
-  const [lockersOk, setLockersOk] = useState(true);
-  const [personalThingsOk, setPersonalThingsOk] = useState(true);
-  const [crCleanlinessOk, setCrCleanlinessOk] = useState(true);
-  const [overallFloorOk, setOverallFloorOk] = useState(true);
-  const [remarks, setRemarks] = useState('');
+  const roomOccupants = occupantsIn(selectedRoom);
+  const setOccupant = (id: string, key: 'bedsOk' | 'lockersOk' | 'personalThingsOk', value: boolean) =>
+    setOccupantState(prev => ({ ...prev, [id]: { ...(prev[id] ?? { bedsOk: true, lockersOk: true, personalThingsOk: true }), [key]: value } }));
 
   React.useEffect(() => {
     if ((!selectedRoom || !rooms.some(r => r.roomNumber === selectedRoom)) && rooms.length > 0) {
@@ -39,38 +63,56 @@ export const RoomInspectionsView: React.FC = () => {
     }
   }, [rooms, selectedRoom]);
 
-  // Calculate live score: each checklist is 20%
+  // Live score: every passed criterion counts equally. The first three items
+  // are rated per resident; the last two are room-level checks.
   const calculateScore = () => {
-    let count = 0;
-    if (bedsOk) count += 20;
-    if (lockersOk) count += 20;
-    if (personalThingsOk) count += 20;
-    if (crCleanlinessOk) count += 20;
-    if (overallFloorOk) count += 20;
-    return count;
+    const totalChecks = roomOccupants.length * 3 + 2;
+    if (totalChecks === 0) return 100;
+    let passed = 0;
+    roomOccupants.forEach(o => {
+      const c = occupantState[o.id] ?? { bedsOk: true, lockersOk: true, personalThingsOk: true };
+      if (c.bedsOk) passed += 1;
+      if (c.lockersOk) passed += 1;
+      if (c.personalThingsOk) passed += 1;
+    });
+    if (crCleanlinessOk) passed += 1;
+    if (overallFloorOk) passed += 1;
+    return Math.round((passed / totalChecks) * 100);
   };
 
   const currentScore = calculateScore();
   const currentStatus: 'pass' | 'warning' | 'fail' = 
     currentScore >= 90 ? 'pass' : currentScore >= 70 ? 'warning' : 'fail';
 
+  const aggregateOk = (key: 'bedsOk' | 'lockersOk' | 'personalThingsOk') =>
+    roomOccupants.every(o => (occupantState[o.id] ?? { bedsOk: true, lockersOk: true, personalThingsOk: true })[key]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
+
+    const occupantChecks: OccupantInspectionCheck[] = roomOccupants.map(o => ({
+      studentId: o.id,
+      studentName: o.name,
+      bedsOk: (occupantState[o.id] ?? { bedsOk: true, lockersOk: true, personalThingsOk: true }).bedsOk,
+      lockersOk: (occupantState[o.id] ?? { bedsOk: true, lockersOk: true, personalThingsOk: true }).lockersOk,
+      personalThingsOk: (occupantState[o.id] ?? { bedsOk: true, lockersOk: true, personalThingsOk: true }).personalThingsOk,
+    }));
 
     addInspection({
       date: new Date().toISOString().split('T')[0],
       roomNumber: selectedRoom,
       inspectorName: currentUser.name,
       inspectorId: currentUser.id,
-      bedsOk,
-      lockersOk,
-      personalThingsOk,
+      bedsOk: roomOccupants.length === 0 || aggregateOk('bedsOk'),
+      lockersOk: roomOccupants.length === 0 || aggregateOk('lockersOk'),
+      personalThingsOk: roomOccupants.length === 0 || aggregateOk('personalThingsOk'),
       crCleanlinessOk,
       overallFloorOk,
       score: currentScore,
       status: currentStatus,
       remarks: remarks || undefined,
+      occupantChecks,
     });
 
     setShowModal(false);
@@ -89,13 +131,13 @@ export const RoomInspectionsView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Scoring individual beds, lockers, personal belongings, and overall room and CR (bathroom) cleanliness.
+            Scoring each resident's bed, locker, and personal belongings individually, plus overall room and CR (bathroom) cleanliness.
           </p>
         </div>
 
         {canEdit ? (
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => openInspect(selectedRoom)}
             className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md self-start sm:self-auto"
           >
             <PlusCircle className="w-4 h-4" />
@@ -153,24 +195,55 @@ export const RoomInspectionsView: React.FC = () => {
 
               {latestInsp && (
                 <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-800/80 space-y-2 text-xs">
-                  <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                    <div className="flex items-center space-x-1.5">
-                      {latestInsp.bedsOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
-                      <span className={latestInsp.bedsOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>Individual Beds</span>
+                  {latestInsp.occupantChecks && latestInsp.occupantChecks.length > 0 ? (
+                    <>
+                      <div className="space-y-1">
+                        {latestInsp.occupantChecks.map(c => {
+                          const passed = [c.bedsOk, c.lockersOk, c.personalThingsOk].filter(Boolean).length;
+                          return (
+                            <div key={c.studentId} className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] text-slate-300 truncate">{c.studentName}</span>
+                              <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                passed === 3 ? 'bg-emerald-950 text-emerald-300' :
+                                passed === 0 ? 'bg-rose-950 text-rose-300' : 'bg-amber-950 text-amber-300'
+                              }`}>
+                                {passed}/3
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 text-[11px] pt-1 border-t border-slate-800/70">
+                        <div className="flex items-center space-x-1.5">
+                          {latestInsp.crCleanlinessOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
+                          <span className={latestInsp.crCleanlinessOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>CR / Bathroom</span>
+                        </div>
+                        <div className="flex items-center space-x-1.5">
+                          {latestInsp.overallFloorOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
+                          <span className={latestInsp.overallFloorOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>Floor / Dust</span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                      <div className="flex items-center space-x-1.5">
+                        {latestInsp.bedsOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
+                        <span className={latestInsp.bedsOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>Individual Beds</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        {latestInsp.lockersOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
+                        <span className={latestInsp.lockersOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>Lockers Locked</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        {latestInsp.personalThingsOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
+                        <span className={latestInsp.personalThingsOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>Things Arranged</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        {latestInsp.crCleanlinessOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
+                        <span className={latestInsp.crCleanlinessOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>CR / Bathroom</span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-1.5">
-                      {latestInsp.lockersOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
-                      <span className={latestInsp.lockersOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>Lockers Locked</span>
-                    </div>
-                    <div className="flex items-center space-x-1.5">
-                      {latestInsp.personalThingsOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
-                      <span className={latestInsp.personalThingsOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>Things Arranged</span>
-                    </div>
-                    <div className="flex items-center space-x-1.5">
-                      {latestInsp.crCleanlinessOk ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-rose-400" />}
-                      <span className={latestInsp.crCleanlinessOk ? 'text-slate-300' : 'text-rose-300 font-medium'}>CR / Bathroom</span>
-                    </div>
-                  </div>
+                  )}
 
                   {latestInsp.remarks && (
                     <p className="text-[11px] text-slate-300 italic border-t border-slate-800 pt-1.5">
@@ -306,7 +379,7 @@ export const RoomInspectionsView: React.FC = () => {
                 <label className="block font-medium text-slate-300 mb-1">Select Room to Inspect</label>
                 <select
                   value={selectedRoom}
-                  onChange={e => setSelectedRoom(e.target.value)}
+                  onChange={e => openInspect(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-500"
                 >
                   {rooms.map(r => (
@@ -317,50 +390,65 @@ export const RoomInspectionsView: React.FC = () => {
                 </select>
               </div>
 
-              {/* Checklist items */}
+              {/* Individual checklist: per resident */}
+              <div>
+                <span className="font-semibold text-slate-400 uppercase tracking-wider block text-[10px] mb-2">
+                  Individual Rating — per resident (bed, locker, personal things)
+                </span>
+                {roomOccupants.length === 0 && (
+                  <div className="bg-slate-950/60 border border-dashed border-slate-700 rounded-xl p-4 text-center text-[11px] text-slate-500">
+                    No residents assigned to this room — only the room-level checks will be scored.
+                  </div>
+                )}
+                {roomOccupants.map(o => {
+                  const c = occupantState[o.id] ?? { bedsOk: true, lockersOk: true, personalThingsOk: true };
+                  return (
+                    <div key={o.id} className="mb-2 bg-slate-950/60 rounded-xl border border-slate-800 overflow-hidden">
+                      <div className="px-3 py-2 flex items-center gap-2 border-b border-slate-800/70">
+                        <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-amber-300">
+                          {o.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                        </div>
+                        <span className="text-xs font-semibold text-white truncate">{o.name}</span>
+                      </div>
+                      <div className="p-2 space-y-1">
+                        {INDIVIDUAL_ITEMS.map(item => {
+                          const Icon = item.icon;
+                          const value = c[item.key];
+                          return (
+                            <button
+                              type="button"
+                              key={item.key}
+                              onClick={() => setOccupant(o.id, item.key, !value)}
+                              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border min-h-touch transition-colors text-left ${
+                                value
+                                  ? 'border-emerald-700/50 bg-emerald-950/50 text-emerald-300'
+                                  : 'border-slate-700 bg-slate-900/60 text-slate-300'
+                              }`}
+                            >
+                              <span className="flex items-center gap-2 min-w-0">
+                                <Icon className={`w-4 h-4 shrink-0 ${value ? 'text-emerald-400' : 'text-slate-500'}`} />
+                                <span className="min-w-0">
+                                  <span className="block text-[11px] font-semibold leading-tight">{item.label}</span>
+                                  <span className="block text-[10px] text-slate-500 leading-tight">{item.sub}</span>
+                                </span>
+                              </span>
+                              {value
+                                ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                                : <XCircle className="w-4 h-4 shrink-0 text-rose-400" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Room-level checklist */}
               <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
                 <span className="font-semibold text-slate-400 uppercase tracking-wider block text-[10px]">
-                  Hygiene & Organization Criteria (20 pts each)
+                  Room-Level Check — general to the whole room
                 </span>
-
-                <label className="flex items-center justify-between p-3 min-h-touch rounded-lg hover:bg-slate-800/60 cursor-pointer">
-                  <div>
-                    <div className="font-medium text-slate-200">1. Individual Beds & Beddings</div>
-                    <div className="text-[10px] text-slate-400">Hospital corners, pillows straight, no dirty clothes on mattresses</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={bedsOk}
-                    onChange={e => setBedsOk(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-500 accent-amber-500"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between p-3 min-h-touch rounded-lg hover:bg-slate-800/60 cursor-pointer">
-                  <div>
-                    <div className="font-medium text-slate-200">2. Lockers & Closets</div>
-                    <div className="text-[10px] text-slate-400">Doors shut and padlocked, no laundry hanging outside lockers</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={lockersOk}
-                    onChange={e => setLockersOk(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-500 accent-amber-500"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between p-3 min-h-touch rounded-lg hover:bg-slate-800/60 cursor-pointer">
-                  <div>
-                    <div className="font-medium text-slate-200">3. Personal Things & Study Desks</div>
-                    <div className="text-[10px] text-slate-400">Shoes in rack, books organized, desk surfaces free of crumbs</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={personalThingsOk}
-                    onChange={e => setPersonalThingsOk(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-500 accent-amber-500"
-                  />
-                </label>
 
                 <label className="flex items-center justify-between p-3 min-h-touch rounded-lg hover:bg-slate-800/60 cursor-pointer">
                   <div>

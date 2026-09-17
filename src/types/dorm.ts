@@ -28,6 +28,14 @@ export interface Room {
   occupantIds: string[];
 }
 
+export interface OccupantInspectionCheck {
+  studentId: string;
+  studentName: string;
+  bedsOk: boolean;
+  lockersOk: boolean;
+  personalThingsOk: boolean;
+}
+
 export interface RoomInspection {
   id: string;
   date: string; // YYYY-MM-DD
@@ -43,6 +51,20 @@ export interface RoomInspection {
   status: 'pass' | 'warning' | 'fail';
   remarks?: string;
   timestamp: string;
+  /** Per-occupant ratings for the first three criteria (introduced later). */
+  occupantChecks?: OccupantInspectionCheck[];
+}
+
+/** Admin-tunable dormitory schedules (times are 24-hour "HH:MM"). */
+export interface DormSettings {
+  worshipMorning: string;   // e.g. "05:30"
+  worshipEvening: string;   // e.g. "18:30"
+  churchMidweek?: string;   // e.g. "18:00"
+  churchSabbath?: string;   // e.g. "09:00"
+  curfewTime: string;       // e.g. "21:00"
+  lightsOutTime: string;    // e.g. "22:00"
+  departureStart: string;   // school exit window start, e.g. "07:00"
+  departureEnd: string;     // school exit window end, e.g. "07:35"
 }
 
 export type WorshipType = 'morning_worship' | 'evening_worship' | 'church_midweek' | 'church_sabbath';

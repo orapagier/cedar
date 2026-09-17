@@ -45,6 +45,7 @@ export const CurfewLightsOutView: React.FC = () => {
     saveLightsOutLog,
     canEdit,
     currentUser,
+    settings,
   } = useDorm();
 
   const occupants = users.filter(u => u.role === 'occupant');
@@ -55,7 +56,7 @@ export const CurfewLightsOutView: React.FC = () => {
 
   // Curfew
   const [selectedRoom, setSelectedRoom] = useState(curfewRoomOptions[0]?.roomNumber || '');
-  const [checkInTime, setCheckInTime] = useState('20:50');
+  const [checkInTime, setCheckInTime] = useState(settings.curfewTime || '20:50');
   const [curfewRemarks, setCurfewRemarks] = useState('');
   const [roomStatuses, setRoomStatuses] = useState<Record<string, CurfewStatus>>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -104,7 +105,7 @@ export const CurfewLightsOutView: React.FC = () => {
     studentId: student.id,
     studentName: student.name,
     roomNumber: student.roomNumber || '—',
-    curfewTime: '21:00',
+    curfewTime: settings.curfewTime || '21:00',
     actualCheckInTime: status === 'missing' ? undefined : checkInTime,
     status,
     remarks: curfewRemarks || undefined,
@@ -128,7 +129,7 @@ export const CurfewLightsOutView: React.FC = () => {
     saveLightsOutLog({
       date: new Date().toISOString().split('T')[0],
       roomNumber: lightsOutRoom,
-      checkTime: '22:10',
+      checkTime: settings.lightsOutTime || '22:10',
       allLightsOff: lightsOff,
       noiseCompliant: noiseQuiet,
       noUnauthorizedGadgets: gadgetsCompliant,
@@ -160,7 +161,7 @@ export const CurfewLightsOutView: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              The 9:00 PM curfew check-in and 10:00 PM lights-out silence and gadget restriction.
+              The {settings.curfewTime || '9:00 PM'} curfew check-in and {settings.lightsOutTime || '10:00 PM'} lights-out silence and gadget restriction.
             </p>
           </div>
 
@@ -324,7 +325,7 @@ export const CurfewLightsOutView: React.FC = () => {
                 {curfewRecords.length === 0 && <p className="p-6 text-center text-xs text-slate-500">No curfew records yet.</p>}
                 {curfewRecords.map(cr => {
                   const meta = CURFEW_STATUS_META[cr.status as CurfewStatus] ?? CURFEW_STATUS_META.in_dorm;
-                  const late = cr.actualCheckInTime && cr.actualCheckInTime > '21:00';
+                  const late = cr.actualCheckInTime && cr.actualCheckInTime > (settings.curfewTime || '21:00');
                   return (
                     <div key={cr.id} className="p-3 sm:p-4 flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -356,7 +357,7 @@ export const CurfewLightsOutView: React.FC = () => {
             <form onSubmit={handleLightsOutSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-slate-800 flex items-center gap-2">
                 <Moon className="w-4 h-4 text-purple-400" />
-                <h3 className="font-bold text-white text-sm">10:00 PM Lights-Out Inspection</h3>
+                <h3 className="font-bold text-white text-sm">{(settings.lightsOutTime || '22:10')} Lights-Out Inspection</h3>
               </div>
 
               <div className="p-4 space-y-4">

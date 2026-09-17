@@ -28,19 +28,40 @@ const STATUS_META: Record<AttendanceStatus, { label: string; icon: React.Compone
   excused: { label: 'Excused', icon: AlertTriangle, active: 'bg-sky-600 text-white', chip: 'bg-sky-950 text-sky-300' },
 };
 
-const SESSIONS: { id: WorshipType; label: string; short: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'morning_worship', label: 'Morning Worship (05:30 AM)', short: 'Morning · 05:30', icon: Clock },
-  { id: 'evening_worship', label: 'Evening Worship (06:30 PM)', short: 'Evening · 18:30', icon: Clock },
-  { id: 'church_midweek', label: 'Midweek Church Prayer', short: 'Midweek Prayer', icon: Church },
-  { id: 'church_sabbath', label: 'Weekend / Sabbath Church', short: 'Sabbath Church', icon: Church },
-];
+const SESSION_ICONS: Record<WorshipType, React.ComponentType<{ className?: string }>> = {
+  morning_worship: Clock,
+  evening_worship: Clock,
+  church_midweek: Church,
+  church_sabbath: Church,
+};
+
+const SESSION_BASE_LABELS: Record<WorshipType, string> = {
+  morning_worship: 'Morning Worship',
+  evening_worship: 'Evening Worship',
+  church_midweek: 'Midweek Church Prayer',
+  church_sabbath: 'Weekend / Sabbath Church',
+};
 
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40';
 
 export const WorshipAttendanceView: React.FC = () => {
-  const { users, rooms, attendance, saveAttendanceBatch, canEdit, currentUser } = useDorm();
+  const { users, rooms, attendance, saveAttendanceBatch, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
+
+  const fmt = (t: string) => {
+    if (!t) return '';
+    const [h, m] = t.split(':');
+    const hh = Number(h) % 12 === 0 ? 12 : Number(h) % 12;
+    return `${String(hh).padStart(2, '0')}:${m} ${Number(h) >= 12 ? 'PM' : 'AM'}`;
+  };
+
+  const SESSIONS: { id: WorshipType; label: string; short: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'morning_worship', label: `${SESSION_BASE_LABELS.morning_worship} (${fmt(settings.worshipMorning) || '05:30 AM'})`, short: `Morning · ${settings.worshipMorning || '05:30'}`, icon: SESSION_ICONS.morning_worship },
+    { id: 'evening_worship', label: `${SESSION_BASE_LABELS.evening_worship} (${fmt(settings.worshipEvening) || '06:30 PM'})`, short: `Evening · ${settings.worshipEvening || '18:30'}`, icon: SESSION_ICONS.evening_worship },
+    { id: 'church_midweek', label: `${SESSION_BASE_LABELS.church_midweek}${settings.churchMidweek ? ` (${fmt(settings.churchMidweek)})` : ''}`, short: `Midweek · ${settings.churchMidweek || '18:00'}`, icon: SESSION_ICONS.church_midweek },
+    { id: 'church_sabbath', label: `${SESSION_BASE_LABELS.church_sabbath}${settings.churchSabbath ? ` (${fmt(settings.churchSabbath)})` : ''}`, short: `Sabbath · ${settings.churchSabbath || '09:00'}`, icon: SESSION_ICONS.church_sabbath },
+  ];
 
   const [sessionType, setSessionType] = useState<WorshipType>('morning_worship');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
