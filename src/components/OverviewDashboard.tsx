@@ -70,9 +70,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
   const myPhone = cellphones.find(c => c.studentId === currentUser.id);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-6 shadow-sm">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-4 sm:p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
@@ -106,14 +106,14 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                 const el = document.getElementById('operational-registries');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+              className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 px-3.5 py-2 min-h-touch rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
             >
               <ClipboardList className="w-4 h-4" />
               <span>Operational Registries</span>
             </button>
             <button
               onClick={() => onNavigate('violations')}
-              className="bg-rose-950/60 hover:bg-rose-900/70 border border-rose-700/50 text-rose-300 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+              className="bg-rose-950/60 hover:bg-rose-900/70 border border-rose-700/50 text-rose-300 px-3.5 py-2 min-h-touch rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
             >
               <AlertTriangle className="w-4 h-4" />
               <span>Active Violations ({activeViolations.length})</span>
@@ -124,7 +124,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
 
       {/* QUICK DATA SETUP CARD FOR ACTUAL NAMES, ROOMS & ADMIN EMAILS */}
       {canEdit && (
-        <div className="bg-slate-900/90 border border-amber-500/40 rounded-2xl p-5 shadow-md">
+        <div className="bg-slate-900/90 border border-amber-500/40 rounded-2xl p-4 sm:p-5 shadow-md">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
@@ -144,7 +144,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => onNavigate('occupants')}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-sm"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-sm"
               >
                 <span>+ Enter Students & Rooms</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -152,7 +152,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
 
               <button
                 onClick={() => onNavigate('rbac')}
-                className="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-600/50 font-semibold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
+                className="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-600/50 font-semibold px-3.5 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-1.5 transition-all"
               >
                 <span>+ Register Admin Emails</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -337,7 +337,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             <button
               onClick={() => onNavigate('inspections')}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-2.5 rounded-xl text-xs font-medium text-left transition-all"
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-3 min-h-touch rounded-xl text-xs font-medium text-left transition-all"
             >
               <div className="font-semibold text-amber-300">Room Inspection</div>
               <div className="text-[10px] text-slate-400">Score beds, lockers, CR</div>
@@ -345,7 +345,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
 
             <button
               onClick={() => onNavigate('worship')}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-2.5 rounded-xl text-xs font-medium text-left transition-all"
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-3 min-h-touch rounded-xl text-xs font-medium text-left transition-all"
             >
               <div className="font-semibold text-blue-300">Worship Roll Call</div>
               <div className="text-[10px] text-slate-400">Track Bible & tardiness</div>
@@ -353,7 +353,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
 
             <button
               onClick={() => onNavigate('uniform')}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-2.5 rounded-xl text-xs font-medium text-left transition-all"
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-3 min-h-touch rounded-xl text-xs font-medium text-left transition-all"
             >
               <div className="font-semibold text-emerald-300">Gate Uniform Log</div>
               <div className="text-[10px] text-slate-400">Check morning departure</div>
@@ -361,7 +361,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
 
             <button
               onClick={() => onNavigate('study')}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-2.5 rounded-xl text-xs font-medium text-left transition-all"
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-3 min-h-touch rounded-xl text-xs font-medium text-left transition-all"
             >
               <div className="font-semibold text-indigo-300">Study Hall & Library</div>
               <div className="text-[10px] text-slate-400">7:30 PM quiet focus</div>
@@ -369,7 +369,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
 
             <button
               onClick={() => onNavigate('curfew')}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-2.5 rounded-xl text-xs font-medium text-left transition-all"
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-3 min-h-touch rounded-xl text-xs font-medium text-left transition-all"
             >
               <div className="font-semibold text-purple-300">Curfew & Lights Out</div>
               <div className="text-[10px] text-slate-400">9 PM in / 10 PM dark</div>
@@ -377,7 +377,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
 
             <button
               onClick={() => onNavigate('cellphones')}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-2.5 rounded-xl text-xs font-medium text-left transition-all"
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white p-3 min-h-touch rounded-xl text-xs font-medium text-left transition-all"
             >
               <div className="font-semibold text-rose-300">Phone Custody Safe</div>
               <div className="text-[10px] text-slate-400">Sun turn-in / Fri release</div>
@@ -387,7 +387,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
       )}
 
       {/* Real-Time Violation & Demerit Stream */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
@@ -451,7 +451,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                 {canEdit && violation.status !== 'cleared_service' && (
                   <button
                     onClick={() => updateViolationStatus(violation.id, 'cleared_service', 'Completed dorm maintenance service')}
-                    className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition-colors whitespace-nowrap"
+                    className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 min-h-touch rounded-lg border border-slate-700 transition-colors whitespace-nowrap"
                   >
                     Clear via Service
                   </button>
