@@ -256,9 +256,9 @@ export const OccupantsDirectoryView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Informative Guidance Banner for Dean */}
-      <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/40 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/40 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-lg font-bold text-white">Actual Residents & Dormitory Quarters Management</h2>
@@ -278,7 +278,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                 resetStudentForm();
                 setShowAddStudentModal(true);
               }}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md"
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md"
             >
               <PlusCircle className="w-4 h-4" />
               <span>+ Add Student</span>
@@ -290,7 +290,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                 setBulkPreview([]);
                 setShowBulkModal(true);
               }}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-1.5 transition-all"
               title="Bulk import roster via CSV or copy-paste"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
@@ -299,7 +299,7 @@ export const OccupantsDirectoryView: React.FC = () => {
 
             <button
               onClick={() => setShowAddRoomModal(true)}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-1.5 transition-all"
             >
               <Home className="w-4 h-4 text-blue-400" />
               <span>+ Add Room</span>
@@ -309,11 +309,11 @@ export const OccupantsDirectoryView: React.FC = () => {
       </div>
 
       {/* Navigation Sub-tabs: Students vs Rooms */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setActiveSubTab('students')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+            className={`px-3.5 py-2.5 min-h-touch rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
               activeSubTab === 'students' 
                 ? 'bg-amber-500 text-slate-950 shadow-sm' 
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -325,7 +325,7 @@ export const OccupantsDirectoryView: React.FC = () => {
 
           <button
             onClick={() => setActiveSubTab('rooms')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+            className={`px-3.5 py-2.5 min-h-touch rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
               activeSubTab === 'rooms' 
                 ? 'bg-amber-500 text-slate-950 shadow-sm' 
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -338,11 +338,11 @@ export const OccupantsDirectoryView: React.FC = () => {
 
         {/* Filter bar */}
         {activeSubTab === 'students' && (
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
             <select
               value={selectedRoomFilter}
               onChange={e => setSelectedRoomFilter(e.target.value)}
-              className="bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none"
+              className="bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-2.5 py-2 min-h-touch text-xs focus:outline-none"
             >
               <option value="all">All Rooms</option>
               {rooms.map(r => (
@@ -350,14 +350,14 @@ export const OccupantsDirectoryView: React.FC = () => {
               ))}
             </select>
 
-            <div className="relative w-48 sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search name, phone, parent..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-3 py-2 min-h-touch text-xs text-white focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
@@ -385,14 +385,14 @@ export const OccupantsDirectoryView: React.FC = () => {
                       resetStudentForm();
                       setShowAddStudentModal(true);
                     }}
-                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5"
+                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-1.5"
                   >
                     <PlusCircle className="w-4 h-4" />
                     <span>+ Add First Student</span>
                   </button>
                   <button
                     onClick={() => setShowBulkModal(true)}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold"
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 min-h-touch rounded-xl text-xs font-semibold"
                   >
                     Bulk Import Roster
                   </button>
@@ -410,7 +410,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                 return (
                   <div 
                     key={occupant.id}
-                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+                    className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col justify-between ${
                       isProbation ? 'bg-slate-900 border-rose-600/60 shadow-rose-950/20 shadow-lg' : 'bg-slate-900 border-slate-800'
                     }`}
                   >
@@ -469,7 +469,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                         <div className="flex items-center space-x-1.5">
                           <button
                             onClick={() => handleOpenEdit(occupant)}
-                            className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg text-xs font-medium flex items-center space-x-1 border border-slate-700"
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 min-h-touch rounded-lg text-xs font-medium flex items-center space-x-1 border border-slate-700"
                           >
                             <Edit2 className="w-3 h-3 text-amber-400" />
                             <span>Edit</span>
@@ -480,7 +480,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                                 deleteOccupant(occupant.id);
                               }
                             }}
-                            className="bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 p-1.5 rounded-lg text-xs transition-colors"
+                            className="bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 min-w-touch min-h-touch flex items-center justify-center rounded-lg text-xs transition-colors"
                             title="Delete Student"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -505,7 +505,7 @@ export const OccupantsDirectoryView: React.FC = () => {
               const isFull = roomOccupants.length >= room.capacity;
 
               return (
-                <div key={room.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                <div key={room.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
@@ -555,7 +555,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                             updateRoom(room.id, { capacity: Number(newCap) });
                           }
                         }}
-                        className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700"
+                        className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 min-h-touch rounded-lg border border-slate-700"
                       >
                         Edit Capacity
                       </button>
@@ -566,7 +566,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                             updateRoom(room.id, { captainName: newCapt.trim() || 'TBD' });
                           }
                         }}
-                        className="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-1 rounded-lg border border-slate-700"
+                        className="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 min-h-touch rounded-lg border border-slate-700"
                       >
                         Set Captain
                       </button>
@@ -576,7 +576,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                             deleteRoom(room.id);
                           }
                         }}
-                        className="text-xs bg-slate-800 hover:bg-rose-950 text-rose-300 p-1.5 rounded-lg transition-colors"
+                        className="text-xs bg-slate-800 hover:bg-rose-950 text-rose-300 min-w-touch min-h-touch flex items-center justify-center rounded-lg transition-colors"
                         title="Delete Room"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -592,19 +592,19 @@ export const OccupantsDirectoryView: React.FC = () => {
 
       {/* MODAL 1: ADD NEW STUDENT */}
       {showAddStudentModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden text-slate-100">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">Add Actual Resident Student</h3>
                 <p className="text-xs text-slate-400">Register new occupant into dormitory roster</p>
               </div>
-              <button onClick={() => setShowAddStudentModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowAddStudentModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveAddStudent} className="p-6 space-y-3.5 text-xs">
+            <form onSubmit={handleSaveAddStudent} className="p-4 sm:p-6 space-y-3.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-300 mb-1">Student Full Name *</label>
@@ -701,13 +701,13 @@ export const OccupantsDirectoryView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddStudentModal(false)}
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-3 py-2 min-h-touch rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+                  className="px-4 py-2 min-h-touch rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
                 >
                   Save Resident
                 </button>
@@ -719,19 +719,19 @@ export const OccupantsDirectoryView: React.FC = () => {
 
       {/* MODAL 2: EDIT STUDENT */}
       {showEditStudentModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden text-slate-100">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">Edit Resident Information</h3>
                 <p className="text-xs text-slate-400">Update contact, room, or locker details</p>
               </div>
-              <button onClick={() => setShowEditStudentModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowEditStudentModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditStudent} className="p-6 space-y-3.5 text-xs">
+            <form onSubmit={handleSaveEditStudent} className="p-4 sm:p-6 space-y-3.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-300 mb-1">Student Full Name *</label>
@@ -820,13 +820,13 @@ export const OccupantsDirectoryView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowEditStudentModal(false)}
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-3 py-2 min-h-touch rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+                  className="px-4 py-2 min-h-touch rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
                 >
                   Update Information
                 </button>
@@ -838,19 +838,19 @@ export const OccupantsDirectoryView: React.FC = () => {
 
       {/* MODAL 3: BULK IMPORT CSV / TEXT */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[92vh]">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">Bulk Import Students Roster</h3>
                 <p className="text-xs text-slate-400">Paste comma-separated rows or CSV text</p>
               </div>
-              <button onClick={() => setShowBulkModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowBulkModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="font-bold text-amber-400">Required Format (Columns in order):</span>
@@ -896,7 +896,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                   <div className="font-bold text-white mb-2 flex items-center justify-between">
                     <span>Parsed Residents Preview ({bulkPreview.length} found):</span>
                   </div>
-                  <div className="max-h-48 overflow-y-auto border border-slate-800 rounded-xl">
+                  <div className="max-h-48 overflow-y-auto overflow-x-auto border border-slate-800 rounded-xl">
                     <table className="w-full text-left text-[11px]">
                       <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
                         <tr>
@@ -924,11 +924,11 @@ export const OccupantsDirectoryView: React.FC = () => {
               )}
             </div>
 
-            <div className="p-5 border-t border-slate-800 flex items-center justify-end space-x-2">
+            <div className="p-4 sm:p-5 border-t border-slate-800 flex items-center justify-end space-x-2">
               <button
                 type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs"
+                className="px-3 py-2 min-h-touch rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs"
               >
                 Cancel
               </button>
@@ -936,7 +936,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                 type="button"
                 disabled={bulkPreview.length === 0}
                 onClick={handleConfirmBulkImport}
-                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold text-xs flex items-center space-x-1.5"
+                className="px-4 py-2 min-h-touch rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold text-xs flex items-center space-x-1.5"
               >
                 <Upload className="w-4 h-4" />
                 <span>Import {bulkPreview.length} Residents</span>
@@ -948,19 +948,19 @@ export const OccupantsDirectoryView: React.FC = () => {
 
       {/* MODAL 4: ADD ROOM */}
       {showAddRoomModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-slate-100">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">Create New Dormitory Room</h3>
                 <p className="text-xs text-slate-400">Add physical quarters for student occupancy</p>
               </div>
-              <button onClick={() => setShowAddRoomModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowAddRoomModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveAddRoom} className="p-6 space-y-3.5 text-xs">
+            <form onSubmit={handleSaveAddRoom} className="p-4 sm:p-6 space-y-3.5 text-xs">
               <div>
                 <label className="block font-semibold text-slate-300 mb-1">Room Number *</label>
                 <input
@@ -1028,13 +1028,13 @@ export const OccupantsDirectoryView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddRoomModal(false)}
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-3 py-2 min-h-touch rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+                  className="px-4 py-2 min-h-touch rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
                 >
                   Save Room
                 </button>
