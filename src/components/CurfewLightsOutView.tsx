@@ -9,7 +9,6 @@ import {
   Volume2,
   VolumeX,
   ShieldAlert,
-  User,
   DoorOpen,
   Save,
   Check,
@@ -22,7 +21,6 @@ import { useDorm } from '../context/DormContext';
 import { Segmented } from './ui/Segmented';
 
 type CurfewStatus = 'in_dorm' | 'late' | 'missing' | 'official_pass';
-type CheckInMode = 'by_room' | 'individual';
 
 const CURFEW_STATUS_META: Record<
   CurfewStatus,
@@ -54,13 +52,10 @@ export const CurfewLightsOutView: React.FC = () => {
   const curfewRoomOptions = occupiedRooms.length ? occupiedRooms : rooms;
 
   const [activeSection, setActiveSection] = useState<'curfew' | 'lights_out'>('curfew');
-  const [mode, setMode] = useState<CheckInMode>('by_room');
 
   // Curfew
-  const [selectedStudent, setSelectedStudent] = useState(occupants[0]?.id || '');
   const [selectedRoom, setSelectedRoom] = useState(curfewRoomOptions[0]?.roomNumber || '');
   const [checkInTime, setCheckInTime] = useState('20:50');
-  const [curfewStatus, setCurfewStatus] = useState<CurfewStatus>('in_dorm');
   const [curfewRemarks, setCurfewRemarks] = useState('');
   const [roomStatuses, setRoomStatuses] = useState<Record<string, CurfewStatus>>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -76,12 +71,6 @@ export const CurfewLightsOutView: React.FC = () => {
 
   const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
   const selectedRoomMeta = rooms.find(r => r.roomNumber === selectedRoom);
-
-  useEffect(() => {
-    if ((!selectedStudent || !occupants.some(o => o.id === selectedStudent)) && occupants.length) {
-      setSelectedStudent(occupants[0].id);
-    }
-  }, [occupants, selectedStudent]);
 
   useEffect(() => {
     if ((!selectedRoom || !curfewRoomOptions.some(r => r.roomNumber === selectedRoom)) && curfewRoomOptions.length) {
@@ -121,16 +110,6 @@ export const CurfewLightsOutView: React.FC = () => {
     remarks: curfewRemarks || undefined,
     loggedBy: currentUser.name,
   });
-
-  const handleIndividualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canEdit) return;
-    const student = occupants.find(o => o.id === selectedStudent);
-    if (!student) return;
-    saveCurfewRecord(buildRecord(student, curfewStatus));
-    setCurfewRemarks('');
-    flash(`${student.name} checked in as ${CURFEW_STATUS_META[curfewStatus].label}.`);
-  };
 
   const handleRoomSubmit = () => {
     if (!canEdit || !roomOccupants.length) return;
@@ -214,21 +193,7 @@ export const CurfewLightsOutView: React.FC = () => {
       {/* CURFEW */}
       {activeSection === 'curfew' && (
         <>
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Check-in method</p>
-            <Segmented<CheckInMode>
-              ariaLabel="Curfew check-in method"
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: 'by_room', label: 'By Room', icon: DoorOpen, activeClass: 'bg-purple-600 text-white shadow-sm' },
-                { value: 'individual', label: 'Individual', icon: User, activeClass: 'bg-purple-600 text-white shadow-sm' },
-              ]}
-            />
-          </div>
-
-          {mode === 'by_room' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <DoorOpen className="w-4 h-4 text-purple-400" />
@@ -343,89 +308,6 @@ export const CurfewLightsOutView: React.FC = () => {
                 </div>
               )}
             </div>
-          )}
-
-          {mode === 'individual' && canEdit && (
-            <form onSubmit={handleIndividualSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-              <div className="p-4 border-b border-slate-800 flex items-center gap-2">
-                <User className="w-4 h-4 text-purple-400" />
-                <h3 className="font-bold text-white text-sm">Individual Curfew Check-In</h3>
-              </div>
-
-              <div className="p-4 space-y-4">
-                <div className="relative">
-                  <select value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} className={`${FIELD} appearance-none pr-10`}>
-                    {occupants.length === 0 ? (
-                      <option value="">No residents found</option>
-                    ) : (
-                      occupants.map(o => (
-                        <option key={o.id} value={o.id}>
-                          {o.name} · Room {o.roomNumber}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Status</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(Object.keys(CURFEW_STATUS_META) as CurfewStatus[]).map(s => {
-                      const meta = CURFEW_STATUS_META[s];
-                      const Icon = meta.icon;
-                      const selected = curfewStatus === s;
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setCurfewStatus(s)}
-                          className={`min-h-touch rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                            selected ? meta.active : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                          {meta.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Actual check-in time</label>
-                  <input
-                    type="time"
-                    value={checkInTime}
-                    onChange={e => setCheckInTime(e.target.value)}
-                    disabled={curfewStatus === 'missing'}
-                    className={`${FIELD} disabled:opacity-40`}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Notes / reason</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Late from lab work..."
-                    value={curfewRemarks}
-                    onChange={e => setCurfewRemarks(e.target.value)}
-                    className={FIELD}
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
-                <button
-                  type="submit"
-                  className="w-full min-h-touch bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>Save Curfew Record</span>
-                </button>
-              </div>
-            </form>
-          )}
 
           {/* Curfew Ledger */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">

@@ -19,6 +19,11 @@ export const RoomInspectionsView: React.FC = () => {
   const { inspections, rooms, addInspection, canEdit, currentUser } = useDorm();
   const [showModal, setShowModal] = useState(false);
 
+  const openInspect = (roomNumber: string) => {
+    setSelectedRoom(roomNumber);
+    setShowModal(true);
+  };
+
   // Form states
   const [selectedRoom, setSelectedRoom] = useState(rooms[0]?.roomNumber || '101');
   const [bedsOk, setBedsOk] = useState(true);
@@ -78,13 +83,13 @@ export const RoomInspectionsView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-lg font-bold text-white">1 & 10. Room Cleanliness & Daily Inspections</h2>
+            <h2 className="text-base sm:text-lg font-bold text-white">Room Check & Cleanliness</h2>
             <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
-              Merged Policy
+              Daily Inspection
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Tracking individual beds, lockers, personal belongings, and overall cleanliness of room and CR (bathroom).
+            Scoring individual beds, lockers, personal belongings, and overall room and CR (bathroom) cleanliness.
           </p>
         </div>
 
@@ -131,9 +136,19 @@ export const RoomInspectionsView: React.FC = () => {
                 )}
               </div>
 
-              <div className="text-xs text-slate-400 mb-3">
-                <span className="text-slate-500">Room Captain: </span>
-                <span className="text-slate-200 font-medium">{room.captainName}</span>
+              <div className="text-xs text-slate-400 mb-3 flex items-center justify-between gap-2">
+                <span className="truncate">
+                  <span className="text-slate-500">Room Captain: </span>
+                  <span className="text-slate-200 font-medium">{room.captainName}</span>
+                </span>
+                {canEdit && (
+                  <button
+                    onClick={() => openInspect(room.roomNumber)}
+                    className="shrink-0 min-h-touch px-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-[11px] font-semibold"
+                  >
+                    Inspect
+                  </button>
+                )}
               </div>
 
               {latestInsp && (

@@ -7,8 +7,6 @@ import {
   Clock,
   Save,
   Users,
-  User,
-  DoorOpen,
   Check,
   Lock,
   Church,
@@ -20,7 +18,6 @@ import { WorshipType, AttendanceRecord } from '../types/dorm';
 import { Segmented } from './ui/Segmented';
 
 type AttendanceStatus = AttendanceRecord['status'];
-type CheckInMode = 'individual' | 'by_room';
 
 const DEFAULT_ENTRY = { status: 'present' as AttendanceStatus, broughtBible: true, notes: '' };
 
@@ -47,23 +44,14 @@ export const WorshipAttendanceView: React.FC = () => {
 
   const [sessionType, setSessionType] = useState<WorshipType>('morning_worship');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [mode, setMode] = useState<CheckInMode>('by_room');
 
   const [roster, setRoster] = useState<Record<string, { status: AttendanceStatus; broughtBible: boolean; notes: string }>>({});
-  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [selectedRoom, setSelectedRoom] = useState('');
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
   const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
-  const selectedStudent = occupants.find(o => o.id === selectedStudentId);
-
-  useEffect(() => {
-    if ((!selectedStudentId || !occupants.some(o => o.id === selectedStudentId)) && occupants.length) {
-      setSelectedStudentId(occupants[0].id);
-    }
-  }, [occupants, selectedStudentId]);
 
   useEffect(() => {
     if ((!selectedRoom || !roomNumbers.includes(selectedRoom)) && roomNumbers.length) {
@@ -166,24 +154,10 @@ export const WorshipAttendanceView: React.FC = () => {
           </label>
           <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className={`${FIELD} sm:max-w-[200px]`} />
         </div>
-
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Check-in method</p>
-          <Segmented<CheckInMode>
-            ariaLabel="Check-in method"
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: 'by_room', label: 'By Room', icon: DoorOpen, activeClass: 'bg-blue-600 text-white shadow-sm' },
-              { value: 'individual', label: 'Individual', icon: User, activeClass: 'bg-blue-600 text-white shadow-sm' },
-            ]}
-          />
-        </div>
       </div>
 
-      {/* BY ROOM MODE */}
-      {mode === 'by_room' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+      {/* Room roll call */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-400" />
@@ -297,120 +271,6 @@ export const WorshipAttendanceView: React.FC = () => {
             </div>
           )}
         </div>
-      )}
-
-      {/* INDIVIDUAL MODE */}
-      {mode === 'individual' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-slate-800 flex items-center gap-2">
-            <User className="w-4 h-4 text-blue-400" />
-            <h3 className="font-bold text-white text-sm">Individual Check-In</h3>
-          </div>
-
-          <div className="p-4 space-y-4">
-            <div className="relative">
-              <select
-                value={selectedStudentId}
-                onChange={e => setSelectedStudentId(e.target.value)}
-                className={`${FIELD} appearance-none pr-10`}
-              >
-                {occupants.length === 0 ? (
-                  <option value="">No residents found</option>
-                ) : (
-                  occupants.map(o => (
-                    <option key={o.id} value={o.id}>
-                      {o.name} · Room {o.roomNumber}
-                    </option>
-                  ))
-                )}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            {selectedStudent && (
-              <div className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3">
-                <div className="w-11 h-11 rounded-full bg-slate-700 flex items-center justify-center text-amber-300 font-bold border border-slate-600 shrink-0">
-                  {selectedStudent.name.charAt(0)}
-                </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-white text-sm truncate">{selectedStudent.name}</p>
-                  <p className="text-[11px] text-slate-400">
-                    Room {selectedStudent.roomNumber} · {selectedStudent.email}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Attendance status</p>
-              <div className="grid grid-cols-2 gap-2">
-                {(Object.keys(STATUS_META) as AttendanceStatus[]).map(status => {
-                  const meta = STATUS_META[status];
-                  const Icon = meta.icon;
-                  const selected = selectedStudent ? getEntry(selectedStudent.id).status === status : false;
-                  return (
-                    <button
-                      key={status}
-                      type="button"
-                      disabled={!canEdit || !selectedStudent}
-                      onClick={() => selectedStudent && updateStudent(selectedStudent.id, 'status', status)}
-                      className={`min-h-touch rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
-                        selected ? meta.active : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {meta.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              disabled={!canEdit || !selectedStudent}
-              onClick={() => selectedStudent && updateStudent(selectedStudent.id, 'broughtBible', !getEntry(selectedStudent.id).broughtBible)}
-              className={`w-full min-h-touch rounded-xl border flex items-center justify-between px-4 text-sm font-medium transition-colors disabled:opacity-50 ${
-                selectedStudent && getEntry(selectedStudent.id).broughtBible
-                  ? 'bg-blue-950/50 border-blue-600/60 text-blue-200'
-                  : 'bg-slate-800 border-slate-700 text-slate-300'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                Brought physical Bible
-              </span>
-              <span className={`w-11 h-6 rounded-full p-0.5 transition-colors ${selectedStudent && getEntry(selectedStudent.id).broughtBible ? 'bg-blue-500' : 'bg-slate-600'}`}>
-                <span className={`block w-5 h-5 rounded-full bg-white transition-transform ${selectedStudent && getEntry(selectedStudent.id).broughtBible ? 'translate-x-5' : 'translate-x-0'}`} />
-              </span>
-            </button>
-
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Notes / excuse</label>
-              <input
-                type="text"
-                placeholder="e.g. 10 mins late, or sick slip"
-                disabled={!canEdit || !selectedStudent}
-                value={selectedStudent ? getEntry(selectedStudent.id).notes : ''}
-                onChange={e => selectedStudent && updateStudent(selectedStudent.id, 'notes', e.target.value)}
-                className={`${FIELD} disabled:opacity-50`}
-              />
-            </div>
-          </div>
-
-          {canEdit && selectedStudent && (
-            <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
-              <button
-                onClick={() => saveAttendance([selectedStudent.id])}
-                className="w-full min-h-touch bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save {selectedStudent.name.split(' ')[0]}'s Check-In</span>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* History */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
