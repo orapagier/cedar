@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { RoomInspection, OccupantInspectionCheck } from '../types/dorm';
-import { manilaToday } from '../utils/date';
+import { manilaToday, formatFullDate } from '../utils/date';
 
 const INDIVIDUAL_ITEMS: { key: 'bedsOk' | 'lockersOk' | 'personalThingsOk'; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'bedsOk', label: 'Bed & Bedding', sub: 'Hospital corners, no dirty clothes', icon: BedDouble },
@@ -287,7 +287,7 @@ export const RoomInspectionsView: React.FC = () => {
                     {insp.score}%
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 font-mono text-right">{insp.date}<br />{insp.timestamp}</span>
+                <span className="text-[11px] text-slate-400 text-right">{formatFullDate(insp.date)}<br />{insp.timestamp}</span>
               </div>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {[
@@ -329,7 +329,7 @@ export const RoomInspectionsView: React.FC = () => {
               {inspections.map(insp => (
                 <tr key={insp.id} className="hover:bg-slate-800/40">
                   <td className="p-3.5 whitespace-nowrap font-mono text-slate-400">
-                    {insp.date} {insp.timestamp}
+                    {formatFullDate(insp.date)} · {insp.timestamp}
                   </td>
                   <td className="p-3.5 font-bold text-white">Room {insp.roomNumber}</td>
                   <td className="p-3.5">
@@ -493,7 +493,7 @@ export const RoomInspectionsView: React.FC = () => {
               {currentStatus === 'fail' && (
                 <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px] flex items-center space-x-2">
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>Warning: Submitting a Fail score will automatically create a demerit violation for room occupants.</span>
+                  <span>Warning: Submitting a Fail score will automatically log a 1 pt violation for each room occupant.</span>
                 </div>
               )}
 

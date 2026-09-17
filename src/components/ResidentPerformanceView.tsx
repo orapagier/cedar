@@ -30,7 +30,6 @@ export const ResidentPerformanceView: React.FC = () => {
   const [studentId, setStudentId] = useState('');
   const [category, setCategory] = useState<ViolationCategory>('curfew_breach');
   const [severity, setSeverity] = useState<'minor' | 'moderate' | 'major'>('minor');
-  const [demerits, setDemerits] = useState(3);
   const [description, setDescription] = useState('');
   const [actionRequired, setActionRequired] = useState('');
 
@@ -57,7 +56,7 @@ export const ResidentPerformanceView: React.FC = () => {
       category,
       severity,
       description,
-      demeritPoints: Number(demerits),
+      demeritPoints: 1,
       reportedBy: currentUser.name,
       status: 'pending_settlement',
       actionRequired: actionRequired || undefined,
@@ -79,7 +78,7 @@ export const ResidentPerformanceView: React.FC = () => {
           <div>
             <h2 className="text-base sm:text-lg font-bold text-white">Resident Performance & Standing</h2>
             <p className="text-xs text-slate-400 mt-1">
-              Demerit standing and compliance status for every occupant.
+              Points standing and compliance status for every occupant. Every violation is worth 1 pt.
             </p>
           </div>
           {canEdit && (
@@ -143,7 +142,7 @@ export const ResidentPerformanceView: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-white truncate">{occ.name}</p>
                         <p className="text-[11px] text-slate-400">
-                          {pts} demerits · {totalVs.length} violations
+                          {pts} pts · {totalVs.length} violations
                         </p>
                       </div>
                       <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full border ${standing.classes}`}>
@@ -196,7 +195,7 @@ export const ResidentPerformanceView: React.FC = () => {
                                         v.severity === 'major' ? 'bg-rose-950 text-rose-300' :
                                         v.severity === 'moderate' ? 'bg-amber-950 text-amber-300' : 'bg-blue-950 text-blue-300'
                                       }`}>
-                                        +{v.demeritPoints}
+                                        +{v.demeritPoints} pts
                                       </span>
                                       <span className="text-[11px] text-slate-400 capitalize">{v.category.replace(/_/g, ' ')}</span>
                                     </div>
@@ -239,7 +238,7 @@ export const ResidentPerformanceView: React.FC = () => {
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white">Log Rule Violation & Demerit</h3>
+                <h3 className="text-base font-bold text-white">Log Rule Violation (1 pt)</h3>
                 <p className="text-xs text-slate-400">Dean / Admin Incident Form</p>
               </div>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
@@ -264,6 +263,7 @@ export const ResidentPerformanceView: React.FC = () => {
                     <option value="worship_absence">Worship Absence</option>
                     <option value="worship_late">Worship Tardiness</option>
                     <option value="no_bible">No Bible in Worship</option>
+                    <option value="improper_worship_attire">Improper Worship Attire</option>
                     <option value="curfew_breach">Curfew Breach</option>
                     <option value="uniform_violation">Uniform / Grooming</option>
                     <option value="irregular_school_departure">Departure Off-Schedule</option>
@@ -279,21 +279,19 @@ export const ResidentPerformanceView: React.FC = () => {
                   <label className="block font-medium text-slate-300 mb-1">Severity</label>
                   <select
                     value={severity}
-                    onChange={e => {
-                      const sev = e.target.value as 'minor' | 'moderate' | 'major';
-                      setSeverity(sev);
-                      setDemerits(sev === 'minor' ? 1 : sev === 'moderate' ? 3 : 5);
-                    }}
+                    onChange={e => setSeverity(e.target.value as 'minor' | 'moderate' | 'major')}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
                   >
-                    <option value="minor">Minor (1)</option>
-                    <option value="moderate">Moderate (3)</option>
-                    <option value="major">Major (5)</option>
+                    <option value="minor">Minor</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="major">Major</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Demerit Points</label>
-                  <input type="number" min={1} max={10} value={demerits} onChange={e => setDemerits(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+                  <label className="block font-medium text-slate-300 mb-1">Points</label>
+                  <div className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-300">
+                    1 pt <span className="text-slate-500">· fixed for every violation</span>
+                  </div>
                 </div>
               </div>
               <div>

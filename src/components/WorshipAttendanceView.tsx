@@ -12,15 +12,17 @@ import {
   Church,
   ChevronDown,
   CalendarDays,
+  Shirt,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { WorshipType, AttendanceRecord } from '../types/dorm';
+import { WORSHIP_SESSIONS } from '../data/dormSeed';
 import { Segmented } from './ui/Segmented';
-import { manilaToday } from '../utils/date';
+import { manilaToday, formatFullDate } from '../utils/date';
 
 type AttendanceStatus = AttendanceRecord['status'];
 
-const DEFAULT_ENTRY = { status: 'present' as AttendanceStatus, broughtBible: true, notes: '' };
+const DEFAULT_ENTRY = { status: 'present' as AttendanceStatus, broughtBible: true, properAttire: true, notes: '' };
 
 const STATUS_META: Record<AttendanceStatus, { label: string; icon: React.ComponentType<{ className?: string }>; active: string; chip: string }> = {
   present: { label: 'Present', icon: CheckCircle2, active: 'bg-emerald-600 text-white', chip: 'bg-emerald-950 text-emerald-300' },
@@ -32,15 +34,9 @@ const STATUS_META: Record<AttendanceStatus, { label: string; icon: React.Compone
 const SESSION_ICONS: Record<WorshipType, React.ComponentType<{ className?: string }>> = {
   morning_worship: Clock,
   evening_worship: Clock,
-  church_midweek: Church,
-  church_sabbath: Church,
-};
-
-const SESSION_BASE_LABELS: Record<WorshipType, string> = {
-  morning_worship: 'Morning Worship',
-  evening_worship: 'Evening Worship',
-  church_midweek: 'Midweek Church Prayer',
-  church_sabbath: 'Weekend / Sabbath Church',
+  midweek_worship: Church,
+  sabbath_morning: Church,
+  sabbath_afternoon: Church,
 };
 
 const FIELD =
@@ -57,17 +53,20 @@ export const WorshipAttendanceView: React.FC = () => {
     return `${String(hh).padStart(2, '0')}:${m} ${Number(h) >= 12 ? 'PM' : 'AM'}`;
   };
 
-  const SESSIONS: { id: WorshipType; label: string; short: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'morning_worship', label: `${SESSION_BASE_LABELS.morning_worship} (${fmt(settings.worshipMorning) || '05:30 AM'})`, short: `Morning · ${settings.worshipMorning || '05:30'}`, icon: SESSION_ICONS.morning_worship },
-    { id: 'evening_worship', label: `${SESSION_BASE_LABELS.evening_worship} (${fmt(settings.worshipEvening) || '06:30 PM'})`, short: `Evening · ${settings.worshipEvening || '18:30'}`, icon: SESSION_ICONS.evening_worship },
-    { id: 'church_midweek', label: `${SESSION_BASE_LABELS.church_midweek}${settings.churchMidweek ? ` (${fmt(settings.churchMidweek)})` : ''}`, short: `Midweek · ${settings.churchMidweek || '18:00'}`, icon: SESSION_ICONS.church_midweek },
-    { id: 'church_sabbath', label: `${SESSION_BASE_LABELS.church_sabbath}${settings.churchSabbath ? ` (${fmt(settings.churchSabbath)})` : ''}`, short: `Sabbath · ${settings.churchSabbath || '09:00'}`, icon: SESSION_ICONS.church_sabbath },
-  ];
+  const SESSIONS = WORSHIP_SESSIONS.map(session => {
+    const time = settings[session.timeKey];
+    return {
+      id: session.id,
+      label: `${session.label}${time ? ` (${fmt(time)})` : ''}`,
+      short: `${session.short}${time ? ` · ${time}` : ''}`,
+      icon: SESSION_ICONS[session.id],
+    };
+  });
 
   const [sessionType, setSessionType] = useState<WorshipType>('morning_worship');
   const [selectedDate, setSelectedDate] = useState(() => manilaToday());
 
-  const [roster, setRoster] = useState<Record<string, { status: AttendanceStatus; broughtBible: boolean; notes: string }>>({});
+  const [roster, setRoster] = useState<Record<string, { status: AttendanceStatus; broughtBible: boolean; properAttire: boolean; notes: string }>>({});
   const [selectedRoom, setSelectedRoom] = useState('');
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -83,7 +82,7 @@ export const WorshipAttendanceView: React.FC = () => {
 
   const getEntry = (id: string) => roster[id] ?? DEFAULT_ENTRY;
 
-  const updateStudent = (id: string, field: 'status' | 'broughtBible' | 'notes', value: AttendanceStatus | boolean | string) => {
+  const updateStudent = (id: string, field: 'status' | 'broughtBible' | 'properAttire' | 'notes', value: AttendanceStatus | boolean | string) => {
     setRoster(prev => ({ ...prev, [id]: { ...(prev[id] ?? DEFAULT_ENTRY), [field]: value } }));
   };
 
@@ -113,6 +112,7 @@ export const WorshipAttendanceView: React.FC = () => {
           roomNumber: occ.roomNumber || '—',
           status: entry.status,
           broughtBible: entry.broughtBible,
+          properAttire: entry.properAttire,
           notes: entry.notes || undefined,
           recordedBy: currentUser.name,
         };
@@ -120,7 +120,7 @@ export const WorshipAttendanceView: React.FC = () => {
       .filter(Boolean) as Parameters<typeof saveAttendanceBatch>[0];
 
     saveAttendanceBatch(records);
-    setSavedMessage(`Saved ${records.length} ${records.length === 1 ? 'record' : 'records'} for ${SESSIONS.find(s => s.id === sessionType)?.short}. Missing Bibles and unexcused absences were pushed to the demerit stream.`);
+    setSavedMessage(`Saved ${records.length} ${records.length === 1 ? 'record' : 'records'} for ${SESSIONS.find(s => s.id === sessionType)?.short}. Missing Bibles, improper attire and unexcused absences were each logged as 1 pt.`);
     setTimeout(() => setSavedMessage(null), 4000);
   };
 
@@ -140,7 +140,7 @@ export const WorshipAttendanceView: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Morning & evening worship, physical Bibles in hand, and weekend church attendance with lates and absences.
+              All five weekly services — Bible in hand, proper worship attire, and lates or absences on record.
             </p>
           </div>
 
@@ -175,6 +175,7 @@ export const WorshipAttendanceView: React.FC = () => {
             <span>Date</span>
           </label>
           <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className={`${FIELD} sm:max-w-[200px]`} />
+          <span className="text-sm font-semibold text-white">{formatFullDate(selectedDate)}</span>
         </div>
       </div>
 
@@ -255,6 +256,7 @@ export const WorshipAttendanceView: React.FC = () => {
                         </div>
                         <button
                           type="button"
+                          title="Bible in hand"
                           aria-label={`${occ.name}: Bible in hand`}
                           aria-pressed={entry.broughtBible}
                           onClick={() => updateStudent(occ.id, 'broughtBible', !entry.broughtBible)}
@@ -264,14 +266,29 @@ export const WorshipAttendanceView: React.FC = () => {
                         >
                           <BookOpen className="w-4 h-4" />
                         </button>
+                        <button
+                          type="button"
+                          title="Proper worship attire"
+                          aria-label={`${occ.name}: Proper worship attire`}
+                          aria-pressed={entry.properAttire}
+                          onClick={() => updateStudent(occ.id, 'properAttire', !entry.properAttire)}
+                          className={`min-w-touch min-h-touch rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                            entry.properAttire ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
+                          }`}
+                        >
+                          <Shirt className="w-4 h-4" />
+                        </button>
                       </>
                     ) : (
                       <>
                         <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${STATUS_META[entry.status].chip}`}>
                           {STATUS_META[entry.status].label}
                         </span>
-                        <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${entry.broughtBible ? 'bg-blue-950 text-blue-300' : 'bg-slate-800 text-slate-500'}`}>
+                        <span title="Bible in hand" className={`w-8 h-8 rounded-lg flex items-center justify-center ${entry.broughtBible ? 'bg-blue-950 text-blue-300' : 'bg-slate-800 text-slate-500'}`}>
                           <BookOpen className="w-4 h-4" />
+                        </span>
+                        <span title="Proper worship attire" className={`w-8 h-8 rounded-lg flex items-center justify-center ${entry.properAttire ? 'bg-violet-950 text-violet-300' : 'bg-slate-800 text-slate-500'}`}>
+                          <Shirt className="w-4 h-4" />
                         </span>
                       </>
                     )}
@@ -322,13 +339,18 @@ export const WorshipAttendanceView: React.FC = () => {
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${meta.chip}`}>{meta.label}</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Room {item.roomNumber} · {item.date} {item.timestamp} · by {item.recordedBy}
+                      Room {item.roomNumber} · {formatFullDate(item.date)} {item.timestamp} · by {item.recordedBy}
                     </p>
                     {item.notes && <p className="text-[11px] text-slate-400 mt-0.5">{item.notes}</p>}
                   </div>
-                  <span className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${item.broughtBible ? 'bg-blue-950 text-blue-300' : 'bg-rose-950 text-rose-300'}`} title={item.broughtBible ? 'Bible in hand' : 'No Bible'}>
-                    <BookOpen className="w-4 h-4" />
-                  </span>
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.broughtBible ? 'bg-blue-950 text-blue-300' : 'bg-rose-950 text-rose-300'}`} title={item.broughtBible ? 'Bible in hand' : 'No Bible'}>
+                      <BookOpen className="w-4 h-4" />
+                    </span>
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.properAttire === false ? 'bg-rose-950 text-rose-300' : 'bg-violet-950 text-violet-300'}`} title={item.properAttire === false ? 'Improper worship attire' : 'Proper worship attire'}>
+                      <Shirt className="w-4 h-4" />
+                    </span>
+                  </div>
                 </div>
               );
             })}

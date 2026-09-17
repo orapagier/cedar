@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
-import { manilaToday } from '../utils/date';
+import { manilaToday, formatFullDate } from '../utils/date';
 
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40';
@@ -273,7 +273,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Room {log.roomNumber} · {log.date} · by {log.inspectedBy}
+                Room {log.roomNumber} · {formatFullDate(log.date)} · by {log.inspectedBy}
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {[

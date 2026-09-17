@@ -7,14 +7,19 @@ import {
   Clock,
   Save,
   CheckCircle2,
+  BookOpen,
+  CalendarDays,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { formatFullDate } from '../utils/date';
+import { useManilaToday } from '../hooks/useManilaToday';
 
 const TIME_FIELD =
   'w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500';
 
 export const ScheduleSettingsView: React.FC = () => {
   const { settings, updateSettings, canEdit } = useDorm();
+  const today = useManilaToday();
   const [draft, setDraft] = useState({ ...settings });
   const [saved, setSaved] = useState(false);
 
@@ -45,8 +50,18 @@ export const ScheduleSettingsView: React.FC = () => {
       fields: [
         { key: 'worshipMorning', label: 'Morning Worship', hint: 'e.g. 05:30' },
         { key: 'worshipEvening', label: 'Evening Worship', hint: 'e.g. 18:30' },
-        { key: 'churchMidweek', label: 'Midweek Church', hint: 'e.g. 18:00' },
-        { key: 'churchSabbath', label: 'Sabbath Church', hint: 'e.g. 09:00' },
+        { key: 'worshipMidweek', label: 'Midweek Worship', hint: 'e.g. 18:00' },
+        { key: 'sabbathMorning', label: 'Sabbath Morning', hint: 'e.g. 09:00' },
+        { key: 'sabbathAfternoon', label: 'Sabbath Afternoon', hint: 'e.g. 14:00' },
+      ],
+    },
+    {
+      title: 'Study Hours',
+      icon: BookOpen,
+      desc: 'Mandatory evening study period used by Study Hours & Library.',
+      fields: [
+        { key: 'studyStart', label: 'Study Start', hint: 'e.g. 19:30' },
+        { key: 'studyEnd', label: 'Study End', hint: 'e.g. 21:30' },
       ],
     },
     {
@@ -78,6 +93,10 @@ export const ScheduleSettingsView: React.FC = () => {
         </div>
         <p className="text-xs text-slate-400 mt-1">
           Adjust dormitory hours. Changes apply immediately and sync across devices.
+        </p>
+        <p className="text-xs text-slate-300 mt-2 flex items-center gap-1.5">
+          <CalendarDays className="w-3.5 h-3.5 text-slate-500" />
+          {formatFullDate(today)}
         </p>
       </div>
 
@@ -135,6 +154,14 @@ export const ScheduleSettingsView: React.FC = () => {
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Evening Worship</p>
               <p className="text-white font-semibold mt-0.5">{settings.worshipEvening || '—'}</p>
+            </div>
+            <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wide">Sabbath AM / PM</p>
+              <p className="text-white font-semibold mt-0.5">{settings.sabbathMorning || '—'} / {settings.sabbathAfternoon || '—'}</p>
+            </div>
+            <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wide">Study Hours</p>
+              <p className="text-white font-semibold mt-0.5">{settings.studyStart || '—'} – {settings.studyEnd || '—'}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Curfew</p>

@@ -433,7 +433,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                           occupant.demeritPoints > 0 ? 'bg-amber-950 text-amber-300 border border-amber-700' :
                           'bg-emerald-950 text-emerald-300 border border-emerald-700'
                         }`}>
-                          {occupant.demeritPoints} Demerits
+                          {occupant.demeritPoints} pts
                         </span>
                       </div>
 

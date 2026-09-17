@@ -57,17 +57,25 @@ export interface RoomInspection {
 
 /** Admin-tunable dormitory schedules (times are 24-hour "HH:MM"). */
 export interface DormSettings {
-  worshipMorning: string;   // e.g. "05:30"
-  worshipEvening: string;   // e.g. "18:30"
-  churchMidweek?: string;   // e.g. "18:00"
-  churchSabbath?: string;   // e.g. "09:00"
-  curfewTime: string;       // e.g. "21:00"
-  lightsOutTime: string;    // e.g. "22:00"
-  departureStart: string;   // school exit window start, e.g. "07:00"
-  departureEnd: string;     // school exit window end, e.g. "07:35"
+  worshipMorning: string;    // e.g. "05:30"
+  worshipEvening: string;    // e.g. "18:30"
+  worshipMidweek: string;    // e.g. "18:00"
+  sabbathMorning: string;    // e.g. "09:00"
+  sabbathAfternoon: string;  // e.g. "14:00"
+  studyStart: string;        // evening study period start, e.g. "19:30"
+  studyEnd: string;          // evening study period end, e.g. "21:30"
+  curfewTime: string;        // e.g. "21:00"
+  lightsOutTime: string;     // e.g. "22:00"
+  departureStart: string;    // school exit window start, e.g. "07:00"
+  departureEnd: string;      // school exit window end, e.g. "07:35"
 }
 
-export type WorshipType = 'morning_worship' | 'evening_worship' | 'church_midweek' | 'church_sabbath';
+export type WorshipType =
+  | 'morning_worship'
+  | 'evening_worship'
+  | 'midweek_worship'
+  | 'sabbath_morning'
+  | 'sabbath_afternoon';
 
 export interface AttendanceRecord {
   id: string;
@@ -78,6 +86,8 @@ export interface AttendanceRecord {
   roomNumber: string;
   status: 'present' | 'late' | 'absent' | 'excused';
   broughtBible: boolean;
+  /** Worship attire check — optional so records saved before it existed still load. */
+  properAttire?: boolean;
   notes?: string;
   recordedBy: string;
   timestamp: string;
@@ -172,6 +182,7 @@ export type ViolationCategory =
   | 'worship_absence'
   | 'worship_late'
   | 'no_bible'
+  | 'improper_worship_attire'
   | 'curfew_breach'
   | 'uniform_violation'
   | 'church_absence'

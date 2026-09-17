@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Segmented } from './ui/Segmented';
-import { manilaToday } from '../utils/date';
+import { manilaToday, formatFullDate } from '../utils/date';
 
 type CurfewStatus = 'in_dorm' | 'late' | 'missing' | 'official_pass';
 
@@ -335,7 +335,7 @@ export const CurfewLightsOutView: React.FC = () => {
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${meta.chip}`}>{meta.label}</span>
                         </div>
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                          Room {cr.roomNumber} · {cr.date} · limit {cr.curfewTime} · by {cr.loggedBy}
+                          Room {cr.roomNumber} · {formatFullDate(cr.date)} · limit {cr.curfewTime} · by {cr.loggedBy}
                         </p>
                         {cr.remarks && <p className="text-[11px] text-slate-400 mt-0.5">{cr.remarks}</p>}
                       </div>
@@ -448,7 +448,7 @@ export const CurfewLightsOutView: React.FC = () => {
                           {log.status.toUpperCase()}
                         </span>
                       </div>
-                      <span className="text-[11px] text-slate-400 font-mono">{log.date} {log.checkTime}</span>
+                      <span className="text-[11px] text-slate-400 text-right">{formatFullDate(log.date)} · {log.checkTime}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       {[

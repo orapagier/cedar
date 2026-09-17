@@ -286,7 +286,7 @@ export const AdminManagementView: React.FC = () => {
                 <th className="p-3.5">User Details</th>
                 <th className="p-3.5">Room / Staff</th>
                 <th className="p-3.5">Current Role</th>
-                <th className="p-3.5">Demerits</th>
+                <th className="p-3.5">Points</th>
                 <th className="p-3.5">RBAC Action</th>
               </tr>
             </thead>

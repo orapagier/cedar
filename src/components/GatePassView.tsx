@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { manilaToday } from '../utils/date';
+import { manilaToday, formatFullDate } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 import {
   Luggage,
@@ -211,9 +211,9 @@ export const GatePassView: React.FC = () => {
                   <div className="bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-400 space-y-0.5 min-w-0 md:max-w-[340px]">
                     <p><span className="text-slate-500 font-medium">Destination:</span> {pass.destination}</p>
                     <p>
-                      <span className="text-slate-500 font-medium">Out:</span> {pass.departureDate}
+                      <span className="text-slate-500 font-medium">Out:</span> {formatFullDate(pass.departureDate)}
                       <span className="mx-1.5 text-slate-600">→</span>
-                      <span className="text-slate-500 font-medium">Back:</span> {pass.expectedReturnDate}
+                      <span className="text-slate-500 font-medium">Back:</span> {formatFullDate(pass.expectedReturnDate)}
                     </p>
                     <p><span className="text-slate-500 font-medium">Parent:</span> {pass.parentConsentVerified ? `Consent ✓ (${pass.parentPhone})` : 'Not verified'}</p>
                     {pass.remarks && <p className="italic text-slate-500">"{pass.remarks}"</p>}
@@ -277,10 +277,10 @@ export const GatePassView: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
-                Out {p.departureDate} · Back {p.expectedReturnDate} · Approved by {p.approvedByDean}
+                Out {formatFullDate(p.departureDate)} · Back {formatFullDate(p.expectedReturnDate)} · Approved by {p.approvedByDean}
               </p>
               {p.actualReturnDate && (
-                <p className="text-[11px] text-emerald-400 mt-0.5">Actual return: {p.actualReturnDate}</p>
+                <p className="text-[11px] text-emerald-400 mt-0.5">Actual return: {formatFullDate(p.actualReturnDate)}</p>
               )}
             </div>
           ))}

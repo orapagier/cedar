@@ -15,7 +15,8 @@ import {
   GatePassRecord,
   DemeritClearanceLog,
   ConfiscatedItemRecord,
-  StudentMedicalRecord
+  StudentMedicalRecord,
+  WorshipType
 } from '../types/dorm';
 
 /**
@@ -139,11 +140,34 @@ export const INITIAL_ROOMS: Room[] = [
 
 export const INITIAL_INSPECTIONS: RoomInspection[] = [];
 
+/**
+ * The five worship services rolled every week. `timeKey` points at the
+ * schedule setting the Dean can retime, so labels and times never drift apart.
+ */
+export const WORSHIP_SESSIONS: {
+  id: WorshipType;
+  label: string;
+  short: string;
+  timeKey: keyof DormSettings;
+}[] = [
+  { id: 'morning_worship', label: 'Morning Worship', short: 'Morning', timeKey: 'worshipMorning' },
+  { id: 'evening_worship', label: 'Evening Worship', short: 'Evening', timeKey: 'worshipEvening' },
+  { id: 'midweek_worship', label: 'Midweek Worship', short: 'Midweek', timeKey: 'worshipMidweek' },
+  { id: 'sabbath_morning', label: 'Sabbath Morning', short: 'Sabbath AM', timeKey: 'sabbathMorning' },
+  { id: 'sabbath_afternoon', label: 'Sabbath Afternoon', short: 'Sabbath PM', timeKey: 'sabbathAfternoon' },
+];
+
+export const worshipLabel = (type: WorshipType) =>
+  WORSHIP_SESSIONS.find(s => s.id === type)?.label ?? String(type).replace(/_/g, ' ');
+
 export const INITIAL_SETTINGS: DormSettings = {
   worshipMorning: '05:30',
   worshipEvening: '18:30',
-  churchMidweek: '18:00',
-  churchSabbath: '09:00',
+  worshipMidweek: '18:00',
+  sabbathMorning: '09:00',
+  sabbathAfternoon: '14:00',
+  studyStart: '19:30',
+  studyEnd: '21:30',
   curfewTime: '21:00',
   lightsOutTime: '22:00',
   departureStart: '07:00',

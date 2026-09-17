@@ -11,6 +11,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { formatFullDate } from '../utils/date';
 
 const PASS_LABELS: Record<string, string> = {
   weekend_home: 'Weekend Home Leave',
@@ -73,7 +74,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
         <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-3">
-          <p className="text-xs text-slate-400">Demerit Points</p>
+          <p className="text-xs text-slate-400">Points (pts)</p>
           <p className={`text-xl font-bold mt-0.5 ${demerits >= 8 ? 'text-rose-400' : demerits > 0 ? 'text-amber-300' : 'text-emerald-400'}`}>
             {demerits}
           </p>
@@ -99,7 +100,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
           <div key={a.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white">{a.type.replace(/_/g, ' ')}</p>
-              <p className="text-[11px] text-slate-400">{a.date} · Bible {a.broughtBible ? '✓' : '✗'}</p>
+              <p className="text-[11px] text-slate-400">{formatFullDate(a.date)} · Bible {a.broughtBible ? '✓' : '✗'} · Attire {a.properAttire === false ? '✗' : '✓'}</p>
             </div>
             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusChip(a.status)}`}>{a.status}</span>
           </div>
@@ -112,7 +113,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
           <div key={l.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white">{l.location.replace(/_/g, ' ')}</p>
-              <p className="text-[11px] text-slate-400">{l.date} · Focus: {l.focusRating}</p>
+              <p className="text-[11px] text-slate-400">{formatFullDate(l.date)} · Focus: {l.focusRating}</p>
             </div>
             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusChip(l.status)}`}>{l.status}</span>
           </div>
@@ -124,7 +125,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
         {curfewRecords.filter(c => c.studentId === studentId).slice(0, limit).map(c => (
           <div key={c.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white">{c.date}</p>
+              <p className="text-xs font-semibold text-white">{formatFullDate(c.date)}</p>
               <p className="text-[11px] text-slate-400">Curfew {c.curfewTime}{c.actualCheckInTime ? ` · in at ${c.actualCheckInTime}` : ''}</p>
             </div>
             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusChip(c.status)}`}>{c.status.replace(/_/g, ' ')}</span>
@@ -137,7 +138,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
         {uniformLogs.filter(u => u.studentId === studentId).slice(0, limit).map(u => (
           <div key={u.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white">{u.date} · {u.departureTime}</p>
+              <p className="text-xs font-semibold text-white">{formatFullDate(u.date)} · {u.departureTime}</p>
               <p className="text-[11px] text-slate-400">
                 Uniform {u.uniformCompliant ? '✓' : '✗'} · Hair {u.hairGroomingCompliant ? '✓' : '✗'} ·
                 ID {u.idBadgeCompliant ? '✓' : '✗'} · Shoes {u.shoesCompliant ? '✓' : '✗'}
@@ -186,7 +187,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
               <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusChip(p.status)}`}>{p.status.replace(/_/g, ' ')}</span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              {p.destination} · Out {p.departureDate} · Back {p.expectedReturnDate}
+              {p.destination} · Out {formatFullDate(p.departureDate)} · Back {formatFullDate(p.expectedReturnDate)}
             </p>
           </div>
         ))}
@@ -199,7 +200,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white">{m.diagnosis}</p>
               <p className="text-[11px] text-slate-400">
-                {m.startDate} → {m.endDate} · {m.clinicStaffOrDoctor}
+                {formatFullDate(m.startDate)} → {formatFullDate(m.endDate)} · {m.clinicStaffOrDoctor}
               </p>
               {m.excusedFrom.length > 0 && (
                 <p className="text-[11px] text-amber-400/80 mt-0.5">Excused from {m.excusedFrom.join(', ')}</p>
@@ -220,7 +221,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
               <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
             </div>
             <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300">
-              +{v.demeritPoints}
+              +{v.demeritPoints} pts
             </span>
           </div>
         ))}

@@ -143,7 +143,7 @@ export const OccupantRecordsView: React.FC = () => {
                     )}
                     {selected.demeritPoints > 0 && (
                       <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-rose-950 text-rose-300 border border-rose-700/50 flex items-center gap-1">
-                        <ShieldAlert className="w-3 h-3" /> {selected.demeritPoints} demerits
+                        <ShieldAlert className="w-3 h-3" /> {selected.demeritPoints} pts
                       </span>
                     )}
                   </div>

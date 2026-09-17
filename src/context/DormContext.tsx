@@ -37,6 +37,7 @@ import {
   INITIAL_CONFISCATED_ITEMS,
   INITIAL_STUDENT_MEDICALS,
   INITIAL_SETTINGS,
+  worshipLabel,
 } from '../data/dormSeed';
 import { manilaToday, manilaTime } from '../utils/date';
 
@@ -145,6 +146,10 @@ interface DormContextType {
 const DormContext = createContext<DormContextType | null>(null);
 
 const STORAGE_KEY_PREFIX = 'dorm_dean_v1_';
+
+// Every infraction is worth the same single point, whatever its severity, so a
+// resident's total reads as "how many rules were broken" and nothing else.
+const VIOLATION_POINTS = 1;
 
 // Shared sync server (see server/index.mjs). Reports are pushed here so every
 // device — laptop, phone, tablet — reads and writes the same records.
@@ -598,7 +603,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
               category: 'cleanliness',
               severity: 'moderate',
               description: `Room ${insp.roomNumber} failed daily inspection score (${insp.score}/100): ${insp.remarks || 'Sanitation issues'}`,
-              demeritPoints: 2,
+              demeritPoints: VIOLATION_POINTS,
               reportedBy: currentUser.name,
               status: 'pending_settlement',
               actionRequired: 'Re-inspection by 5:00 PM required.',
@@ -619,23 +624,31 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
     setAttendance(prev => [...formatted, ...prev]);
 
-    // Automatically flag unexcused absences or missing Bible
+    // Automatically flag unexcused absences, missing Bibles and improper attire.
     records.forEach(r => {
+      const session = worshipLabel(r.type);
+      const attended = r.status === 'present' || r.status === 'late';
+
       if (r.status === 'absent') {
         saveViolation({
           date: r.date,
           studentId: r.studentId,
           studentName: r.studentName,
           roomNumber: r.roomNumber,
-          category: r.type.includes('church') ? 'church_absence' : 'worship_absence',
+          category: 'worship_absence',
           severity: 'moderate',
-          description: `Unexcused absence from ${r.type.replace('_', ' ')}.`,
-          demeritPoints: 3,
+          description: `Unexcused absence from ${session}.`,
+          demeritPoints: VIOLATION_POINTS,
           reportedBy: currentUser.name,
           status: 'pending_settlement',
           actionRequired: 'Submit dean excuse slip or make-up devotional session.',
         });
-      } else if (!r.broughtBible && (r.status === 'present' || r.status === 'late')) {
+        return;
+      }
+
+      if (!attended) return;
+
+      if (!r.broughtBible) {
         saveViolation({
           date: r.date,
           studentId: r.studentId,
@@ -643,11 +656,27 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           roomNumber: r.roomNumber,
           category: 'no_bible',
           severity: 'minor',
-          description: `Failed to bring personal physical Bible to ${r.type.replace('_', ' ')}.`,
-          demeritPoints: 1,
+          description: `Failed to bring personal physical Bible to ${session}.`,
+          demeritPoints: VIOLATION_POINTS,
           reportedBy: currentUser.name,
           status: 'pending_settlement',
           actionRequired: 'Ensure Bible is in hand for next worship.',
+        });
+      }
+
+      if (r.properAttire === false) {
+        saveViolation({
+          date: r.date,
+          studentId: r.studentId,
+          studentName: r.studentName,
+          roomNumber: r.roomNumber,
+          category: 'improper_worship_attire',
+          severity: 'minor',
+          description: `Improper worship attire at ${session}.`,
+          demeritPoints: VIOLATION_POINTS,
+          reportedBy: currentUser.name,
+          status: 'pending_settlement',
+          actionRequired: 'Come in proper worship attire for the next service.',
         });
       }
     });
@@ -672,7 +701,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: rec.status === 'missing' 
           ? `Missing from dormitory past curfew without authorization.`
           : `Late curfew arrival (${rec.actualCheckInTime || 'unrecorded'}). ${rec.remarks || ''}`,
-        demeritPoints: rec.status === 'missing' ? 5 : 3,
+        demeritPoints: VIOLATION_POINTS,
         reportedBy: currentUser.name,
         status: 'pending_settlement',
         actionRequired: 'Dean inquiry interview.',
@@ -697,7 +726,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         category: !log.isDepartureOnSchedule ? 'irregular_school_departure' : 'uniform_violation',
         severity: 'minor',
         description: `School departure gate inspection issue: ${log.remarks || 'Uniform/Grooming non-compliant or departed off-schedule'}.`,
-        demeritPoints: 1,
+        demeritPoints: VIOLATION_POINTS,
         reportedBy: currentUser.name,
         status: 'pending_settlement',
         actionRequired: 'Correction before school gate pass clearance.',
@@ -722,7 +751,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         category: 'study_hour_skipping',
         severity: 'minor',
         description: `Study hours infraction: ${log.status === 'absent' ? 'Absent from study period' : 'Noise disturbance / distraction during quiet study'}.`,
-        demeritPoints: 2,
+        demeritPoints: VIOLATION_POINTS,
         reportedBy: currentUser.name,
         status: 'pending_settlement',
         actionRequired: 'Silent study monitoring assigned.',
@@ -759,7 +788,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
               category: 'chore_neglect',
               severity: 'minor',
               description: `Neglected assigned maintenance chore duty (${c.dutyArea}): ${remarks || 'Incomplete inspection'}`,
-              demeritPoints: 2,
+              demeritPoints: VIOLATION_POINTS,
               reportedBy: currentUser.name,
               status: 'pending_settlement',
               actionRequired: 'Repeat chore task under monitor sign-off.',
@@ -794,7 +823,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
               category: 'lights_out_violation',
               severity: 'moderate',
               description: `Room ${log.roomNumber} lights-out violation at ${log.checkTime}: ${log.violatorRemarks || 'Lights on or noise disturbance'}`,
-              demeritPoints: 2,
+              demeritPoints: VIOLATION_POINTS,
               reportedBy: currentUser.name,
               status: 'pending_settlement',
             });

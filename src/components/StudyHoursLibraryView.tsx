@@ -14,7 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
-import { manilaToday } from '../utils/date';
+import { manilaToday, formatFullDate } from '../utils/date';
 
 type StudyStatus = 'present' | 'late' | 'absent' | 'excused';
 type FocusRating = 'focused' | 'distracted' | 'noise_violation';
@@ -36,8 +36,19 @@ const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40';
 
 export const StudyHoursLibraryView: React.FC = () => {
-  const { studyLogs, users, rooms, saveStudyLog, canEdit, currentUser } = useDorm();
+  const { studyLogs, users, rooms, saveStudyLog, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
+
+  const to12h = (t: string) => {
+    if (!t) return '';
+    const [h, m] = t.split(':');
+    const hh = Number(h) % 12 === 0 ? 12 : Number(h) % 12;
+    return `${String(hh).padStart(2, '0')}:${m} ${Number(h) >= 12 ? 'PM' : 'AM'}`;
+  };
+  const studyWindow =
+    settings.studyStart && settings.studyEnd
+      ? `${to12h(settings.studyStart)} - ${to12h(settings.studyEnd)}`
+      : 'not yet set';
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
   const [selectedRoom, setSelectedRoom] = useState(roomNumbers[0] || '');
@@ -92,7 +103,8 @@ export const StudyHoursLibraryView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Mandatory evening study period (07:30 PM - 09:30 PM) in the dorm study hall or campus library.
+            Mandatory evening study period ({studyWindow}) in the dorm study hall or campus library.
+            Set the hours under Schedule Settings.
           </p>
         </div>
 
@@ -279,7 +291,7 @@ export const StudyHoursLibraryView: React.FC = () => {
                     {log.status.toUpperCase()}
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 font-mono shrink-0">{log.date}</span>
+                <span className="text-[11px] text-slate-400 shrink-0 text-right">{formatFullDate(log.date)}</span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 Room {log.roomNumber} · <span className="capitalize text-indigo-300 font-medium">{log.location.replace('_', ' ')}</span>

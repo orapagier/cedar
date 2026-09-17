@@ -1,5 +1,5 @@
 import React from 'react';
-import { manilaHour } from '../utils/date';
+import { manilaHour, formatFullDate } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 import {
   AlertTriangle,
@@ -88,6 +88,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
             <h1 className="text-xl font-bold text-white tracking-tight mt-0.5">
               {greeting}, {currentUser.name}
             </h1>
+            <p className="text-sm font-semibold text-amber-300 mt-1">{formatFullDate(today)}</p>
             <p className="text-sm text-slate-400 mt-1">
               {isOccupant
                 ? `Room ${myRecord?.roomNumber || '—'} · Your standing and today's checks.`
@@ -200,7 +201,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                     v.severity === 'major' ? 'bg-rose-950 text-rose-300' :
                     v.severity === 'moderate' ? 'bg-amber-950 text-amber-300' : 'bg-blue-950 text-blue-300'
                   }`}>
-                    +{v.demeritPoints}
+                    +{v.demeritPoints} pts
                   </span>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-white truncate">

@@ -64,7 +64,7 @@ export const CellphoneCustodyView: React.FC = () => {
       category: 'cellphone_policy_breach',
       severity: 'major',
       description: `Device confiscation (${c.deviceModel}): ${reason}`,
-      demeritPoints: 5,
+      demeritPoints: 1,
       reportedBy: currentUser.name,
       status: 'confirmed',
       actionRequired: 'Confiscated until end of term + Dean interview with parent.',

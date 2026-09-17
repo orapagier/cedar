@@ -48,3 +48,29 @@ export const msUntilNextManilaDay = (date: Date = new Date()) => {
     ((Number(hour) % 24) * 3600 + Number(minute) * 60 + Number(second)) * 1000 + date.getMilliseconds();
   return 86_400_000 - elapsed;
 };
+
+const longDateFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: MANILA_TIME_ZONE,
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: MANILA_TIME_ZONE,
+  weekday: 'long',
+});
+
+// A "YYYY-MM-DD" is a calendar day, not an instant: anchoring it at noon UTC
+// keeps it on the same day once the formatters shift it into Manila (+08:00).
+const asDate = (value: string | Date) => (typeof value === 'string' ? new Date(`${value}T12:00:00Z`) : value);
+
+/**
+ * The one way dates are shown to users: "September 18, 2026 Friday".
+ * Accepts a stored "YYYY-MM-DD" or a Date; unparseable input is passed through.
+ */
+export const formatFullDate = (value: string | Date = new Date()) => {
+  const date = asDate(value);
+  if (Number.isNaN(date.getTime())) return typeof value === 'string' ? value : '';
+  return `${longDateFormatter.format(date)} ${weekdayFormatter.format(date)}`;
+};
