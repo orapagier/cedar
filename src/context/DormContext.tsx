@@ -1199,6 +1199,8 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lightsOutLogs,
         cellphones,
         violations,
+        settings,
+        updateSettings,
         medicalSlips,
         saveMedicalSlip,
         updateMedicalSlipStatus,
