@@ -277,9 +277,9 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-3xl p-6 sm:p-7 shadow-xl">
+      <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-3xl p-4 sm:p-7 shadow-xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start space-x-3.5">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 flex-shrink-0 shadow-inner">
@@ -305,13 +305,13 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
       {/* Action & Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Search student, room, diagnosis, or item..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 min-h-touch text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
           />
         </div>
 
@@ -320,7 +320,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
             {activeModule === 'medical' && (
               <button
                 onClick={() => setIsMedicalModalOpen(true)}
-                className="bg-rose-500 hover:bg-rose-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
+                className="min-h-touch bg-rose-500 hover:bg-rose-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Issue Medical Slip</span>
@@ -329,7 +329,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
             {activeModule === 'gatepass' && (
               <button
                 onClick={() => setIsGatePassModalOpen(true)}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
+                className="min-h-touch bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Issue Gate Pass</span>
@@ -338,7 +338,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
             {activeModule === 'clearance' && (
               <button
                 onClick={() => setIsClearanceModalOpen(true)}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
+                className="min-h-touch bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Log Service Clearance</span>
@@ -347,7 +347,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
             {activeModule === 'vault' && (
               <button
                 onClick={() => setIsVaultModalOpen(true)}
-                className="bg-orange-600 hover:bg-orange-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
+                className="min-h-touch bg-orange-600 hover:bg-orange-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Log Confiscated Item</span>
@@ -356,7 +356,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
             {activeModule === 'health' && (
               <button
                 onClick={() => setIsHealthModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
+                className="min-h-touch bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-md transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>Update Health Profile</span>
@@ -395,7 +395,52 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-            <div className="overflow-x-auto">
+            <div className="lg:hidden divide-y divide-slate-800/70">
+              {filteredMedical.length === 0 ? (
+                <p className="p-6 text-center text-xs text-slate-500">
+                  No medical excuse slips recorded yet. Click "Issue Medical Slip" to add one.
+                </p>
+              ) : (
+                filteredMedical.map(slip => (
+                  <div key={slip.id} className="p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-white text-sm">{slip.studentName}</p>
+                        <p className="text-[11px] text-amber-400 font-medium">Room {slip.roomNumber}</p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                        slip.status === 'active_bedrest'
+                          ? 'bg-rose-950/60 border-rose-600/40 text-rose-300'
+                          : 'bg-emerald-950/60 border-emerald-600/40 text-emerald-300'
+                      }`}>
+                        {slip.status === 'active_bedrest' ? 'Active Bedrest' : 'Recovered & Cleared'}
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-200 mt-1.5">{slip.diagnosis}</p>
+                    <p className="text-[11px] text-slate-400">By: {slip.clinicStaffOrDoctor}</p>
+                    {slip.notes && <p className="text-[10px] text-slate-500 mt-0.5 italic">{slip.notes}</p>}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {slip.excusedFrom.map(ex => (
+                        <span key={ex} className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                          {ex}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1">Issued: {slip.issuedAt}</p>
+                    {canEdit && slip.status === 'active_bedrest' && (
+                      <button
+                        onClick={() => updateMedicalSlipStatus(slip.id, 'recovered_cleared')}
+                        className="mt-2 w-full min-h-touch bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-xs font-medium transition-all"
+                      >
+                        Mark Recovered
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-800/60 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-semibold">
                   <tr>
@@ -450,7 +495,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                           {canEdit && slip.status === 'active_bedrest' && (
                             <button
                               onClick={() => updateMedicalSlipStatus(slip.id, 'recovered_cleared')}
-                              className="px-2.5 py-1 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-xs font-medium transition-all"
+                              className="min-h-touch px-2.5 py-1 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-xs font-medium transition-all"
                             >
                               Mark Recovered
                             </button>
@@ -497,7 +542,64 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-            <div className="overflow-x-auto">
+            <div className="lg:hidden divide-y divide-slate-800/70">
+              {filteredPasses.length === 0 ? (
+                <p className="p-6 text-center text-xs text-slate-500">
+                  No weekend gate passes recorded. Click "Issue Gate Pass" to record an approved pass.
+                </p>
+              ) : (
+                filteredPasses.map(pass => (
+                  <div key={pass.id} className="p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-white text-sm">{pass.studentName}</p>
+                        <p className="text-[11px] text-amber-400 font-medium">Room {pass.roomNumber}</p>
+                      </div>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                        pass.status === 'departed'
+                          ? 'bg-emerald-950/60 border-emerald-600/40 text-emerald-300'
+                          : pass.status === 'returned_on_time'
+                          ? 'bg-blue-950/60 border-blue-600/40 text-blue-300'
+                          : pass.status === 'overdue'
+                          ? 'bg-rose-950/60 border-rose-600/40 text-rose-300'
+                          : 'bg-slate-800 border-slate-700 text-slate-300'
+                      }`}>
+                        {pass.status === 'departed' ? 'Away on Leave' : pass.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-200 capitalize mt-1.5">{pass.passType.replace('_', ' ')}</p>
+                    <p className="text-[11px] text-slate-400">{pass.destination}</p>
+                    {pass.remarks && <p className="text-[10px] text-slate-500 mt-0.5 italic">{pass.remarks}</p>}
+                    <p className="text-[11px] text-slate-300 mt-1">Out: {pass.departureDate} · Due: {pass.expectedReturnDate}</p>
+                    <div className="flex items-center space-x-1.5 text-emerald-400 font-medium text-[11px] mt-0.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Verified · {pass.parentPhone}</span>
+                    </div>
+                    {canEdit && pass.status === 'departed' && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          onClick={() => updateGatePassStatus(pass.id, 'returned_on_time')}
+                          className="flex-1 min-h-touch bg-blue-950/60 hover:bg-blue-900 border border-blue-600/50 text-blue-300 rounded-lg text-xs font-medium transition-all"
+                        >
+                          Check In (Returned)
+                        </button>
+                        <button
+                          onClick={() => updateGatePassStatus(pass.id, 'overdue')}
+                          className="flex-1 min-h-touch bg-rose-950/60 hover:bg-rose-900 border border-rose-600/50 text-rose-300 rounded-lg text-xs font-medium transition-all"
+                        >
+                          Overdue
+                        </button>
+                      </div>
+                    )}
+                    {pass.status === 'returned_on_time' && (
+                      <p className="text-slate-500 text-[11px] mt-1">Completed</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-800/60 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-semibold">
                   <tr>
@@ -557,13 +659,13 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                             <div className="flex items-center justify-end space-x-1.5">
                               <button
                                 onClick={() => updateGatePassStatus(pass.id, 'returned_on_time')}
-                                className="px-2.5 py-1 bg-blue-950/60 hover:bg-blue-900 border border-blue-600/50 text-blue-300 rounded-lg text-xs font-medium transition-all"
+                                className="min-h-touch px-2.5 py-1 bg-blue-950/60 hover:bg-blue-900 border border-blue-600/50 text-blue-300 rounded-lg text-xs font-medium transition-all"
                               >
                                 Check In (Returned)
                               </button>
                               <button
                                 onClick={() => updateGatePassStatus(pass.id, 'overdue')}
-                                className="px-2 py-1 bg-rose-950/60 hover:bg-rose-900 border border-rose-600/50 text-rose-300 rounded-lg text-xs font-medium transition-all"
+                                className="min-h-touch px-2 py-1 bg-rose-950/60 hover:bg-rose-900 border border-rose-600/50 text-rose-300 rounded-lg text-xs font-medium transition-all"
                               >
                                 Overdue
                               </button>
@@ -611,7 +713,37 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-            <div className="overflow-x-auto">
+            <div className="lg:hidden divide-y divide-slate-800/70">
+              {filteredClearances.length === 0 ? (
+                <p className="p-6 text-center text-xs text-slate-500">
+                  No community service clearances logged. Click "Log Service Clearance" to record work.
+                </p>
+              ) : (
+                filteredClearances.map(clr => (
+                  <div key={clr.id} className="p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-white text-sm">{clr.studentName}</p>
+                        <p className="text-[11px] text-amber-400 font-medium">Room {clr.roomNumber}</p>
+                      </div>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/60 border border-emerald-600/40 text-emerald-300 shrink-0">
+                        -{clr.demeritsDeducted} Demerits
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-200 mt-1.5">{clr.serviceType}</p>
+                    {clr.remarks && <p className="text-[11px] text-slate-400 mt-0.5 italic">{clr.remarks}</p>}
+                    <p className="text-[11px] text-blue-300 font-bold mt-1">{clr.hoursRendered} hrs rendered</p>
+                    <p className="text-[11px] text-slate-300 mt-0.5">{clr.supervisorName} · <span className="text-slate-500">{clr.completionDate}</span></p>
+                    <div className="flex items-center space-x-1 text-emerald-400 font-medium text-xs mt-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Certified</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-800/60 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-semibold">
                   <tr>
@@ -698,7 +830,54 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-            <div className="overflow-x-auto">
+            <div className="lg:hidden divide-y divide-slate-800/70">
+              {filteredVault.length === 0 ? (
+                <p className="p-6 text-center text-xs text-slate-500">
+                  No confiscated items logged. Click "Log Confiscated Item" to record unauthorized appliances.
+                </p>
+              ) : (
+                filteredVault.map(item => (
+                  <div key={item.id} className="p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center space-x-1.5 min-w-0">
+                        <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                        <p className="font-bold text-white text-sm truncate">{item.itemName}</p>
+                      </div>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                        item.status === 'in_safe_custody'
+                          ? 'bg-orange-950/60 border-orange-600/40 text-orange-300'
+                          : item.status === 'claimed_by_parent'
+                          ? 'bg-emerald-950/60 border-emerald-600/40 text-emerald-300'
+                          : 'bg-blue-950/60 border-blue-600/40 text-blue-300'
+                      }`}>
+                        {item.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 capitalize">{item.category.replace('_', ' ')}</p>
+                    {item.remarks && <p className="text-[10px] text-slate-500 mt-0.5 italic">{item.remarks}</p>}
+                    <p className="text-xs font-bold text-slate-200 mt-1.5">
+                      {item.studentName} <span className="text-[11px] text-amber-400 font-medium">· Room {item.roomNumber}</span>
+                    </p>
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-slate-800 text-amber-300 border border-slate-700">
+                      {item.vaultLockerSlot}
+                    </span>
+                    <p className="text-[11px] text-slate-300 mt-1">
+                      {item.confiscatedBy} · <span className="text-[10px] text-slate-500">{item.confiscatedDate}</span>
+                    </p>
+                    {canEdit && item.status === 'in_safe_custody' && (
+                      <button
+                        onClick={() => updateConfiscatedItemStatus(item.id, 'claimed_by_parent')}
+                        className="mt-2 w-full min-h-touch bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-xs font-medium transition-all"
+                      >
+                        Release to Guardian
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-800/60 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-semibold">
                   <tr>
@@ -756,7 +935,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                           {canEdit && item.status === 'in_safe_custody' && (
                             <button
                               onClick={() => updateConfiscatedItemStatus(item.id, 'claimed_by_parent')}
-                              className="px-2.5 py-1 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-xs font-medium transition-all"
+                              className="min-h-touch px-2.5 py-1 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-xs font-medium transition-all"
                             >
                               Release to Guardian
                             </button>
@@ -805,7 +984,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredHealth.map(profile => (
-              <div key={profile.studentId} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all space-y-3">
+              <div key={profile.studentId} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 hover:border-slate-700 transition-all space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center space-x-2">
@@ -870,14 +1049,14 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
 
       {/* MODAL 1: CREATE MEDICAL SLIP */}
       {isMedicalModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center space-x-2">
                 <HeartPulse className="w-5 h-5 text-rose-400" />
                 <span>Issue Sick Bay / Medical Excuse Slip</span>
               </h2>
-              <button onClick={() => setIsMedicalModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsMedicalModalOpen(false)} className="min-h-touch min-w-touch flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -888,7 +1067,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <select
                   value={medStudentId}
                   onChange={e => setMedStudentId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 >
                   {occupants.length === 0 ? (
                     <option value="">No residents registered yet (Add in Residents tab)</option>
@@ -910,7 +1089,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Acute Viral Pharyngitis, Flu (38.5°C), Sprained Ankle"
                   value={medDiagnosis}
                   onChange={e => setMedDiagnosis(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -957,7 +1136,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Campus Clinic Nurse Joy / Dr. Perez"
                   value={medDoctor}
                   onChange={e => setMedDoctor(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -968,7 +1147,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Prescribed hydration and paracetamol. Food tray to be brought by roommate."
                   value={medNotes}
                   onChange={e => setMedNotes(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -976,13 +1155,13 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <button
                   type="button"
                   onClick={() => setIsMedicalModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                  className="min-h-touch px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold"
+                    className="min-h-touch px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold"
                 >
                   Issue & Save Slip
                 </button>
@@ -994,14 +1173,14 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
 
       {/* MODAL 2: CREATE GATE PASS */}
       {isGatePassModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center space-x-2">
                 <FileCheck className="w-5 h-5 text-emerald-400" />
                 <span>Issue Weekend Gate Pass / Leave Permit</span>
               </h2>
-              <button onClick={() => setIsGatePassModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsGatePassModalOpen(false)} className="min-h-touch min-w-touch flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1012,7 +1191,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <select
                   value={gateStudentId}
                   onChange={e => setGateStudentId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 >
                   {occupants.length === 0 ? (
                     <option value="">No residents registered yet (Add in Residents tab)</option>
@@ -1032,7 +1211,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   <select
                     value={gateType}
                     onChange={e => setGateType(e.target.value as GatePassRecord['passType'])}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   >
                     <option value="weekend_home">Weekend Home Visit</option>
                     <option value="church_event">Church Ministry / Outreach</option>
@@ -1049,7 +1228,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                     placeholder="e.g. Family Residence, North Town"
                     value={gateDestination}
                     onChange={e => setGateDestination(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
@@ -1061,7 +1240,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                     type="text"
                     value={gateDeparture}
                     onChange={e => setGateDeparture(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
                 <div>
@@ -1070,7 +1249,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                     type="text"
                     value={gateExpectedReturn}
                     onChange={e => setGateExpectedReturn(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
@@ -1094,7 +1273,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                     type="text"
                     value={gateParentPhone}
                     onChange={e => setGateParentPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
@@ -1106,7 +1285,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Return before 18:00 Sunday for cellphone turnover."
                   value={gateRemarks}
                   onChange={e => setGateRemarks(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -1114,13 +1293,13 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <button
                   type="button"
                   onClick={() => setIsGatePassModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                  className="min-h-touch px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                    className="min-h-touch px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                 >
                   Approve & Issue Gate Pass
                 </button>
@@ -1132,14 +1311,14 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
 
       {/* MODAL 3: LOG DEMERIT CLEARANCE */}
       {isClearanceModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center space-x-2">
                 <CheckCircle2 className="w-5 h-5 text-amber-400" />
                 <span>Log Restorative Service Demerit Clearance</span>
               </h2>
-              <button onClick={() => setIsClearanceModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsClearanceModalOpen(false)} className="min-h-touch min-w-touch flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1150,7 +1329,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <select
                   value={clrStudentId}
                   onChange={e => setClrStudentId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 >
                   {occupants.length === 0 ? (
                     <option value="">No residents registered yet (Add in Residents tab)</option>
@@ -1169,7 +1348,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <select
                   value={clrServiceType}
                   onChange={e => setClrServiceType(e.target.value as DemeritClearanceLog['serviceType'])}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 >
                   <option value="Dorm Maintenance & Sanitizing">Dorm Maintenance & Sanitizing</option>
                   <option value="Grounds Beautification">Grounds Beautification & Landscaping</option>
@@ -1187,7 +1366,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                     max={12}
                     value={clrHours}
                     onChange={e => setClrHours(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   />
                   <span className="text-[10px] text-amber-400 mt-1 block">Deducts {clrHours} demerit points</span>
                 </div>
@@ -1197,7 +1376,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                     type="text"
                     value={clrSupervisor}
                     onChange={e => setClrSupervisor(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
@@ -1209,7 +1388,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Diligently cleaned east wing hallway and polished doors."
                   value={clrRemarks}
                   onChange={e => setClrRemarks(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -1217,13 +1396,13 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <button
                   type="button"
                   onClick={() => setIsClearanceModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                  className="min-h-touch px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+                    className="min-h-touch px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
                 >
                   Confirm & Deduct Demerits
                 </button>
@@ -1235,14 +1414,14 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
 
       {/* MODAL 4: LOG CONFISCATED ITEM */}
       {isVaultModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center space-x-2">
                 <Flame className="w-5 h-5 text-orange-400" />
                 <span>Log Confiscated Banned Appliance</span>
               </h2>
-              <button onClick={() => setIsVaultModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsVaultModalOpen(false)} className="min-h-touch min-w-touch flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1253,7 +1432,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <select
                   value={confStudentId}
                   onChange={e => setConfStudentId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 >
                   {occupants.length === 0 ? (
                     <option value="">No residents registered yet (Add in Residents tab)</option>
@@ -1275,7 +1454,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Immersion Water Heater Coil, Single Burner Hotplate"
                   value={confItemName}
                   onChange={e => setConfItemName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -1285,7 +1464,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   <select
                     value={confCategory}
                     onChange={e => setConfCategory(e.target.value as ConfiscatedItemRecord['category'])}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   >
                     <option value="banned_cooking">Banned Cooking Appliance</option>
                     <option value="fire_hazard_wiring">Fire Hazard / Daisy-chained Wiring</option>
@@ -1300,7 +1479,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                     value={confVaultSlot}
                     onChange={e => setConfVaultSlot(e.target.value)}
                     placeholder="e.g. Vault-B2, Locker-09"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
@@ -1312,7 +1491,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Found under bottom locker drawer during 06:15 inspection."
                   value={confRemarks}
                   onChange={e => setConfRemarks(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -1320,13 +1499,13 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <button
                   type="button"
                   onClick={() => setIsVaultModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                  className="min-h-touch px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold"
+                    className="min-h-touch px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold"
                 >
                   Deposit in Vault
                 </button>
@@ -1338,14 +1517,14 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
 
       {/* MODAL 5: UPDATE HEALTH PROFILE */}
       {isHealthModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center space-x-2">
                 <ShieldCheck className="w-5 h-5 text-blue-400" />
                 <span>Update Emergency Health & Allergy Record</span>
               </h2>
-              <button onClick={() => setIsHealthModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsHealthModalOpen(false)} className="min-h-touch min-w-touch flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1367,7 +1546,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                       setHlthParentPhone(existing.parentEmergencyPhone);
                     }
                   }}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 >
                   {occupants.length === 0 ? (
                     <option value="">No residents registered yet (Add in Residents tab)</option>
@@ -1387,7 +1566,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   <select
                     value={hlthBloodType}
                     onChange={e => setHlthBloodType(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   >
                     <option value="O+">O+</option>
                     <option value="O-">O-</option>
@@ -1406,7 +1585,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                     required
                     value={hlthParentPhone}
                     onChange={e => setHlthParentPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
@@ -1418,7 +1597,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Penicillin, Peanuts, Seafood, Sulfa drugs"
                   value={hlthAllergies}
                   onChange={e => setHlthAllergies(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -1442,7 +1621,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   placeholder="e.g. Ventolin Inhaler, Antihistamines"
                   value={hlthMedications}
                   onChange={e => setHlthMedications(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -1452,7 +1631,7 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                   type="text"
                   value={hlthHospital}
                   onChange={e => setHlthHospital(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 min-h-touch text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -1460,13 +1639,13 @@ export const DeanAdvicePanel: React.FC<DeanAdvicePanelProps> = ({ onNavigate, ac
                 <button
                   type="button"
                   onClick={() => setIsHealthModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                  className="min-h-touch px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold"
+                    className="min-h-touch px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold"
                 >
                   Save Health Record
                 </button>
