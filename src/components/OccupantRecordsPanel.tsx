@@ -11,7 +11,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
-import { formatFullDate } from '../utils/date';
+import { formatFullDate, formatTime12h } from '../utils/date';
 
 const PASS_LABELS: Record<string, string> = {
   weekend_home: 'Weekend Home Leave',
@@ -113,7 +113,10 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
           <div key={l.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white">{l.location.replace(/_/g, ' ')}</p>
-              <p className="text-[11px] text-slate-400">{formatFullDate(l.date)} · Focus: {l.focusRating}</p>
+              <p className="text-[11px] text-slate-400">
+                {formatFullDate(l.date)}
+                {l.checkTime && ` · ${formatTime12h(l.checkTime)}`} · {l.quietness ?? 'quiet'}
+              </p>
             </div>
             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusChip(l.status)}`}>{l.status}</span>
           </div>

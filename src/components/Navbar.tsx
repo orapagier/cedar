@@ -213,7 +213,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                         {group.title}
                       </p>
                     )}
-                    <div className="grid grid-cols-2 gap-2 px-1">
+                    <div className="space-y-0.5">
                       {items.map(item => {
                         const Icon = item.icon;
                         const isActive = activeTab === item.id;
@@ -221,22 +221,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                           <button
                             key={item.id}
                             onClick={() => goTo(item.id)}
-                            className={`min-h-[72px] flex flex-col items-start justify-between gap-2 p-3 rounded-xl border text-left transition-all ${
+                            aria-current={isActive ? 'page' : undefined}
+                            className={`w-full min-h-touch flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
                               isActive
-                                ? 'bg-amber-500/15 border-amber-500/40 shadow-md'
-                                : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600 active:scale-[0.98]'
+                                ? 'bg-amber-500/15 text-amber-200'
+                                : 'text-slate-200 hover:bg-slate-800 active:bg-slate-800'
                             }`}
                           >
-                            <span className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
-                              isActive
-                                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                                : 'bg-slate-900/70 border-slate-700 text-slate-400'
-                            }`}>
-                              <Icon className="w-[18px] h-[18px]" />
-                            </span>
-                            <span className={`text-xs leading-tight font-semibold ${isActive ? 'text-amber-200' : 'text-slate-200'}`}>
-                              {item.label}
-                            </span>
+                            <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-amber-300' : 'text-slate-400'}`} />
+                            <span className="text-sm font-medium truncate">{item.label}</span>
                           </button>
                         );
                       })}

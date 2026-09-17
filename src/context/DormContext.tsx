@@ -742,7 +742,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     setStudyLogs(prev => [newRecord, ...prev]);
 
-    if (log.status === 'absent' || log.focusRating === 'noise_violation') {
+    if (log.status === 'absent' || log.quietness === 'noisy') {
       saveViolation({
         date: log.date,
         studentId: log.studentId,
@@ -750,7 +750,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roomNumber: log.roomNumber,
         category: 'study_hour_skipping',
         severity: 'minor',
-        description: `Study hours infraction: ${log.status === 'absent' ? 'Absent from study period' : 'Noise disturbance / distraction during quiet study'}.`,
+        description: `Study hours infraction: ${log.status === 'absent' ? 'Absent from study period' : 'Noise during quiet study'}.`,
         demeritPoints: VIOLATION_POINTS,
         reportedBy: currentUser.name,
         status: 'pending_settlement',

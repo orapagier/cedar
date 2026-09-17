@@ -18,7 +18,7 @@ import { useDorm } from '../context/DormContext';
 import { WorshipType, AttendanceRecord } from '../types/dorm';
 import { WORSHIP_SESSIONS } from '../data/dormSeed';
 import { Segmented } from './ui/Segmented';
-import { manilaToday, formatFullDate } from '../utils/date';
+import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
 
 type AttendanceStatus = AttendanceRecord['status'];
 
@@ -46,19 +46,12 @@ export const WorshipAttendanceView: React.FC = () => {
   const { users, rooms, attendance, saveAttendanceBatch, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
-  const fmt = (t: string) => {
-    if (!t) return '';
-    const [h, m] = t.split(':');
-    const hh = Number(h) % 12 === 0 ? 12 : Number(h) % 12;
-    return `${String(hh).padStart(2, '0')}:${m} ${Number(h) >= 12 ? 'PM' : 'AM'}`;
-  };
-
   const SESSIONS = WORSHIP_SESSIONS.map(session => {
     const time = settings[session.timeKey];
     return {
       id: session.id,
-      label: `${session.label}${time ? ` (${fmt(time)})` : ''}`,
-      short: `${session.short}${time ? ` · ${time}` : ''}`,
+      label: `${session.label}${time ? ` (${formatTime12h(time)})` : ''}`,
+      short: `${session.short}${time ? ` · ${formatTime12h(time)}` : ''}`,
       icon: SESSION_ICONS[session.id],
     };
   });

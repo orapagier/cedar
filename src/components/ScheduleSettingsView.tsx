@@ -11,7 +11,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
-import { formatFullDate } from '../utils/date';
+import { formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 
 const TIME_FIELD =
@@ -149,31 +149,31 @@ export const ScheduleSettingsView: React.FC = () => {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Morning Worship</p>
-              <p className="text-white font-semibold mt-0.5">{settings.worshipMorning || '—'}</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.worshipMorning)}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Evening Worship</p>
-              <p className="text-white font-semibold mt-0.5">{settings.worshipEvening || '—'}</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.worshipEvening)}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Sabbath AM / PM</p>
-              <p className="text-white font-semibold mt-0.5">{settings.sabbathMorning || '—'} / {settings.sabbathAfternoon || '—'}</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.sabbathMorning)} / {formatTime12h(settings.sabbathAfternoon)}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Study Hours</p>
-              <p className="text-white font-semibold mt-0.5">{settings.studyStart || '—'} – {settings.studyEnd || '—'}</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.studyStart)} – {formatTime12h(settings.studyEnd)}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Curfew</p>
-              <p className="text-white font-semibold mt-0.5">{settings.curfewTime || '—'}</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.curfewTime)}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Lights Out</p>
-              <p className="text-white font-semibold mt-0.5">{settings.lightsOutTime || '—'}</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.lightsOutTime)}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Departure Window</p>
-              <p className="text-white font-semibold mt-0.5">{settings.departureStart || '—'} – {settings.departureEnd || '—'}</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.departureStart)} – {formatTime12h(settings.departureEnd)}</p>
             </div>
           </div>
         </div>

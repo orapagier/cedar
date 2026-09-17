@@ -74,3 +74,16 @@ export const formatFullDate = (value: string | Date = new Date()) => {
   if (Number.isNaN(date.getTime())) return typeof value === 'string' ? value : '';
   return `${longDateFormatter.format(date)} ${weekdayFormatter.format(date)}`;
 };
+
+/**
+ * A stored "HH:mm" as a 12-hour clock label: "21:45" → "9:45 PM".
+ * Schedule times live in 24h so they sort and compare as strings; this is the
+ * one way they are shown to users.
+ */
+export const formatTime12h = (value?: string, fallback = '—') => {
+  if (!value) return fallback;
+  const [h, m] = value.split(':');
+  const hour = Number(h);
+  if (m === undefined || Number.isNaN(hour)) return value;
+  return `${hour % 12 === 0 ? 12 : hour % 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+};

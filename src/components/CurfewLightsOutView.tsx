@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Segmented } from './ui/Segmented';
-import { manilaToday, formatFullDate } from '../utils/date';
+import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
 
 type CurfewStatus = 'in_dorm' | 'late' | 'missing' | 'official_pass';
 
@@ -162,7 +162,8 @@ export const CurfewLightsOutView: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              The {settings.curfewTime || '9:00 PM'} curfew check-in and {settings.lightsOutTime || '10:00 PM'} lights-out silence and gadget restriction.
+              The {formatTime12h(settings.curfewTime || '21:00')} curfew check-in and{' '}
+              {formatTime12h(settings.lightsOutTime || '22:00')} lights-out silence and gadget restriction.
             </p>
           </div>
 
@@ -179,8 +180,18 @@ export const CurfewLightsOutView: React.FC = () => {
           value={activeSection}
           onChange={setActiveSection}
           options={[
-            { value: 'curfew', label: 'Curfew · 9 PM', icon: Clock, activeClass: 'bg-purple-600 text-white shadow-sm' },
-            { value: 'lights_out', label: 'Lights-Out · 10 PM', icon: Moon, activeClass: 'bg-purple-600 text-white shadow-sm' },
+            {
+              value: 'curfew',
+              label: `Curfew · ${formatTime12h(settings.curfewTime || '21:00')}`,
+              icon: Clock,
+              activeClass: 'bg-purple-600 text-white shadow-sm',
+            },
+            {
+              value: 'lights_out',
+              label: `Lights-Out · ${formatTime12h(settings.lightsOutTime || '22:00')}`,
+              icon: Moon,
+              activeClass: 'bg-purple-600 text-white shadow-sm',
+            },
           ]}
         />
       </div>
@@ -335,12 +346,12 @@ export const CurfewLightsOutView: React.FC = () => {
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${meta.chip}`}>{meta.label}</span>
                         </div>
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                          Room {cr.roomNumber} · {formatFullDate(cr.date)} · limit {cr.curfewTime} · by {cr.loggedBy}
+                          Room {cr.roomNumber} · {formatFullDate(cr.date)} · limit {formatTime12h(cr.curfewTime)} · by {cr.loggedBy}
                         </p>
                         {cr.remarks && <p className="text-[11px] text-slate-400 mt-0.5">{cr.remarks}</p>}
                       </div>
                       <span className={`shrink-0 font-mono text-xs ${late ? 'text-rose-400 font-bold' : 'text-emerald-400'}`}>
-                        {cr.actualCheckInTime || '—'}
+                        {formatTime12h(cr.actualCheckInTime)}
                       </span>
                     </div>
                   );
@@ -358,7 +369,7 @@ export const CurfewLightsOutView: React.FC = () => {
             <form onSubmit={handleLightsOutSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-slate-800 flex items-center gap-2">
                 <Moon className="w-4 h-4 text-purple-400" />
-                <h3 className="font-bold text-white text-sm">{(settings.lightsOutTime || '22:10')} Lights-Out Inspection</h3>
+                <h3 className="font-bold text-white text-sm">{formatTime12h(settings.lightsOutTime || '22:10')} Lights-Out Inspection</h3>
               </div>
 
               <div className="p-4 space-y-4">
@@ -448,7 +459,7 @@ export const CurfewLightsOutView: React.FC = () => {
                           {log.status.toUpperCase()}
                         </span>
                       </div>
-                      <span className="text-[11px] text-slate-400 text-right">{formatFullDate(log.date)} · {log.checkTime}</span>
+                      <span className="text-[11px] text-slate-400 text-right">{formatFullDate(log.date)} · {formatTime12h(log.checkTime)}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       {[

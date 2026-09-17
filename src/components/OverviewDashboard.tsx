@@ -1,5 +1,5 @@
 import React from 'react';
-import { manilaHour, formatFullDate } from '../utils/date';
+import { manilaHour, formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 import {
   AlertTriangle,
@@ -25,7 +25,7 @@ const CHECKS: { id: string; label: string; sub: string; icon: React.ComponentTyp
   { id: 'inspections', label: 'Room Check', sub: 'Bed, locker, CR cleanliness', icon: DoorOpen },
   { id: 'worship', label: 'Worship Roll Call', sub: 'Bibles, lates, absences', icon: Church },
   { id: 'study', label: 'Study Time', sub: 'Evening study & library', icon: BookOpen },
-  { id: 'curfew', label: 'Curfew & Lights Out', sub: '9 PM in, 10 PM dark', icon: Moon },
+  { id: 'curfew', label: 'Curfew & Lights Out', sub: 'Night check-in & lights out', icon: Moon },
   { id: 'uniform', label: 'Departure & Uniform', sub: 'Morning gate check', icon: UserCheck },
   { id: 'chores', label: 'Weekly Chores', sub: 'Maintenance duty roster', icon: Brush },
   { id: 'cellphones', label: 'Phone Vault', sub: 'Sunday lockup, Friday return', icon: Smartphone },
@@ -48,6 +48,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     cellphones,
     gatePasses,
     violations,
+    settings,
   } = useDorm();
 
   const occupants = users.filter(u => u.role === 'occupant');
@@ -74,6 +75,13 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     chores: `${chores.filter(c => c.status !== 'pending').length}/${chores.length} approved`,
     cellphones: `${cellphones.filter(c => c.custodyStatus === 'in_vault').length} in vault`,
     gatepass: `${gatePasses.filter(p => p.status === 'approved' || p.status === 'departed').length} active`,
+  };
+
+  // Subtitles that quote a configurable hour are built from settings, so the
+  // dashboard never advertises a time the schedule no longer uses.
+  const checkSubs: Record<string, string> = {
+    curfew: `${formatTime12h(settings.curfewTime || '21:00')} in, ${formatTime12h(settings.lightsOutTime || '22:00')} dark`,
+    study: `Evening study ${formatTime12h(settings.studyStart || '19:30')} - ${formatTime12h(settings.studyEnd || '21:30')}`,
   };
 
   const myRecord = occupants.find(o => o.id === currentUser.id);
@@ -164,7 +172,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-semibold text-white">{check.label}</span>
-                  <span className="block text-[11px] text-slate-400">{check.sub}</span>
+                  <span className="block text-[11px] text-slate-400">{checkSubs[check.id] ?? check.sub}</span>
                 </span>
                 <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                   todayStats[check.id] && !todayStats[check.id].includes('0/')

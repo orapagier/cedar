@@ -1,35 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import {
-  BookOpen,
   Clock,
   Library,
+  Volume2,
   VolumeX,
-  AlertTriangle,
   CheckCircle2,
   XCircle,
-  Check,
-  ShieldCheck,
   Save,
   Lock,
   Users,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
-import { manilaToday, formatFullDate } from '../utils/date';
+import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
 
-type StudyStatus = 'present' | 'late' | 'absent' | 'excused';
-type FocusRating = 'focused' | 'distracted' | 'noise_violation';
+type StudyStatus = 'present' | 'absent';
+type Quietness = 'quiet' | 'noisy';
 
-const STATUS_META: Record<StudyStatus, { label: string; icon: React.ComponentType<{ className?: string }>; active: string }> = {
-  present: { label: 'Present', icon: CheckCircle2, active: 'bg-emerald-600 text-white' },
-  late: { label: 'Late', icon: Clock, active: 'bg-amber-600 text-white' },
-  absent: { label: 'Absent', icon: XCircle, active: 'bg-rose-600 text-white' },
-  excused: { label: 'Excused', icon: ShieldCheck, active: 'bg-sky-600 text-white' },
+const STATUS_META: Record<StudyStatus, { label: string; icon: React.ComponentType<{ className?: string }>; active: string; chip: string }> = {
+  present: { label: 'Present', icon: CheckCircle2, active: 'bg-emerald-600 text-white', chip: 'bg-emerald-950 text-emerald-300' },
+  absent: { label: 'Absent', icon: XCircle, active: 'bg-rose-600 text-white', chip: 'bg-rose-950 text-rose-300' },
 };
 
-const FOCUS_META: Record<FocusRating, { label: string; icon: React.ComponentType<{ className?: string }>; active: string }> = {
-  focused: { label: 'Focused & Silent', icon: Check, active: 'bg-emerald-600 text-white' },
-  distracted: { label: 'Distracted', icon: AlertTriangle, active: 'bg-amber-600 text-white' },
-  noise_violation: { label: 'Noise Disturbance', icon: VolumeX, active: 'bg-rose-600 text-white' },
+const QUIET_META: Record<Quietness, { label: string; icon: React.ComponentType<{ className?: string }>; active: string; chip: string }> = {
+  quiet: { label: 'Quiet', icon: VolumeX, active: 'bg-emerald-600 text-white', chip: 'bg-emerald-950 text-emerald-300' },
+  noisy: { label: 'Noisy', icon: Volume2, active: 'bg-rose-600 text-white', chip: 'bg-rose-950 text-rose-300' },
 };
 
 const FIELD =
@@ -39,23 +33,18 @@ export const StudyHoursLibraryView: React.FC = () => {
   const { studyLogs, users, rooms, saveStudyLog, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
-  const to12h = (t: string) => {
-    if (!t) return '';
-    const [h, m] = t.split(':');
-    const hh = Number(h) % 12 === 0 ? 12 : Number(h) % 12;
-    return `${String(hh).padStart(2, '0')}:${m} ${Number(h) >= 12 ? 'PM' : 'AM'}`;
-  };
   const studyWindow =
     settings.studyStart && settings.studyEnd
-      ? `${to12h(settings.studyStart)} - ${to12h(settings.studyEnd)}`
+      ? `${formatTime12h(settings.studyStart)} - ${formatTime12h(settings.studyEnd)}`
       : 'not yet set';
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
   const [selectedRoom, setSelectedRoom] = useState(roomNumbers[0] || '');
+  const [checkTime, setCheckTime] = useState(settings.studyStart || '19:30');
   const [location, setLocation] = useState<'study_hall' | 'library' | 'approved_room'>('library');
   const [remarks, setRemarks] = useState('');
   const [statuses, setStatuses] = useState<Record<string, StudyStatus>>({});
-  const [focuses, setFocuses] = useState<Record<string, FocusRating>>({});
+  const [quietness, setQuietness] = useState<Record<string, Quietness>>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
   const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
@@ -70,7 +59,7 @@ export const StudyHoursLibraryView: React.FC = () => {
   };
 
   const setStatus = (id: string, status: StudyStatus) => setStatuses(prev => ({ ...prev, [id]: status }));
-  const setFocus = (id: string, focus: FocusRating) => setFocuses(prev => ({ ...prev, [id]: focus }));
+  const setQuiet = (id: string, quiet: Quietness) => setQuietness(prev => ({ ...prev, [id]: quiet }));
 
   const submitRoom = () => {
     if (!canEdit || !roomOccupants.length) return;
@@ -81,8 +70,9 @@ export const StudyHoursLibraryView: React.FC = () => {
         studentName: student.name,
         roomNumber: student.roomNumber || '—',
         location,
-        status: statuses[student.id] ?? 'absent',
-        focusRating: focuses[student.id] ?? 'focused',
+        checkTime,
+        status: statuses[student.id] ?? 'present',
+        quietness: quietness[student.id] ?? 'quiet',
         remarks: remarks || undefined,
         recordedBy: currentUser.name,
       });
@@ -144,9 +134,22 @@ export const StudyHoursLibraryView: React.FC = () => {
           </select>
         </div>
 
-        <div className="p-3 sm:p-4 border-b border-slate-800/70 flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2 items-center gap-1.5 flex">
+        <div className="p-3 sm:p-4 border-b border-slate-800/70 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+              <Clock className="w-3.5 h-3.5" />
+              Check time
+            </label>
+            <input
+              type="time"
+              value={checkTime}
+              onChange={e => setCheckTime(e.target.value)}
+              disabled={!canEdit}
+              className={`${FIELD} disabled:opacity-40`}
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
               <Library className="w-3.5 h-3.5" />
               Study location
             </label>
@@ -156,11 +159,11 @@ export const StudyHoursLibraryView: React.FC = () => {
               <option value="approved_room">Approved Quiet Room</option>
             </select>
           </div>
-          <div className="flex-1">
+          <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Session notes</label>
             <input
               type="text"
-              placeholder="e.g. Thesis draft work, or noise warning issued"
+              placeholder="e.g. Thesis draft work"
               value={remarks}
               onChange={e => setRemarks(e.target.value)}
               disabled={!canEdit}
@@ -173,6 +176,7 @@ export const StudyHoursLibraryView: React.FC = () => {
           <p className="text-xs text-slate-400">
             <span className="font-semibold text-white">Room {selectedRoom || '—'}</span> · {roomOccupants.length} residents
           </p>
+          <p className="text-xs text-slate-400">{formatTime12h(checkTime)}</p>
         </div>
 
         <div className="divide-y divide-slate-800/70">
@@ -180,69 +184,66 @@ export const StudyHoursLibraryView: React.FC = () => {
             <p className="p-6 text-center text-xs text-slate-500">No residents assigned to this room.</p>
           )}
           {roomOccupants.map(student => {
-            const status = statuses[student.id] ?? 'absent';
-            const focus = focuses[student.id] ?? 'focused';
+            const status = statuses[student.id] ?? 'present';
+            const quiet = quietness[student.id] ?? 'quiet';
             return (
-              <div key={student.id} className="p-3 sm:p-4 flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
+              <div key={student.id} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white text-sm truncate">{student.name}</p>
                   <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
                 </div>
 
                 {canEdit ? (
-                  <div className="flex flex-col gap-2 md:items-end">
-                    <div className="flex gap-1.5 flex-wrap">
-                      {(Object.keys(STATUS_META) as StudyStatus[]).map(s => {
-                        const meta = STATUS_META[s];
-                        const Icon = meta.icon;
-                        const selected = status === s;
-                        return (
-                          <button
-                            key={s}
-                            type="button"
-                            title={meta.label}
-                            aria-label={`${student.name}: ${meta.label}`}
-                            aria-pressed={selected}
-                            onClick={() => setStatus(student.id, s)}
-                            className={`min-w-touch min-h-touch rounded-xl flex items-center justify-center transition-all active:scale-95 ${
-                              selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                            }`}
-                          >
-                            <Icon className="w-4 h-4" />
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {(Object.keys(FOCUS_META) as FocusRating[]).map(f => {
-                        const meta = FOCUS_META[f];
-                        const Icon = meta.icon;
-                        const selected = focus === f;
-                        return (
-                          <button
-                            key={f}
-                            type="button"
-                            title={meta.label}
-                            aria-label={`${student.name}: ${meta.label}`}
-                            aria-pressed={selected}
-                            onClick={() => setFocus(student.id, f)}
-                            className={`min-w-touch min-h-touch rounded-xl flex items-center justify-center px-2 gap-1 transition-all active:scale-95 ${
-                              selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                            }`}
-                          >
-                            <Icon className="w-4 h-4" />
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                    {(Object.keys(STATUS_META) as StudyStatus[]).map(s => {
+                      const meta = STATUS_META[s];
+                      const Icon = meta.icon;
+                      const selected = status === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          aria-label={`${student.name}: ${meta.label}`}
+                          aria-pressed={selected}
+                          onClick={() => setStatus(student.id, s)}
+                          className={`min-h-touch px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                            selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span>{meta.label}</span>
+                        </button>
+                      );
+                    })}
+                    <span className="w-px bg-slate-800 mx-0.5 self-stretch" aria-hidden="true" />
+                    {(Object.keys(QUIET_META) as Quietness[]).map(q => {
+                      const meta = QUIET_META[q];
+                      const Icon = meta.icon;
+                      const selected = quiet === q;
+                      return (
+                        <button
+                          key={q}
+                          type="button"
+                          aria-label={`${student.name}: ${meta.label}`}
+                          aria-pressed={selected}
+                          onClick={() => setQuiet(student.id, q)}
+                          className={`min-h-touch px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                            selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span>{meta.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${STATUS_META[status].label === 'Present' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'}`}>
+                    <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${STATUS_META[status].chip}`}>
                       {STATUS_META[status].label}
                     </span>
-                    <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${FOCUS_META[focus].label === 'Focused & Silent' ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'}`}>
-                      {FOCUS_META[focus].label}
+                    <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${QUIET_META[quiet].chip}`}>
+                      {QUIET_META[quiet].label}
                     </span>
                   </div>
                 )}
@@ -283,24 +284,21 @@ export const StudyHoursLibraryView: React.FC = () => {
                 <div className="flex items-center gap-2 min-w-0">
                   <p className="font-semibold text-white text-sm truncate">{log.studentName}</p>
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                    log.status === 'present' ? 'bg-emerald-950 text-emerald-300' :
-                    log.status === 'late' ? 'bg-amber-950 text-amber-300' :
-                    log.status === 'absent' ? 'bg-rose-950 text-rose-300' :
-                    'bg-sky-950 text-sky-300'
+                    log.status === 'present' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
                   }`}>
                     {log.status.toUpperCase()}
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                    log.quietness === 'noisy' ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'
+                  }`}>
+                    {(log.quietness ?? 'quiet').toUpperCase()}
                   </span>
                 </div>
                 <span className="text-[11px] text-slate-400 shrink-0 text-right">{formatFullDate(log.date)}</span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Room {log.roomNumber} · <span className="capitalize text-indigo-300 font-medium">{log.location.replace('_', ' ')}</span>
-              </p>
-              <p className={`text-[11px] mt-0.5 font-medium ${
-                log.focusRating === 'focused' ? 'text-emerald-400' :
-                log.focusRating === 'distracted' ? 'text-amber-400' : 'text-rose-400 font-bold'
-              }`}>
-                {log.focusRating.replace('_', ' ')}
+                {log.checkTime && `${formatTime12h(log.checkTime)} · `}Room {log.roomNumber} ·{' '}
+                <span className="capitalize text-indigo-300 font-medium">{log.location.replace('_', ' ')}</span>
               </p>
               {log.remarks && <p className="text-[11px] text-slate-400 mt-0.5">{log.remarks}</p>}
               <p className="text-[11px] text-slate-500 mt-0.5">Proctor: {log.recordedBy}</p>

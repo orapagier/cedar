@@ -130,8 +130,9 @@ export interface StudyHoursLog {
   studentName: string;
   roomNumber: string;
   location: 'study_hall' | 'library' | 'approved_room';
-  status: 'present' | 'late' | 'absent' | 'excused';
-  focusRating: 'focused' | 'distracted' | 'noise_violation';
+  checkTime: string;         // when the roll call was taken, e.g. "19:45"
+  status: 'present' | 'absent';
+  quietness: 'quiet' | 'noisy';
   remarks?: string;
   recordedBy: string;
 }
