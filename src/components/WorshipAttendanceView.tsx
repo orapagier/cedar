@@ -16,6 +16,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { WorshipType, AttendanceRecord } from '../types/dorm';
 import { Segmented } from './ui/Segmented';
+import { manilaToday } from '../utils/date';
 
 type AttendanceStatus = AttendanceRecord['status'];
 
@@ -64,7 +65,7 @@ export const WorshipAttendanceView: React.FC = () => {
   ];
 
   const [sessionType, setSessionType] = useState<WorshipType>('morning_worship');
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => manilaToday());
 
   const [roster, setRoster] = useState<Record<string, { status: AttendanceStatus; broughtBible: boolean; notes: string }>>({});
   const [selectedRoom, setSelectedRoom] = useState('');

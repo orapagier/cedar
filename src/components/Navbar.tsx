@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Shield,
   LogOut,
@@ -167,102 +168,106 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
         </div>
       </div>
 
-      {/* Slide-in drawer */}
-      <div className={`fixed inset-0 z-50 ${drawerOpen ? '' : 'pointer-events-none'}`} aria-hidden={!drawerOpen}>
-        <div
-          onClick={() => setDrawerOpen(false)}
-          className={`absolute inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 ${
-            drawerOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
-        <aside
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation menu"
-          className={`absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
-            drawerOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
-          <div className="flex items-center justify-between px-4 h-14 border-b border-slate-800 pt-safe">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Shield className="w-5 h-5" />
-              </div>
-              <span className="font-bold text-base tracking-tight text-white">Cedar Hall</span>
-            </div>
-            <button
-              onClick={() => setDrawerOpen(false)}
-              aria-label="Close navigation menu"
-              className="min-w-touch min-h-touch flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-800 active:scale-95 transition"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4 space-y-6">
-            {MENU_GROUPS.map(group => {
-              const items = visibleItems.filter(i => i.group === group.id);
-              if (!items.length) return null;
-              return (
-                <div key={group.id}>
-                  {group.title && (
-                    <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      {group.title}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-2 gap-2 px-1">
-                    {items.map(item => {
-                      const Icon = item.icon;
-                      const isActive = activeTab === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => goTo(item.id)}
-                          className={`min-h-[72px] flex flex-col items-start justify-between gap-2 p-3 rounded-xl border text-left transition-all ${
-                            isActive
-                              ? 'bg-amber-500/15 border-amber-500/40 shadow-md'
-                              : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600 active:scale-[0.98]'
-                          }`}
-                        >
-                          <span className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
-                            isActive
-                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                              : 'bg-slate-900/70 border-slate-700 text-slate-400'
-                          }`}>
-                            <Icon className="w-[18px] h-[18px]" />
-                          </span>
-                          <span className={`text-xs leading-tight font-semibold ${isActive ? 'text-amber-200' : 'text-slate-200'}`}>
-                            {item.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+      {/* Slide-in drawer — portalled to <body> because the header's backdrop-blur
+          creates a containing block that would otherwise trap `fixed` children. */}
+      {createPortal(
+        <div className={`fixed inset-0 z-50 ${drawerOpen ? '' : 'pointer-events-none'}`} aria-hidden={!drawerOpen}>
+          <div
+            onClick={() => setDrawerOpen(false)}
+            className={`absolute inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 ${
+              drawerOpen ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+            className={`absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+              drawerOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
+            <div className="flex items-center justify-between px-4 h-14 border-b border-slate-800 pt-safe">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Shield className="w-5 h-5" />
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="border-t border-slate-800 p-3 space-y-1 pb-safe">
-            <div className="flex items-center justify-between px-2 py-2">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-500 truncate">{currentUser.name}</p>
-                <p className="text-[10px] text-amber-300/80 font-medium">{roleLabel(currentUser.role)}</p>
+                <span className="font-bold text-base tracking-tight text-white">Cedar Hall</span>
               </div>
               <button
-                onClick={() => {
-                  setDrawerOpen(false);
-                  logout();
-                }}
-                className="shrink-0 min-h-touch flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-300 bg-slate-800/60 hover:bg-rose-950/50 border border-slate-700"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close navigation menu"
+                className="min-w-touch min-h-touch flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-800 active:scale-95 transition"
               >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
+                <X className="w-6 h-6" />
               </button>
             </div>
-          </div>
-        </aside>
-      </div>
+
+            <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4 space-y-6">
+              {MENU_GROUPS.map(group => {
+                const items = visibleItems.filter(i => i.group === group.id);
+                if (!items.length) return null;
+                return (
+                  <div key={group.id}>
+                    {group.title && (
+                      <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        {group.title}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 px-1">
+                      {items.map(item => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => goTo(item.id)}
+                            className={`min-h-[72px] flex flex-col items-start justify-between gap-2 p-3 rounded-xl border text-left transition-all ${
+                              isActive
+                                ? 'bg-amber-500/15 border-amber-500/40 shadow-md'
+                                : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600 active:scale-[0.98]'
+                            }`}
+                          >
+                            <span className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
+                              isActive
+                                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                                : 'bg-slate-900/70 border-slate-700 text-slate-400'
+                            }`}>
+                              <Icon className="w-[18px] h-[18px]" />
+                            </span>
+                            <span className={`text-xs leading-tight font-semibold ${isActive ? 'text-amber-200' : 'text-slate-200'}`}>
+                              {item.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="border-t border-slate-800 p-3 space-y-1 pb-safe">
+              <div className="flex items-center justify-between px-2 py-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-slate-500 truncate">{currentUser.name}</p>
+                  <p className="text-[10px] text-amber-300/80 font-medium">{roleLabel(currentUser.role)}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    logout();
+                  }}
+                  className="shrink-0 min-h-touch flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-300 bg-slate-800/60 hover:bg-rose-950/50 border border-slate-700"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>,
+        document.body
+      )}
     </header>
   );
 };

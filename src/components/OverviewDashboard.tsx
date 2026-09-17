@@ -1,4 +1,6 @@
 import React from 'react';
+import { manilaHour } from '../utils/date';
+import { useManilaToday } from '../hooks/useManilaToday';
 import {
   AlertTriangle,
   DoorOpen,
@@ -49,13 +51,13 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
   } = useDorm();
 
   const occupants = users.filter(u => u.role === 'occupant');
-  const today = new Date().toISOString().split('T')[0];
+  const today = useManilaToday();
   const todayViolations = violations.filter(v => v.date === today);
   const activeViolations = violations.filter(
     v => v.status === 'pending_settlement' || v.status === 'confirmed'
   );
 
-  const hour = new Date().getHours();
+  const hour = manilaHour();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   const avgCleanliness =

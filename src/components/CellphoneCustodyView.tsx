@@ -6,6 +6,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { manilaToday, manilaTime } from '../utils/date';
 
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/40';
@@ -26,8 +27,7 @@ export const CellphoneCustodyView: React.FC = () => {
 
   const handleTurnInSunday = (id: string) => {
     if (!canEdit) return;
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = manilaTime();
     updateCellphoneStatus(id, {
       turnedOverSunday: true,
       turnOverTime: `Sun ${timeStr}`,
@@ -38,8 +38,7 @@ export const CellphoneCustodyView: React.FC = () => {
 
   const handleReleaseFriday = (id: string) => {
     if (!canEdit) return;
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = manilaTime();
     updateCellphoneStatus(id, {
       returnedFriday: true,
       returnTime: `Fri ${timeStr}`,
@@ -58,7 +57,7 @@ export const CellphoneCustodyView: React.FC = () => {
     });
 
     saveViolation({
-      date: new Date().toISOString().split('T')[0],
+      date: manilaToday(),
       studentId: c.studentId,
       studentName: c.studentName,
       roomNumber: c.roomNumber,

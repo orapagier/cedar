@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { manilaToday } from '../utils/date';
 
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40';
@@ -64,7 +65,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
       const flags = flagsFor(student.id);
       const fullyCompliant = flags.uniform && flags.hair && flags.idBadge && flags.shoes && isTimeOnSchedule;
       saveUniformLog({
-        date: new Date().toISOString().split('T')[0],
+        date: manilaToday(),
         studentId: student.id,
         studentName: student.name,
         roomNumber: student.roomNumber || '—',

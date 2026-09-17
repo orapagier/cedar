@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { manilaToday } from '../utils/date';
 
 type StudyStatus = 'present' | 'late' | 'absent' | 'excused';
 type FocusRating = 'focused' | 'distracted' | 'noise_violation';
@@ -64,7 +65,7 @@ export const StudyHoursLibraryView: React.FC = () => {
     if (!canEdit || !roomOccupants.length) return;
     roomOccupants.forEach(student => {
       saveStudyLog({
-        date: new Date().toISOString().split('T')[0],
+        date: manilaToday(),
         studentId: student.id,
         studentName: student.name,
         roomNumber: student.roomNumber || '—',

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { ViolationCategory } from '../types/dorm';
+import { manilaToday } from '../utils/date';
 
 const standingFor = (points: number) =>
   points === 0
@@ -49,7 +50,7 @@ export const ResidentPerformanceView: React.FC = () => {
     const student = occupants.find(o => o.id === studentId);
     if (!canEdit || !student) return;
     saveViolation({
-      date: new Date().toISOString().split('T')[0],
+      date: manilaToday(),
       studentId: student.id,
       studentName: student.name,
       roomNumber: student.roomNumber || '—',

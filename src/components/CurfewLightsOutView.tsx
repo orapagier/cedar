@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Segmented } from './ui/Segmented';
+import { manilaToday } from '../utils/date';
 
 type CurfewStatus = 'in_dorm' | 'late' | 'missing' | 'official_pass';
 
@@ -101,7 +102,7 @@ export const CurfewLightsOutView: React.FC = () => {
   };
 
   const buildRecord = (student: (typeof occupants)[number], status: CurfewStatus) => ({
-    date: new Date().toISOString().split('T')[0],
+    date: manilaToday(),
     studentId: student.id,
     studentName: student.name,
     roomNumber: student.roomNumber || '—',
@@ -127,7 +128,7 @@ export const CurfewLightsOutView: React.FC = () => {
     const isCompliant = lightsOff && noiseQuiet && gadgetsCompliant;
 
     saveLightsOutLog({
-      date: new Date().toISOString().split('T')[0],
+      date: manilaToday(),
       roomNumber: lightsOutRoom,
       checkTime: settings.lightsOutTime || '22:10',
       allLightsOff: lightsOff,

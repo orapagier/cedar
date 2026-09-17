@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { manilaToday } from '../utils/date';
+import { useManilaToday } from '../hooks/useManilaToday';
 import {
   Luggage,
   CheckCircle2,
@@ -45,8 +47,8 @@ export const GatePassView: React.FC = () => {
   const [studentId, setStudentId] = useState(occupants[0]?.id || '');
   const [passType, setPassType] = useState<GatePassRecord['passType']>('weekend_home');
   const [destination, setDestination] = useState('');
-  const [departureDate, setDepartureDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [expectedReturnDate, setExpectedReturnDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [departureDate, setDepartureDate] = useState(() => manilaToday());
+  const [expectedReturnDate, setExpectedReturnDate] = useState(() => manilaToday());
   const [parentConsent, setParentConsent] = useState(true);
   const [parentPhone, setParentPhone] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -90,7 +92,7 @@ export const GatePassView: React.FC = () => {
     flash(`Gate pass issued to ${student.name} (${PASS_TYPES[passType]}).`);
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = useManilaToday();
   const activePasses = gatePasses.filter(p => p.status === 'approved' || p.status === 'departed');
   const overdueCount = activePasses.filter(p => p.status === 'departed' && p.expectedReturnDate < today).length;
 

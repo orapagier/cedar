@@ -38,6 +38,7 @@ import {
   INITIAL_STUDENT_MEDICALS,
   INITIAL_SETTINGS,
 } from '../data/dormSeed';
+import { manilaToday, manilaTime } from '../utils/date';
 
 interface DormContextType {
   currentUser: User;
@@ -574,8 +575,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addInspection = (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => {
     if (!canEdit) return;
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = manilaTime();
     const newRecord: RoomInspection = {
       ...insp,
       id: 'insp-' + Date.now(),
@@ -611,8 +611,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const saveAttendanceBatch = (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => {
     if (!canEdit) return;
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = manilaTime();
     const formatted = records.map((r, idx) => ({
       ...r,
       id: `att-${Date.now()}-${idx}`,
@@ -753,7 +752,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           if (status === 'failed') {
             saveViolation({
-              date: new Date().toISOString().split('T')[0],
+              date: manilaToday(),
               studentId: c.studentId,
               studentName: c.studentName,
               roomNumber: c.roomNumber,
@@ -814,8 +813,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const saveViolation = (viol: Omit<Violation, 'id' | 'createdAt'>) => {
     if (!canEdit) return;
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = manilaTime();
     const newRecord: Violation = {
       ...viol,
       id: 'viol-' + Date.now() + '-' + Math.floor(Math.random() * 1000),

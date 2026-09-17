@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { RoomInspection, OccupantInspectionCheck } from '../types/dorm';
+import { manilaToday } from '../utils/date';
 
 const INDIVIDUAL_ITEMS: { key: 'bedsOk' | 'lockersOk' | 'personalThingsOk'; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'bedsOk', label: 'Bed & Bedding', sub: 'Hospital corners, no dirty clothes', icon: BedDouble },
@@ -100,7 +101,7 @@ export const RoomInspectionsView: React.FC = () => {
     }));
 
     addInspection({
-      date: new Date().toISOString().split('T')[0],
+      date: manilaToday(),
       roomNumber: selectedRoom,
       inspectorName: currentUser.name,
       inspectorId: currentUser.id,
