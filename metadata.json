@@ -1,0 +1,8 @@
+{
+  "name": "Cedar Hall",
+  "description": "Boys dormitory management and policy automation system for Cedar Hall.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

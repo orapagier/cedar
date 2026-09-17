@@ -1,0 +1,1080 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  User,
+  UserRole,
+  Room,
+  RoomInspection,
+  AttendanceRecord,
+  CurfewRecord,
+  SchoolUniformLog,
+  StudyHoursLog,
+  ChoreAssignment,
+  LightsOutLog,
+  CellphoneCustody,
+  Violation,
+  MedicalExcuseSlip,
+  GatePassRecord,
+  DemeritClearanceLog,
+  ConfiscatedItemRecord,
+  StudentMedicalRecord,
+} from '../types/dorm';
+import {
+  INITIAL_USERS,
+  INITIAL_ROOMS,
+  INITIAL_INSPECTIONS,
+  INITIAL_ATTENDANCE,
+  INITIAL_CURFEW,
+  INITIAL_UNIFORM_LOGS,
+  INITIAL_STUDY_LOGS,
+  INITIAL_CHORES,
+  INITIAL_LIGHTS_OUT,
+  INITIAL_CELLPHONES,
+  INITIAL_VIOLATIONS,
+  INITIAL_MEDICAL_SLIPS,
+  INITIAL_GATE_PASSES,
+  INITIAL_DEMERIT_CLEARANCES,
+  INITIAL_CONFISCATED_ITEMS,
+  INITIAL_STUDENT_MEDICALS,
+} from '../data/dormSeed';
+
+interface DormContextType {
+  currentUser: User;
+  setCurrentUser: (u: User) => void;
+  isAuthenticated: boolean;
+  loginUser: (user: User) => void;
+  logout: () => void;
+  users: User[];
+  rooms: Room[];
+  inspections: RoomInspection[];
+  attendance: AttendanceRecord[];
+  curfewRecords: CurfewRecord[];
+  uniformLogs: SchoolUniformLog[];
+  studyLogs: StudyHoursLog[];
+  chores: ChoreAssignment[];
+  lightsOutLogs: LightsOutLog[];
+  cellphones: CellphoneCustody[];
+  violations: Violation[];
+  
+  // Operational Checklist Modules
+  medicalSlips: MedicalExcuseSlip[];
+  saveMedicalSlip: (slip: Omit<MedicalExcuseSlip, 'id' | 'issuedAt'>) => void;
+  updateMedicalSlipStatus: (id: string, status: MedicalExcuseSlip['status']) => void;
+
+  gatePasses: GatePassRecord[];
+  saveGatePass: (pass: Omit<GatePassRecord, 'id' | 'issuedAt'>) => void;
+  updateGatePassStatus: (id: string, status: GatePassRecord['status'], actualReturnDate?: string) => void;
+
+  demeritClearances: DemeritClearanceLog[];
+  saveDemeritClearance: (log: Omit<DemeritClearanceLog, 'id'>) => void;
+
+  confiscatedItems: ConfiscatedItemRecord[];
+  saveConfiscatedItem: (item: Omit<ConfiscatedItemRecord, 'id'>) => void;
+  updateConfiscatedItemStatus: (id: string, status: ConfiscatedItemRecord['status']) => void;
+
+  studentMedicals: StudentMedicalRecord[];
+  saveStudentMedical: (rec: StudentMedicalRecord) => void;
+
+  // Permissions helpers
+  canEdit: boolean;
+  isSuperAdmin: boolean;
+  isOccupant: boolean;
+
+  // Student & Room Management Actions
+  addOccupant: (data: {
+    name: string;
+    email?: string;
+    roomNumber: string;
+    phone?: string;
+    parentName?: string;
+    parentPhone?: string;
+    deviceModel?: string;
+    lockerVaultNumber?: string;
+  }) => User;
+  updateOccupant: (id: string, updates: Partial<User> & { deviceModel?: string; lockerVaultNumber?: string }) => void;
+  deleteOccupant: (id: string) => void;
+  bulkImportOccupants: (list: Array<{
+    name: string;
+    email?: string;
+    roomNumber: string;
+    phone?: string;
+    parentName?: string;
+    parentPhone?: string;
+    deviceModel?: string;
+    lockerVaultNumber?: string;
+  }>) => { count: number };
+  addRoom: (room: {
+    roomNumber: string;
+    wing: 'North Wing' | 'South Wing' | 'East Wing' | 'West Wing';
+    floor: number;
+    capacity: number;
+    captainName?: string;
+  }) => void;
+  updateRoom: (roomId: string, updates: Partial<Room>) => void;
+  deleteRoom: (roomId: string) => void;
+  addAdminUser: (data: { name: string; email: string; phone?: string }) => { success: boolean; message: string; user?: User };
+  removeAdminUser: (id: string) => { success: boolean; message: string };
+  clearDemoStudents: () => void;
+  restoreDemoData: () => void;
+
+  // Actions
+  loginWithRole: (role: UserRole, userSelectId?: string) => void;
+  loginGoogleOAuthMock: (email: string, name: string) => void;
+  updateUserRole: (userId: string, newRole: UserRole) => { success: boolean; message: string };
+  addInspection: (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => void;
+  saveAttendanceBatch: (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => void;
+  saveCurfewRecord: (rec: Omit<CurfewRecord, 'id'>) => void;
+  saveUniformLog: (log: Omit<SchoolUniformLog, 'id'>) => void;
+  saveStudyLog: (log: Omit<StudyHoursLog, 'id'>) => void;
+  saveChore: (chore: Omit<ChoreAssignment, 'id'>) => void;
+  updateChoreStatus: (choreId: string, status: ChoreAssignment['status'], remarks?: string) => void;
+  saveLightsOutLog: (log: Omit<LightsOutLog, 'id'>) => void;
+  updateCellphoneStatus: (id: string, updates: Partial<CellphoneCustody>) => void;
+  saveViolation: (viol: Omit<Violation, 'id' | 'createdAt'>) => void;
+  updateViolationStatus: (id: string, status: Violation['status'], actionRequired?: string) => void;
+  resetAllData: () => void;
+}
+
+const DormContext = createContext<DormContextType | null>(null);
+
+const STORAGE_KEY_PREFIX = 'dorm_dean_v1_';
+
+const TEST_USER_IDS = new Set([
+  'occ-1', 'occ-2', 'occ-3', 'occ-4', 'occ-5', 'occ-6',
+  'occ-7', 'occ-8', 'occ-9', 'occ-10', 'occ-11', 'occ-12', 'occ-13', 'occ-14',
+  'user-admin-1', 'user-admin-2'
+]);
+
+const TEST_NAMES = new Set([
+  'Joshua Santos', 'David Lim', 'Marcus Vance', 'Elijah Cruz', 'Nathaniel Reyes',
+  'Christian Bautista', 'Gabriel Torrez', 'Daniel Padilla Jr.', 'Lucas Ramos',
+  'Angelo Villanueva', 'Samuel Mercado', 'Benjamin Tan', 'Bro. Carlos Mendez', 'RA Mark Alvarez',
+  'Daniel Kim', 'Gabriel Bautista', 'Elijah Ramos', 'Samuel Dela Cruz', 'Timothy Mercado',
+  'Micah Reyes', 'Luke Garcia', 'Aaron Cruz', 'Matthew Navarro', 'David Lee', 'Dean Jelmar Orap'
+]);
+
+const TEST_LOG_IDS = new Set([
+  'insp-1', 'insp-2', 'insp-3', 'insp-4', 'insp-5', 'insp-6',
+  'att-1', 'att-2', 'att-3', 'att-4', 'att-5',
+  'cur-1', 'cur-2', 'cur-3', 'cur-4',
+  'uni-1', 'uni-2', 'uni-3',
+  'std-1', 'std-2', 'std-3',
+  'chr-1', 'chr-2', 'chr-3', 'chr-4', 'chr-5', 'chr-6',
+  'lo-1', 'lo-2', 'lo-3',
+  'ph-1', 'ph-2', 'ph-3', 'ph-4', 'ph-5', 'ph-6',
+  'vio-1', 'vio-2', 'vio-3', 'vio-4',
+  'med-1', 'pass-1', 'clr-1', 'conf-1'
+]);
+
+const DEAN_USER: User = {
+  id: 'user-dean',
+  name: 'Dean Jelmar Orapa',
+  email: 'orapajelmar@gmail.com',
+  role: 'superadmin',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  phone: '+63 917 555 0101',
+  demeritPoints: 0,
+  status: 'active',
+};
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Error loading key ' + key, err);
+    return fallback;
+  }
+}
+
+function saveToStorage<T>(key: string, value: T) {
+  try {
+    localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(value));
+  } catch (err) {
+    console.error('Error saving key ' + key, err);
+  }
+}
+
+export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [users, setUsers] = useState<User[]>(() => {
+    const loaded = loadFromStorage<User[]>('users', INITIAL_USERS);
+    // Filter out test names and test IDs, while safely keeping every user encoded by the user!
+    const realUsers = loaded.filter(
+      u => !TEST_USER_IDS.has(u.id) && u.id !== 'user-dean' && u.email !== 'orapajelmar@gmail.com'
+    );
+    return [DEAN_USER, ...realUsers];
+  });
+
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    const savedId = loadFromStorage('currentUser_id', 'user-dean');
+    if (TEST_USER_IDS.has(savedId) || savedId === 'user-dean') {
+      return DEAN_USER;
+    }
+    const loadedUsers = loadFromStorage<User[]>('users', INITIAL_USERS);
+    const found = loadedUsers.find(u => u.id === savedId && !TEST_USER_IDS.has(u.id));
+    return found || DEAN_USER;
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => loadFromStorage('isAuthenticated', true));
+
+  const [rooms, setRooms] = useState<Room[]>(() => {
+    const loaded = loadFromStorage<Room[]>('rooms', INITIAL_ROOMS);
+    return loaded.map(r => ({
+      ...r,
+      occupantIds: (r.occupantIds || []).filter(id => !TEST_USER_IDS.has(id)),
+    }));
+  });
+
+  const [inspections, setInspections] = useState<RoomInspection[]>(() => {
+    const loaded = loadFromStorage<RoomInspection[]>('inspections', INITIAL_INSPECTIONS);
+    return loaded.filter(i => !TEST_LOG_IDS.has(i.id) && !TEST_NAMES.has(i.inspectorName) && i.inspectorId !== 'user-admin-1');
+  });
+
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => {
+    const loaded = loadFromStorage<AttendanceRecord[]>('attendance', INITIAL_ATTENDANCE);
+    return loaded.filter(a => !TEST_LOG_IDS.has(a.id) && !TEST_USER_IDS.has(a.studentId) && !TEST_NAMES.has(a.studentName));
+  });
+
+  const [curfewRecords, setCurfewRecords] = useState<CurfewRecord[]>(() => {
+    const loaded = loadFromStorage<CurfewRecord[]>('curfew', INITIAL_CURFEW);
+    return loaded.filter(c => !TEST_LOG_IDS.has(c.id) && !TEST_USER_IDS.has(c.studentId) && !TEST_NAMES.has(c.studentName));
+  });
+
+  const [uniformLogs, setUniformLogs] = useState<SchoolUniformLog[]>(() => {
+    const loaded = loadFromStorage<SchoolUniformLog[]>('uniform', INITIAL_UNIFORM_LOGS);
+    return loaded.filter(u => !TEST_LOG_IDS.has(u.id) && !TEST_USER_IDS.has(u.studentId) && !TEST_NAMES.has(u.studentName));
+  });
+
+  const [studyLogs, setStudyLogs] = useState<StudyHoursLog[]>(() => {
+    const loaded = loadFromStorage<StudyHoursLog[]>('study', INITIAL_STUDY_LOGS);
+    return loaded.filter(s => !TEST_LOG_IDS.has(s.id) && !TEST_USER_IDS.has(s.studentId) && !TEST_NAMES.has(s.studentName));
+  });
+
+  const [chores, setChores] = useState<ChoreAssignment[]>(() => {
+    const loaded = loadFromStorage<ChoreAssignment[]>('chores', INITIAL_CHORES);
+    return loaded.filter(c => !TEST_LOG_IDS.has(c.id) && !TEST_USER_IDS.has(c.studentId) && !TEST_NAMES.has(c.studentName));
+  });
+
+  const [lightsOutLogs, setLightsOutLogs] = useState<LightsOutLog[]>(() => {
+    const loaded = loadFromStorage<LightsOutLog[]>('lights_out', INITIAL_LIGHTS_OUT);
+    return loaded.filter(l => !TEST_LOG_IDS.has(l.id));
+  });
+
+  const [cellphones, setCellphones] = useState<CellphoneCustody[]>(() => {
+    const loaded = loadFromStorage<CellphoneCustody[]>('cellphones', INITIAL_CELLPHONES);
+    return loaded.filter(c => !TEST_LOG_IDS.has(c.id) && !TEST_USER_IDS.has(c.studentId) && !TEST_NAMES.has(c.studentName));
+  });
+
+  const [violations, setViolations] = useState<Violation[]>(() => {
+    const loaded = loadFromStorage<Violation[]>('violations', INITIAL_VIOLATIONS);
+    return loaded.filter(v => !TEST_LOG_IDS.has(v.id) && !TEST_USER_IDS.has(v.studentId) && !TEST_NAMES.has(v.studentName));
+  });
+
+  // Operational Checklist Modules
+  const [medicalSlips, setMedicalSlips] = useState<MedicalExcuseSlip[]>(() => {
+    const loaded = loadFromStorage<MedicalExcuseSlip[]>('medical_slips', INITIAL_MEDICAL_SLIPS);
+    return loaded.filter(m => !TEST_LOG_IDS.has(m.id) && !TEST_USER_IDS.has(m.studentId) && !TEST_NAMES.has(m.studentName));
+  });
+
+  const [gatePasses, setGatePasses] = useState<GatePassRecord[]>(() => {
+    const loaded = loadFromStorage<GatePassRecord[]>('gate_passes', INITIAL_GATE_PASSES);
+    return loaded.filter(g => !TEST_LOG_IDS.has(g.id) && !TEST_USER_IDS.has(g.studentId) && !TEST_NAMES.has(g.studentName));
+  });
+
+  const [demeritClearances, setDemeritClearances] = useState<DemeritClearanceLog[]>(() => {
+    const loaded = loadFromStorage<DemeritClearanceLog[]>('demerit_clearances', INITIAL_DEMERIT_CLEARANCES);
+    return loaded.filter(d => !TEST_LOG_IDS.has(d.id) && !TEST_USER_IDS.has(d.studentId) && !TEST_NAMES.has(d.studentName));
+  });
+
+  const [confiscatedItems, setConfiscatedItems] = useState<ConfiscatedItemRecord[]>(() => {
+    const loaded = loadFromStorage<ConfiscatedItemRecord[]>('confiscated_items', INITIAL_CONFISCATED_ITEMS);
+    return loaded.filter(c => !TEST_LOG_IDS.has(c.id) && !TEST_USER_IDS.has(c.studentId) && !TEST_NAMES.has(c.studentName));
+  });
+
+  const [studentMedicals, setStudentMedicals] = useState<StudentMedicalRecord[]>(() => {
+    const loaded = loadFromStorage<StudentMedicalRecord[]>('student_medicals', INITIAL_STUDENT_MEDICALS);
+    return loaded.filter(s => !TEST_USER_IDS.has(s.studentId) && !TEST_NAMES.has(s.studentName));
+  });
+
+  // Sync to local storage
+  useEffect(() => saveToStorage('users', users), [users]);
+  useEffect(() => saveToStorage('rooms', rooms), [rooms]);
+  useEffect(() => saveToStorage('currentUser_id', currentUser.id), [currentUser]);
+  useEffect(() => saveToStorage('isAuthenticated', isAuthenticated), [isAuthenticated]);
+  useEffect(() => saveToStorage('inspections', inspections), [inspections]);
+  useEffect(() => saveToStorage('attendance', attendance), [attendance]);
+  useEffect(() => saveToStorage('curfew', curfewRecords), [curfewRecords]);
+  useEffect(() => saveToStorage('uniform', uniformLogs), [uniformLogs]);
+  useEffect(() => saveToStorage('study', studyLogs), [studyLogs]);
+  useEffect(() => saveToStorage('chores', chores), [chores]);
+  useEffect(() => saveToStorage('lights_out', lightsOutLogs), [lightsOutLogs]);
+  useEffect(() => saveToStorage('cellphones', cellphones), [cellphones]);
+  useEffect(() => saveToStorage('violations', violations), [violations]);
+  useEffect(() => saveToStorage('medical_slips', medicalSlips), [medicalSlips]);
+  useEffect(() => saveToStorage('gate_passes', gatePasses), [gatePasses]);
+  useEffect(() => saveToStorage('demerit_clearances', demeritClearances), [demeritClearances]);
+  useEffect(() => saveToStorage('confiscated_items', confiscatedItems), [confiscatedItems]);
+  useEffect(() => saveToStorage('student_medicals', studentMedicals), [studentMedicals]);
+
+  // Recalculate user demerit points dynamically based on confirmed/active violations
+  useEffect(() => {
+    setUsers(prevUsers =>
+      prevUsers.map(user => {
+        const userViolations = violations.filter(
+          v => v.studentId === user.id && v.status !== 'cleared_service'
+        );
+        const totalDemerits = userViolations.reduce((sum, v) => sum + v.demeritPoints, 0);
+        const status = totalDemerits >= 8 ? 'probation' : 'active';
+        return {
+          ...user,
+          demeritPoints: totalDemerits,
+          status: user.role === 'occupant' ? status : user.status,
+        };
+      })
+    );
+  }, [violations]);
+
+  const canEdit = currentUser.role === 'superadmin' || currentUser.role === 'admin';
+  const isSuperAdmin = currentUser.role === 'superadmin';
+  const isOccupant = currentUser.role === 'occupant';
+
+  const logout = () => {
+    setIsAuthenticated(false);
+  };
+
+  const loginUser = (user: User) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+  };
+
+  const loginWithRole = (role: UserRole, userSelectId?: string) => {
+    setIsAuthenticated(true);
+    if (userSelectId) {
+      const u = users.find(x => x.id === userSelectId);
+      if (u) {
+        setCurrentUser(u);
+        return;
+      }
+    }
+    const defaultForRole = users.find(u => u.role === role);
+    if (defaultForRole) {
+      setCurrentUser(defaultForRole);
+    }
+  };
+
+  const loginGoogleOAuthMock = (email: string, name: string) => {
+    setIsAuthenticated(true);
+    // Check if user exists
+    let existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (existing) {
+      setCurrentUser(existing);
+      return;
+    }
+    // If user signs in with dean email
+    const isDeanEmail = email.toLowerCase().includes('orapa') || email.toLowerCase().includes('dean');
+    const newUser: User = {
+      id: 'google-' + Date.now(),
+      name: name || 'Google User',
+      email: email,
+      role: isDeanEmail ? 'superadmin' : 'occupant',
+      demeritPoints: 0,
+      status: 'active',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    };
+    setUsers(prev => [newUser, ...prev]);
+    setCurrentUser(newUser);
+  };
+
+  const updateUserRole = (userId: string, newRole: UserRole) => {
+    if (!isSuperAdmin) {
+      return { success: false, message: 'Permission denied. Only the Super Admin (Dean) can assign roles.' };
+    }
+    if (userId === currentUser.id && newRole !== 'superadmin') {
+      return { success: false, message: 'You cannot remove your own Super Admin access.' };
+    }
+    setUsers(prev =>
+      prev.map(u => (u.id === userId ? { ...u, role: newRole } : u))
+    );
+    return { success: true, message: `Role updated to ${newRole.toUpperCase()} successfully.` };
+  };
+
+  const addInspection = (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => {
+    if (!canEdit) return;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newRecord: RoomInspection = {
+      ...insp,
+      id: 'insp-' + Date.now(),
+      timestamp: timeStr,
+    };
+    setInspections(prev => [newRecord, ...prev]);
+
+    // If fail, create automatic violation
+    if (newRecord.status === 'fail') {
+      const room = rooms.find(r => r.roomNumber === insp.roomNumber);
+      if (room && room.occupantIds.length > 0) {
+        room.occupantIds.forEach(occId => {
+          const occ = users.find(u => u.id === occId);
+          if (occ && occ.role === 'occupant') {
+            saveViolation({
+              date: insp.date,
+              studentId: occ.id,
+              studentName: occ.name,
+              roomNumber: insp.roomNumber,
+              category: 'cleanliness',
+              severity: 'moderate',
+              description: `Room ${insp.roomNumber} failed daily inspection score (${insp.score}/100): ${insp.remarks || 'Sanitation issues'}`,
+              demeritPoints: 2,
+              reportedBy: currentUser.name,
+              status: 'pending_settlement',
+              actionRequired: 'Re-inspection by 5:00 PM required.',
+            });
+          }
+        });
+      }
+    }
+  };
+
+  const saveAttendanceBatch = (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => {
+    if (!canEdit) return;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formatted = records.map((r, idx) => ({
+      ...r,
+      id: `att-${Date.now()}-${idx}`,
+      timestamp: timeStr,
+    }));
+    setAttendance(prev => [...formatted, ...prev]);
+
+    // Automatically flag unexcused absences or missing Bible
+    records.forEach(r => {
+      if (r.status === 'absent') {
+        saveViolation({
+          date: r.date,
+          studentId: r.studentId,
+          studentName: r.studentName,
+          roomNumber: r.roomNumber,
+          category: r.type.includes('church') ? 'church_absence' : 'worship_absence',
+          severity: 'moderate',
+          description: `Unexcused absence from ${r.type.replace('_', ' ')}.`,
+          demeritPoints: 3,
+          reportedBy: currentUser.name,
+          status: 'pending_settlement',
+          actionRequired: 'Submit dean excuse slip or make-up devotional session.',
+        });
+      } else if (!r.broughtBible && (r.status === 'present' || r.status === 'late')) {
+        saveViolation({
+          date: r.date,
+          studentId: r.studentId,
+          studentName: r.studentName,
+          roomNumber: r.roomNumber,
+          category: 'no_bible',
+          severity: 'minor',
+          description: `Failed to bring personal physical Bible to ${r.type.replace('_', ' ')}.`,
+          demeritPoints: 1,
+          reportedBy: currentUser.name,
+          status: 'pending_settlement',
+          actionRequired: 'Ensure Bible is in hand for next worship.',
+        });
+      }
+    });
+  };
+
+  const saveCurfewRecord = (rec: Omit<CurfewRecord, 'id'>) => {
+    if (!canEdit) return;
+    const newRecord: CurfewRecord = {
+      ...rec,
+      id: 'cur-' + Date.now(),
+    };
+    setCurfewRecords(prev => [newRecord, ...prev]);
+
+    if (rec.status === 'late' || rec.status === 'missing') {
+      saveViolation({
+        date: rec.date,
+        studentId: rec.studentId,
+        studentName: rec.studentName,
+        roomNumber: rec.roomNumber,
+        category: 'curfew_breach',
+        severity: rec.status === 'missing' ? 'major' : 'moderate',
+        description: rec.status === 'missing' 
+          ? `Missing from dormitory past curfew without authorization.`
+          : `Late curfew arrival (${rec.actualCheckInTime || 'unrecorded'}). ${rec.remarks || ''}`,
+        demeritPoints: rec.status === 'missing' ? 5 : 3,
+        reportedBy: currentUser.name,
+        status: 'pending_settlement',
+        actionRequired: 'Dean inquiry interview.',
+      });
+    }
+  };
+
+  const saveUniformLog = (log: Omit<SchoolUniformLog, 'id'>) => {
+    if (!canEdit) return;
+    const newRecord: SchoolUniformLog = {
+      ...log,
+      id: 'uni-' + Date.now(),
+    };
+    setUniformLogs(prev => [newRecord, ...prev]);
+
+    if (log.status === 'flagged') {
+      saveViolation({
+        date: log.date,
+        studentId: log.studentId,
+        studentName: log.studentName,
+        roomNumber: log.roomNumber,
+        category: !log.isDepartureOnSchedule ? 'irregular_school_departure' : 'uniform_violation',
+        severity: 'minor',
+        description: `School departure gate inspection issue: ${log.remarks || 'Uniform/Grooming non-compliant or departed off-schedule'}.`,
+        demeritPoints: 1,
+        reportedBy: currentUser.name,
+        status: 'pending_settlement',
+        actionRequired: 'Correction before school gate pass clearance.',
+      });
+    }
+  };
+
+  const saveStudyLog = (log: Omit<StudyHoursLog, 'id'>) => {
+    if (!canEdit) return;
+    const newRecord: StudyHoursLog = {
+      ...log,
+      id: 'sty-' + Date.now(),
+    };
+    setStudyLogs(prev => [newRecord, ...prev]);
+
+    if (log.status === 'absent' || log.focusRating === 'noise_violation') {
+      saveViolation({
+        date: log.date,
+        studentId: log.studentId,
+        studentName: log.studentName,
+        roomNumber: log.roomNumber,
+        category: 'study_hour_skipping',
+        severity: 'minor',
+        description: `Study hours infraction: ${log.status === 'absent' ? 'Absent from study period' : 'Noise disturbance / distraction during quiet study'}.`,
+        demeritPoints: 2,
+        reportedBy: currentUser.name,
+        status: 'pending_settlement',
+        actionRequired: 'Silent study monitoring assigned.',
+      });
+    }
+  };
+
+  const saveChore = (chore: Omit<ChoreAssignment, 'id'>) => {
+    if (!canEdit) return;
+    const newRecord: ChoreAssignment = {
+      ...chore,
+      id: 'chr-' + Date.now(),
+    };
+    setChores(prev => [newRecord, ...prev]);
+  };
+
+  const updateChoreStatus = (choreId: string, status: ChoreAssignment['status'], remarks?: string) => {
+    if (!canEdit) return;
+    setChores(prev =>
+      prev.map(c => {
+        if (c.id === choreId) {
+          const updated = {
+            ...c,
+            status,
+            inspectorRemarks: remarks || c.inspectorRemarks,
+            verifiedBy: currentUser.name,
+          };
+          if (status === 'failed') {
+            saveViolation({
+              date: new Date().toISOString().split('T')[0],
+              studentId: c.studentId,
+              studentName: c.studentName,
+              roomNumber: c.roomNumber,
+              category: 'chore_neglect',
+              severity: 'minor',
+              description: `Neglected assigned maintenance chore duty (${c.dutyArea}): ${remarks || 'Incomplete inspection'}`,
+              demeritPoints: 2,
+              reportedBy: currentUser.name,
+              status: 'pending_settlement',
+              actionRequired: 'Repeat chore task under monitor sign-off.',
+            });
+          }
+          return updated;
+        }
+        return c;
+      })
+    );
+  };
+
+  const saveLightsOutLog = (log: Omit<LightsOutLog, 'id'>) => {
+    if (!canEdit) return;
+    const newRecord: LightsOutLog = {
+      ...log,
+      id: 'lo-' + Date.now(),
+    };
+    setLightsOutLogs(prev => [newRecord, ...prev]);
+
+    if (log.status === 'violation') {
+      const room = rooms.find(r => r.roomNumber === log.roomNumber);
+      if (room) {
+        room.occupantIds.forEach(occId => {
+          const occ = users.find(u => u.id === occId);
+          if (occ && occ.role === 'occupant') {
+            saveViolation({
+              date: log.date,
+              studentId: occ.id,
+              studentName: occ.name,
+              roomNumber: log.roomNumber,
+              category: 'lights_out_violation',
+              severity: 'moderate',
+              description: `Room ${log.roomNumber} lights-out violation at ${log.checkTime}: ${log.violatorRemarks || 'Lights on or noise disturbance'}`,
+              demeritPoints: 2,
+              reportedBy: currentUser.name,
+              status: 'pending_settlement',
+            });
+          }
+        });
+      }
+    }
+  };
+
+  const updateCellphoneStatus = (id: string, updates: Partial<CellphoneCustody>) => {
+    if (!canEdit) return;
+    setCellphones(prev =>
+      prev.map(c => (c.id === id ? { ...c, ...updates } : c))
+    );
+  };
+
+  const saveViolation = (viol: Omit<Violation, 'id' | 'createdAt'>) => {
+    if (!canEdit) return;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newRecord: Violation = {
+      ...viol,
+      id: 'viol-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      createdAt: timeStr,
+    };
+    setViolations(prev => [newRecord, ...prev]);
+  };
+
+  const updateViolationStatus = (id: string, status: Violation['status'], actionRequired?: string) => {
+    if (!canEdit) return;
+    setViolations(prev =>
+      prev.map(v => (v.id === id ? { ...v, status, actionRequired: actionRequired || v.actionRequired } : v))
+    );
+  };
+
+  const resetAllData = () => {
+    setUsers(INITIAL_USERS);
+    setCurrentUser(INITIAL_USERS[0]);
+    setRooms(INITIAL_ROOMS);
+    setInspections(INITIAL_INSPECTIONS);
+    setAttendance(INITIAL_ATTENDANCE);
+    setCurfewRecords(INITIAL_CURFEW);
+    setUniformLogs(INITIAL_UNIFORM_LOGS);
+    setStudyLogs(INITIAL_STUDY_LOGS);
+    setChores(INITIAL_CHORES);
+    setLightsOutLogs(INITIAL_LIGHTS_OUT);
+    setCellphones(INITIAL_CELLPHONES);
+    setViolations(INITIAL_VIOLATIONS);
+    localStorage.clear();
+  };
+
+  const addOccupant = (data: {
+    name: string;
+    email?: string;
+    roomNumber: string;
+    phone?: string;
+    parentName?: string;
+    parentPhone?: string;
+    deviceModel?: string;
+    lockerVaultNumber?: string;
+  }): User => {
+    const newId = 'occ-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    const email = data.email && data.email.trim().length > 0 
+      ? data.email.trim().toLowerCase() 
+      : `${data.name.toLowerCase().replace(/\s+/g, '.')}@dorm.edu`;
+    const newStudent: User = {
+      id: newId,
+      name: data.name,
+      email: email,
+      role: 'occupant',
+      roomNumber: data.roomNumber,
+      phone: data.phone || '',
+      parentName: data.parentName || '',
+      parentPhone: data.parentPhone || '',
+      demeritPoints: 0,
+      status: 'active',
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`,
+    };
+
+    setUsers(prev => [...prev, newStudent]);
+
+    // Add to room occupants
+    setRooms(prevRooms =>
+      prevRooms.map(r => {
+        if (r.roomNumber === data.roomNumber) {
+          return {
+            ...r,
+            occupantIds: r.occupantIds.includes(newId) ? r.occupantIds : [...r.occupantIds, newId],
+          };
+        }
+        return r;
+      })
+    );
+
+    // Create cellphone custody entry
+    const newLocker = data.lockerVaultNumber || `Vault-${Math.floor(Math.random() * 80 + 1).toString().padStart(2, '0')}`;
+    const newPhoneEntry: CellphoneCustody = {
+      id: 'phone-' + Date.now(),
+      studentId: newId,
+      studentName: data.name,
+      roomNumber: data.roomNumber,
+      deviceModel: data.deviceModel || 'Smartphone',
+      lockerVaultNumber: newLocker,
+      turnedOverSunday: true,
+      turnOverTime: 'Sun 18:30',
+      returnedFriday: false,
+      custodyStatus: 'in_vault',
+    };
+    setCellphones(prev => [newPhoneEntry, ...prev]);
+
+    return newStudent;
+  };
+
+  const updateOccupant = (id: string, updates: Partial<User> & { deviceModel?: string; lockerVaultNumber?: string }) => {
+    setUsers(prev =>
+      prev.map(u => {
+        if (u.id === id) {
+          return { ...u, ...updates };
+        }
+        return u;
+      })
+    );
+
+    if (updates.name || updates.roomNumber || updates.deviceModel || updates.lockerVaultNumber) {
+      setCellphones(prev =>
+        prev.map(c => {
+          if (c.studentId === id) {
+            return {
+              ...c,
+              studentName: updates.name || c.studentName,
+              roomNumber: updates.roomNumber || c.roomNumber,
+              deviceModel: updates.deviceModel || c.deviceModel,
+              lockerVaultNumber: updates.lockerVaultNumber || c.lockerVaultNumber,
+            };
+          }
+          return c;
+        })
+      );
+    }
+
+    if (updates.roomNumber) {
+      setRooms(prevRooms =>
+        prevRooms.map(r => {
+          const hadStudent = r.occupantIds.includes(id);
+          const shouldHaveStudent = r.roomNumber === updates.roomNumber;
+          if (hadStudent && !shouldHaveStudent) {
+            return { ...r, occupantIds: r.occupantIds.filter(x => x !== id) };
+          }
+          if (!hadStudent && shouldHaveStudent) {
+            return { ...r, occupantIds: [...r.occupantIds, id] };
+          }
+          return r;
+        })
+      );
+    }
+  };
+
+  const deleteOccupant = (id: string) => {
+    setUsers(prev => prev.filter(u => u.id !== id));
+    setCellphones(prev => prev.filter(c => c.studentId !== id));
+    setRooms(prevRooms =>
+      prevRooms.map(r => ({
+        ...r,
+        occupantIds: r.occupantIds.filter(x => x !== id),
+      }))
+    );
+  };
+
+  const bulkImportOccupants = (list: Array<{
+    name: string;
+    email?: string;
+    roomNumber: string;
+    phone?: string;
+    parentName?: string;
+    parentPhone?: string;
+    deviceModel?: string;
+    lockerVaultNumber?: string;
+  }>) => {
+    let count = 0;
+    list.forEach(item => {
+      if (item.name && item.roomNumber) {
+        addOccupant(item);
+        count++;
+      }
+    });
+    return { count };
+  };
+
+  const addRoom = (roomData: {
+    roomNumber: string;
+    wing: 'North Wing' | 'South Wing' | 'East Wing' | 'West Wing';
+    floor: number;
+    capacity: number;
+    captainName?: string;
+  }) => {
+    const existing = rooms.find(r => r.roomNumber === roomData.roomNumber);
+    if (existing) return;
+    const newRoom: Room = {
+      id: 'room-' + Date.now(),
+      roomNumber: roomData.roomNumber,
+      wing: roomData.wing,
+      floor: roomData.floor,
+      capacity: roomData.capacity,
+      captainName: roomData.captainName || 'TBD',
+      occupantIds: [],
+    };
+    setRooms(prev => [...prev, newRoom]);
+  };
+
+  const updateRoom = (roomId: string, updates: Partial<Room>) => {
+    setRooms(prev => prev.map(r => r.id === roomId ? { ...r, ...updates } : r));
+  };
+
+  const deleteRoom = (roomId: string) => {
+    setRooms(prev => prev.filter(r => r.id !== roomId));
+  };
+
+  // Operational Checklist Handlers
+  const saveMedicalSlip = (slip: Omit<MedicalExcuseSlip, 'id' | 'issuedAt'>) => {
+    const newSlip: MedicalExcuseSlip = {
+      ...slip,
+      id: 'med-' + Date.now(),
+      issuedAt: new Date().toISOString(),
+    };
+    setMedicalSlips(prev => [newSlip, ...prev]);
+  };
+
+  const updateMedicalSlipStatus = (id: string, status: MedicalExcuseSlip['status']) => {
+    setMedicalSlips(prev => prev.map(s => s.id === id ? { ...s, status } : s));
+  };
+
+  const saveGatePass = (pass: Omit<GatePassRecord, 'id' | 'issuedAt'>) => {
+    const newPass: GatePassRecord = {
+      ...pass,
+      id: 'gate-' + Date.now(),
+      issuedAt: new Date().toISOString(),
+    };
+    setGatePasses(prev => [newPass, ...prev]);
+  };
+
+  const updateGatePassStatus = (id: string, status: GatePassRecord['status'], actualReturnDate?: string) => {
+    setGatePasses(prev =>
+      prev.map(p => {
+        if (p.id !== id) return p;
+        return {
+          ...p,
+          status,
+          actualReturnDate: actualReturnDate || (status === 'returned_on_time' ? new Date().toISOString() : p.actualReturnDate),
+        };
+      })
+    );
+  };
+
+  const saveDemeritClearance = (log: Omit<DemeritClearanceLog, 'id'>) => {
+    const newLog: DemeritClearanceLog = {
+      ...log,
+      id: 'clr-' + Date.now(),
+    };
+    setDemeritClearances(prev => [newLog, ...prev]);
+
+    // Automatically resolve or reduce violation points for this student
+    if (log.demeritsDeducted > 0) {
+      setViolations(prev => {
+        let remainingPointsToClear = log.demeritsDeducted;
+        return prev.map(v => {
+          if (v.studentId === log.studentId && v.status !== 'cleared_service' && remainingPointsToClear > 0) {
+            remainingPointsToClear -= v.demeritPoints;
+            return {
+              ...v,
+              status: 'cleared_service',
+              actionRequired: `Cleared through community service: ${log.serviceType} (${log.hoursRendered} hrs approved by ${log.supervisorName})`,
+            };
+          }
+          return v;
+        });
+      });
+    }
+  };
+
+  const saveConfiscatedItem = (item: Omit<ConfiscatedItemRecord, 'id'>) => {
+    const newItem: ConfiscatedItemRecord = {
+      ...item,
+      id: 'conf-' + Date.now(),
+    };
+    setConfiscatedItems(prev => [newItem, ...prev]);
+  };
+
+  const updateConfiscatedItemStatus = (id: string, status: ConfiscatedItemRecord['status']) => {
+    setConfiscatedItems(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+  };
+
+  const saveStudentMedical = (rec: StudentMedicalRecord) => {
+    setStudentMedicals(prev => {
+      const exists = prev.some(m => m.studentId === rec.studentId);
+      if (exists) {
+        return prev.map(m => m.studentId === rec.studentId ? rec : m);
+      }
+      return [...prev, rec];
+    });
+  };
+
+  const addAdminUser = (data: { name: string; email: string; phone?: string }) => {
+    if (!isSuperAdmin) {
+      return { success: false, message: 'Only the Super Admin (Dean) can add new Admin staff.' };
+    }
+    const cleanEmail = data.email.trim().toLowerCase();
+    const existing = users.find(u => u.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      if (existing.role === 'admin' || existing.role === 'superadmin') {
+        return { success: false, message: `User ${cleanEmail} is already an ${existing.role.toUpperCase()}.` };
+      }
+      setUsers(prev => prev.map(u => u.id === existing.id ? { ...u, role: 'admin', name: data.name || u.name, phone: data.phone || u.phone } : u));
+      return { success: true, message: `Existing user promoted to ADMIN successfully.` };
+    }
+
+    const newAdmin: User = {
+      id: 'admin-' + Date.now(),
+      name: data.name,
+      email: cleanEmail,
+      role: 'admin',
+      phone: data.phone || '',
+      demeritPoints: 0,
+      status: 'active',
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`,
+    };
+    setUsers(prev => [newAdmin, ...prev]);
+    return { success: true, message: `Admin ${cleanEmail} registered successfully. They can now log in via Google OAuth or Persona Switcher.`, user: newAdmin };
+  };
+
+  const removeAdminUser = (id: string) => {
+    if (!isSuperAdmin) {
+      return { success: false, message: 'Permission denied.' };
+    }
+    const target = users.find(u => u.id === id);
+    if (!target) return { success: false, message: 'User not found.' };
+    if (target.role === 'superadmin' || target.email.toLowerCase() === 'orapajelmar@gmail.com') {
+      return { success: false, message: 'Super Admin Dean cannot be removed.' };
+    }
+    setUsers(prev => prev.filter(u => u.id !== id));
+    return { success: true, message: `Admin ${target.name} has been removed.` };
+  };
+
+  const clearDemoStudents = () => {
+    setUsers(prev => prev.filter(u => u.role !== 'occupant'));
+    setInspections([]);
+    setAttendance([]);
+    setCurfewRecords([]);
+    setUniformLogs([]);
+    setStudyLogs([]);
+    setChores([]);
+    setLightsOutLogs([]);
+    setCellphones([]);
+    setViolations([]);
+    setMedicalSlips([]);
+    setGatePasses([]);
+    setDemeritClearances([]);
+    setConfiscatedItems([]);
+    setRooms(prev => prev.map(r => ({ ...r, occupantIds: [] })));
+  };
+
+  const restoreDemoData = () => {
+    setUsers(INITIAL_USERS);
+    setCurrentUser(INITIAL_USERS[0]);
+    setIsAuthenticated(true);
+    setRooms(INITIAL_ROOMS);
+    setInspections(INITIAL_INSPECTIONS);
+    setAttendance(INITIAL_ATTENDANCE);
+    setCurfewRecords(INITIAL_CURFEW);
+    setUniformLogs(INITIAL_UNIFORM_LOGS);
+    setStudyLogs(INITIAL_STUDY_LOGS);
+    setChores(INITIAL_CHORES);
+    setLightsOutLogs(INITIAL_LIGHTS_OUT);
+    setCellphones(INITIAL_CELLPHONES);
+    setViolations(INITIAL_VIOLATIONS);
+    setMedicalSlips(INITIAL_MEDICAL_SLIPS);
+    setGatePasses(INITIAL_GATE_PASSES);
+    setDemeritClearances(INITIAL_DEMERIT_CLEARANCES);
+    setConfiscatedItems(INITIAL_CONFISCATED_ITEMS);
+    setStudentMedicals(INITIAL_STUDENT_MEDICALS);
+  };
+
+  return (
+    <DormContext.Provider
+      value={{
+        currentUser,
+        setCurrentUser,
+        isAuthenticated,
+        loginUser,
+        logout,
+        users,
+        rooms,
+        inspections,
+        attendance,
+        curfewRecords,
+        uniformLogs,
+        studyLogs,
+        chores,
+        lightsOutLogs,
+        cellphones,
+        violations,
+        medicalSlips,
+        saveMedicalSlip,
+        updateMedicalSlipStatus,
+        gatePasses,
+        saveGatePass,
+        updateGatePassStatus,
+        demeritClearances,
+        saveDemeritClearance,
+        confiscatedItems,
+        saveConfiscatedItem,
+        updateConfiscatedItemStatus,
+        studentMedicals,
+        saveStudentMedical,
+        canEdit,
+        isSuperAdmin,
+        isOccupant,
+        loginWithRole,
+        loginGoogleOAuthMock,
+        updateUserRole,
+        addInspection,
+        saveAttendanceBatch,
+        saveCurfewRecord,
+        saveUniformLog,
+        saveStudyLog,
+        saveChore,
+        updateChoreStatus,
+        saveLightsOutLog,
+        updateCellphoneStatus,
+        saveViolation,
+        updateViolationStatus,
+        resetAllData,
+        addOccupant,
+        updateOccupant,
+        deleteOccupant,
+        bulkImportOccupants,
+        addRoom,
+        updateRoom,
+        deleteRoom,
+        addAdminUser,
+        removeAdminUser,
+        clearDemoStudents,
+        restoreDemoData,
+      }}
+    >
+      {children}
+    </DormContext.Provider>
+  );
+};
+
+export const useDorm = () => {
+  const ctx = useContext(DormContext);
+  if (!ctx) {
+    throw new Error('useDorm must be used within a DormProvider');
+  }
+  return ctx;
+};
