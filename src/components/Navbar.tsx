@@ -15,6 +15,7 @@ import {
   Brush,
   Smartphone,
   UserCog,
+  Luggage,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { UserRole } from '../types/dorm';
@@ -47,6 +48,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'chores', label: 'Weekly Chores', icon: Brush, group: 'checks' },
   { id: 'cellphones', label: 'Phone Vault', icon: Smartphone, group: 'checks' },
   { id: 'performance', label: 'Resident Performance', icon: Users, group: 'residents' },
+  { id: 'gatepass', label: 'Gate Pass & Home Leave', icon: Luggage, group: 'residents' },
   { id: 'roster', label: 'Manage Roster', icon: UserCog, group: 'residents' },
   { id: 'rbac', label: 'Staff & Access', icon: Shield, group: 'admin' },
 ];
@@ -106,24 +108,26 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openGoo
   return (
     <header className="bg-slate-900/95 backdrop-blur border-b border-slate-800 text-slate-100 sticky top-0 z-40 shadow-md pt-safe">
       <div className="flex items-center justify-between h-14 px-2 sm:px-4">
-        <button
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Open navigation menu"
-          aria-expanded={drawerOpen}
-          className="min-w-touch min-h-touch flex items-center justify-center rounded-xl text-slate-300 hover:bg-slate-800 active:scale-95 transition"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
+        <div className="flex items-center min-w-0">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open navigation menu"
+            aria-expanded={drawerOpen}
+            className="min-w-touch min-h-touch flex items-center justify-center rounded-xl text-slate-300 hover:bg-slate-800 active:scale-95 transition shrink-0"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
 
-        <button onClick={() => goTo('overview')} className="flex items-center space-x-2 min-h-touch">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-            <Shield className="w-5 h-5" />
-          </div>
-          <span className="font-bold text-base tracking-tight text-white">Cedar Hall</span>
-          <span className="hidden sm:inline text-[11px] px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            Boys Dormitory
-          </span>
-        </button>
+          <button onClick={() => goTo('overview')} className="flex items-center space-x-2 min-h-touch ml-1 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <Shield className="w-4 h-4" />
+            </div>
+            <span className="font-bold text-base tracking-tight text-white truncate">Cedar Hall</span>
+            <span className="hidden sm:inline text-[11px] px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Boys Dormitory
+            </span>
+          </button>
+        </div>
 
         {/* User profile dropdown */}
         <div className="relative">

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   User,
   UserRole,
@@ -138,6 +138,11 @@ const DormContext = createContext<DormContextType | null>(null);
 
 const STORAGE_KEY_PREFIX = 'dorm_dean_v1_';
 
+// Shared sync server (see server/index.mjs). Reports are pushed here so every
+// device — laptop, phone, tablet — reads and writes the same records.
+const SERVER_STATE_URL = '/api/state';
+const SERVER_POLL_MS = 30000;
+
 const TEST_USER_IDS = new Set([
   'occ-1', 'occ-2', 'occ-3', 'occ-4', 'occ-5', 'occ-6',
   'occ-7', 'occ-8', 'occ-9', 'occ-10', 'occ-11', 'occ-12', 'occ-13', 'occ-14',
@@ -206,8 +211,9 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [currentUser, setCurrentUser] = useState<User>(() => {
-    const savedId = loadFromStorage('currentUser_id', 'user-dean');
-    if (TEST_USER_IDS.has(savedId) || savedId === 'user-dean') {
+    const wasAuthed = loadFromStorage<boolean>('isAuthenticated', false);
+    const savedId = loadFromStorage('currentUser_id', '');
+    if (!wasAuthed || !savedId || TEST_USER_IDS.has(savedId) || savedId === 'user-dean') {
       return DEAN_USER;
     }
     const loadedUsers = loadFromStorage<User[]>('users', INITIAL_USERS);
@@ -215,7 +221,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return found || DEAN_USER;
   });
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => loadFromStorage('isAuthenticated', true));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => loadFromStorage('isAuthenticated', false));
 
   const [rooms, setRooms] = useState<Room[]>(() => {
     const loaded = loadFromStorage<Room[]>('rooms', INITIAL_ROOMS);
@@ -315,6 +321,118 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => saveToStorage('demerit_clearances', demeritClearances), [demeritClearances]);
   useEffect(() => saveToStorage('confiscated_items', confiscatedItems), [confiscatedItems]);
   useEffect(() => saveToStorage('student_medicals', studentMedicals), [studentMedicals]);
+
+  // ---- Cross-device sync (shared server is the source of truth) ----
+  const initialPullDone = useRef(false);
+  const debounceTimer = useRef<number | undefined>(undefined);
+  const pushStateRef = useRef<(() => Promise<void>) | null>(null);
+
+  const pushState = async () => {
+    const payload = {
+      updatedAt: Date.now(),
+      data: {
+        users,
+        rooms,
+        inspections,
+        attendance,
+        curfewRecords,
+        uniformLogs,
+        studyLogs,
+        chores,
+        lightsOutLogs,
+        cellphones,
+        violations,
+        medicalSlips,
+        gatePasses,
+        demeritClearances,
+        confiscatedItems,
+        studentMedicals,
+      },
+    };
+    try {
+      const res = await fetch(SERVER_STATE_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const body = (await res.json()) as { updatedAt?: number };
+        saveToStorage('lastPushedAt', body.updatedAt ?? Date.now());
+      }
+    } catch {
+      // Server offline — local storage still works until it comes back.
+    }
+  };
+  pushStateRef.current = pushState;
+
+  // Debounced push whenever the shared records change.
+  useEffect(() => {
+    if (!initialPullDone.current) return;
+    if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
+    debounceTimer.current = window.setTimeout(() => {
+      pushStateRef.current?.();
+    }, 700);
+    return () => {
+      if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
+    };
+  }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, chores, lightsOutLogs, cellphones, violations, medicalSlips, gatePasses, demeritClearances, confiscatedItems, studentMedicals]);
+
+  // Pull the shared state on load, then poll for updates from other devices.
+  useEffect(() => {
+    let alive = true;
+    const pull = async () => {
+      try {
+        const res = await fetch(SERVER_STATE_URL);
+        if (res.status === 404) {
+          // No shared data yet — seed the server with this device's records.
+          if (alive) {
+            initialPullDone.current = true;
+            pushStateRef.current?.();
+          }
+          return;
+        }
+        if (!res.ok) {
+          if (alive) initialPullDone.current = true;
+          return;
+        }
+        const body = (await res.json()) as { updatedAt?: number; data?: Record<string, unknown> };
+        if (!body?.data) {
+          if (alive) initialPullDone.current = true;
+          return;
+        }
+        const localPushed = Number(loadFromStorage('lastPushedAt', 0)) || 0;
+        if ((body.updatedAt ?? 0) > localPushed && alive) {
+          const d = body.data;
+          saveToStorage('lastPushedAt', body.updatedAt ?? 0);
+          if (d.users) setUsers(d.users as User[]);
+          if (d.rooms) setRooms(d.rooms as Room[]);
+          if (d.inspections) setInspections(d.inspections as RoomInspection[]);
+          if (d.attendance) setAttendance(d.attendance as AttendanceRecord[]);
+          if (d.curfewRecords) setCurfewRecords(d.curfewRecords as CurfewRecord[]);
+          if (d.uniformLogs) setUniformLogs(d.uniformLogs as SchoolUniformLog[]);
+          if (d.studyLogs) setStudyLogs(d.studyLogs as StudyHoursLog[]);
+          if (d.chores) setChores(d.chores as ChoreAssignment[]);
+          if (d.lightsOutLogs) setLightsOutLogs(d.lightsOutLogs as LightsOutLog[]);
+          if (d.cellphones) setCellphones(d.cellphones as CellphoneCustody[]);
+          if (d.violations) setViolations(d.violations as Violation[]);
+          if (d.medicalSlips) setMedicalSlips(d.medicalSlips as MedicalExcuseSlip[]);
+          if (d.gatePasses) setGatePasses(d.gatePasses as GatePassRecord[]);
+          if (d.demeritClearances) setDemeritClearances(d.demeritClearances as DemeritClearanceLog[]);
+          if (d.confiscatedItems) setConfiscatedItems(d.confiscatedItems as ConfiscatedItemRecord[]);
+          if (d.studentMedicals) setStudentMedicals(d.studentMedicals as StudentMedicalRecord[]);
+        }
+        if (alive) initialPullDone.current = true;
+      } catch {
+        if (alive) initialPullDone.current = true;
+      }
+    };
+    pull();
+    const id = window.setInterval(pull, SERVER_POLL_MS);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, []);
 
   // Recalculate user demerit points dynamically based on confirmed/active violations
   useEffect(() => {

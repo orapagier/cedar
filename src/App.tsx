@@ -14,6 +14,7 @@ import { CellphoneCustodyView } from './components/CellphoneCustodyView';
 import { OccupantsDirectoryView } from './components/OccupantsDirectoryView';
 import { AdminManagementView } from './components/AdminManagementView';
 import { ResidentPerformanceView } from './components/ResidentPerformanceView';
+import { GatePassView } from './components/GatePassView';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('overview');
@@ -52,6 +53,7 @@ function AppContent() {
         {activeTab === 'chores' && <WeeklyChoresView />}
         {activeTab === 'cellphones' && <CellphoneCustodyView />}
         {activeTab === 'performance' && <ResidentPerformanceView />}
+        {activeTab === 'gatepass' && <GatePassView />}
         {activeTab === 'roster' && <OccupantsDirectoryView />}
         {activeTab === 'rbac' && <AdminManagementView />}
       </main>
