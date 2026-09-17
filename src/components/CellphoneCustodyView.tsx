@@ -4,17 +4,24 @@ import {
   Lock,
   Unlock,
   ShieldAlert,
+  ShieldCheck,
   Clock,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   Save,
   Users,
+  ChevronDown,
+  PhoneOutgoing,
+  PhoneIncoming,
+  CalendarClock,
+  Ban,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { PhoneDepositLog } from '../types/dorm';
 import { manilaToday, manilaTime, manilaTimeValue, formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
+import { vaultCycle, describeCyclePoint, vaultCustodyExemption, cycleExcuseReason } from '../utils/phoneVault';
 
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/40';
@@ -49,16 +56,33 @@ const DEPOSIT_META: Record<DepositStatus, {
     active: 'bg-rose-600 text-white',
     chip: 'bg-rose-950 text-rose-300',
   },
+  excused: {
+    label: 'Excused',
+    short: 'Excused',
+    icon: ShieldCheck,
+    active: 'bg-sky-600 text-white',
+    chip: 'bg-sky-950 text-sky-300',
+  },
 };
+
+const STATUS_ORDER: DepositStatus[] = ['deposited', 'late', 'not_deposited', 'excused'];
 
 export const CellphoneCustodyView: React.FC = () => {
   const {
     cellphones,
     phoneDeposits,
+    phoneBorrows,
     users,
     rooms,
+    settings,
+    medicalSlips,
+    gatePasses,
     updateCellphoneStatus,
+    setPhoneExemption,
     savePhoneDepositBatch,
+    savePhoneBorrow,
+    returnPhoneBorrow,
+    releaseAllPhones,
     canEdit,
     currentUser,
     saveViolation,
@@ -72,7 +96,14 @@ export const CellphoneCustodyView: React.FC = () => {
   const [depositTime, setDepositTime] = useState(() => manilaTimeValue());
   const [remarks, setRemarks] = useState('');
   const [statuses, setStatuses] = useState<Record<string, DepositStatus>>({});
+  const [openRow, setOpenRow] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+
+  // Borrow slip
+  const [borrowStudentId, setBorrowStudentId] = useState('');
+  const [borrowReason, setBorrowReason] = useState('');
+  const [borrowOut, setBorrowOut] = useState(() => manilaTimeValue());
+  const [borrowBack, setBorrowBack] = useState('');
 
   const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
 
@@ -85,25 +116,50 @@ export const CellphoneCustodyView: React.FC = () => {
     setTimeout(() => setSavedMessage(null), 4000);
   };
 
-  const inVaultCount = cellphones.filter(c => c.custodyStatus === 'in_vault').length;
-  const confiscatedCount = cellphones.filter(c => c.custodyStatus === 'confiscated').length;
-  const withStudentCount = cellphones.filter(c => c.custodyStatus === 'with_student').length;
+  // The cycle the check being logged belongs to — the deadline it is measured
+  // against, and whether that deadline has already gone by.
+  const cycle = vaultCycle(today, depositTime, settings);
+  const dueLabel = describeCyclePoint(settings.phoneDepositDay, settings.phoneDepositTime);
+  const releaseLabel = describeCyclePoint(settings.phoneReleaseDay, settings.phoneReleaseTime);
 
-  /** Today's logged deposit for a resident, if the roll call already ran. */
-  const todayDeposit = (studentId: string) =>
-    phoneDeposits.find(d => d.studentId === studentId && d.date === today);
+  const inVaultCount = cellphones.filter(c => c.custodyStatus === 'in_vault').length;
+  const borrowedCount = cellphones.filter(c => c.custodyStatus === 'borrowed').length;
+  const withStudentCount = cellphones.filter(c => c.custodyStatus === 'with_student').length;
+  const confiscatedCount = cellphones.filter(c => c.custodyStatus === 'confiscated').length;
+
+  /** This cycle's deposit records, whichever day they were taken. */
+  const cycleDeposits = phoneDeposits.filter(d => (d.cycleDate ?? d.date) === cycle.deadlineDate);
+  const depositFor = (studentId: string) => cycleDeposits.find(d => d.studentId === studentId);
+
+  /**
+   * Why a resident is out of this room's roll call: their device is exempt or
+   * confiscated, or they are excused for the cycle. A resident whose phone was
+   * simply never registered is still checked — the first deposit registers it.
+   */
+  const rollCallExcuse = (studentId: string) => {
+    const student = occupants.find(o => o.id === studentId);
+    if (!student) return null;
+    const custody = vaultCustodyExemption(studentId, cellphones);
+    if (custody && custody !== 'No phone on file') return custody;
+    return cycleExcuseReason(student, cycle.deadlineDate, { medicalSlips, gatePasses });
+  };
 
   const statusFor = (studentId: string): DepositStatus =>
-    statuses[studentId] ?? todayDeposit(studentId)?.status ?? 'deposited';
+    statuses[studentId] ?? depositFor(studentId)?.status ?? 'deposited';
 
   const setStatus = (studentId: string, status: DepositStatus) =>
     setStatuses(prev => ({ ...prev, [studentId]: status }));
 
+  // Residents to roll call: anyone in the room the vault still expects a phone from.
+  const checkable = roomOccupants.filter(o => !rollCallExcuse(o.id));
+  const checkedThisCycle = checkable.filter(o => depositFor(o.id)).length;
+
   const submitRoom = () => {
-    if (!canEdit || !roomOccupants.length) return;
+    if (!canEdit || !checkable.length) return;
     savePhoneDepositBatch(
-      roomOccupants.map(student => ({
+      checkable.map(student => ({
         date: today,
+        cycleDate: cycle.deadlineDate,
         studentId: student.id,
         studentName: student.name,
         roomNumber: student.roomNumber || '—',
@@ -114,16 +170,52 @@ export const CellphoneCustodyView: React.FC = () => {
       }))
     );
     setRemarks('');
-    flash(`Logged phone deposits for ${roomOccupants.length} residents in Room ${selectedRoom}.`);
+    flash(
+      `Logged ${checkable.length} phone deposits for Room ${selectedRoom}` +
+        (cycle.deadlinePassed ? ' — past the deadline, so deposits saved as late.' : '.')
+    );
   };
 
-  const handleReleaseFriday = (id: string) => {
+  const markAll = (status: DepositStatus) =>
+    setStatuses(prev => ({ ...prev, ...Object.fromEntries(checkable.map(o => [o.id, status])) }));
+
+  /** Excuse one resident for this cycle, clearing any flag already raised. */
+  const excuseResident = (studentId: string) => {
+    const student = occupants.find(o => o.id === studentId);
+    if (!canEdit || !student) return;
+    savePhoneDepositBatch([{
+      date: today,
+      cycleDate: cycle.deadlineDate,
+      studentId: student.id,
+      studentName: student.name,
+      roomNumber: student.roomNumber || '—',
+      status: 'excused',
+      depositTime,
+      remarks: 'Excused from this vault cycle.',
+      recordedBy: currentUser.name,
+    }]);
+    flash(`${student.name} excused from the cycle due ${dueLabel}.`);
+  };
+
+  const handleRelease = (id: string) => {
     if (!canEdit) return;
     updateCellphoneStatus(id, {
       returnedFriday: true,
-      returnTime: `Fri ${manilaTime()}`,
+      returnTime: manilaTime(),
       custodyStatus: 'with_student',
     });
+  };
+
+  const handleReleaseAll = () => {
+    if (!canEdit) return;
+    if (!window.confirm(`Release all ${inVaultCount + borrowedCount} phones back to their owners?`)) return;
+    releaseAllPhones();
+    flash('All vaulted phones released to their owners.');
+  };
+
+  const toggleExempt = (studentId: string) => {
+    const phone = cellphones.find(c => c.studentId === studentId);
+    setPhoneExemption(studentId, phone?.custodyStatus !== 'exempted');
   };
 
   const handleConfiscate = (c: typeof cellphones[0]) => {
@@ -151,7 +243,37 @@ export const CellphoneCustodyView: React.FC = () => {
     });
   };
 
-  const checkedToday = roomOccupants.filter(o => todayDeposit(o.id)).length;
+  // ---- Borrowing ----
+  const openBorrows = phoneBorrows.filter(b => b.status === 'out');
+  const borrowable = occupants.filter(o => {
+    const phone = cellphones.find(c => c.studentId === o.id);
+    return phone && phone.custodyStatus === 'in_vault';
+  });
+
+  const isOverdue = (borrowedDate: string, expectedReturnTime: string) =>
+    borrowedDate < today || (borrowedDate === today && manilaTimeValue() > expectedReturnTime);
+
+  const startBorrow = () => {
+    const student = occupants.find(o => o.id === borrowStudentId);
+    if (!canEdit || !student || !borrowReason.trim()) return;
+    savePhoneBorrow({
+      studentId: student.id,
+      studentName: student.name,
+      roomNumber: student.roomNumber || '—',
+      reason: borrowReason.trim(),
+      borrowedDate: today,
+      borrowedTime: borrowOut,
+      expectedReturnTime: borrowBack || borrowOut,
+      approvedBy: currentUser.name,
+    });
+    setBorrowStudentId('');
+    setBorrowReason('');
+    setBorrowBack('');
+    flash(`${student.name}'s phone signed out of the vault.`);
+  };
+
+  // Residents the deadline flagged for handing in nothing at all.
+  const missedThisCycle = cycleDeposits.filter(d => d.status === 'not_deposited');
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -184,8 +306,48 @@ export const CellphoneCustodyView: React.FC = () => {
         </div>
       )}
 
+      {/* This week's cycle */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-rose-400 shrink-0">
+              <CalendarClock className="w-[18px] h-[18px]" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-bold text-white text-sm">This Week's Cycle</h3>
+              <p className="text-[11px] text-slate-400">
+                Due <span className="text-white font-semibold">{dueLabel}</span>
+                {' · '}back out <span className="text-white font-semibold">{releaseLabel}</span>
+              </p>
+              <p className="text-[11px] text-slate-500 truncate">Deadline: {formatFullDate(cycle.deadlineDate)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg ${
+              cycle.deadlinePassed ? 'bg-amber-950 text-amber-300 border border-amber-700/50' : 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
+            }`}>
+              {cycle.deadlinePassed ? 'Deadline passed' : 'Before deadline'}
+            </span>
+            {canEdit && (inVaultCount > 0 || borrowedCount > 0) && (
+              <button
+                onClick={handleReleaseAll}
+                className="min-h-touch bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-700/50 px-3 rounded-xl text-[11px] font-semibold flex items-center gap-1.5"
+              >
+                <Unlock className="w-3.5 h-3.5" /> Release all
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-500 mt-3 border-t border-slate-800 pt-2.5 leading-relaxed">
+          Deposits logged after {dueLabel} save as <span className="text-amber-300 font-semibold">late</span>. Once the
+          deadline passes, a resident with no record is flagged for{' '}
+          <span className="text-rose-300 font-semibold">not depositing</span> — unless they are excused or have no phone
+          on file. Change these times under Schedule Settings.
+        </p>
+      </div>
+
       {/* Custody metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
           <div>
             <span className="text-xs text-slate-400">In Safe Vault</span>
@@ -198,9 +360,19 @@ export const CellphoneCustodyView: React.FC = () => {
         </div>
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
           <div>
-            <span className="text-xs text-slate-400">Released</span>
+            <span className="text-xs text-slate-400">Borrowed</span>
+            <div className="text-2xl font-bold text-violet-400">{borrowedCount}</div>
+            <span className="text-[10px] text-slate-500">Signed out now</span>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-violet-400">
+            <PhoneOutgoing className="w-5 h-5" />
+          </div>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-400">With Residents</span>
             <div className="text-2xl font-bold text-blue-400">{withStudentCount}</div>
-            <span className="text-[10px] text-slate-500">Friday return</span>
+            <span className="text-[10px] text-slate-500">Out of the vault</span>
           </div>
           <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
             <Unlock className="w-5 h-5" />
@@ -266,11 +438,26 @@ export const CellphoneCustodyView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
-          <p className="text-xs text-slate-400">
-            <span className="font-semibold text-white">Room {selectedRoom || '—'}</span> · {roomOccupants.length} residents
+        {cycle.deadlinePassed && canEdit && (
+          <p className="px-4 py-2.5 bg-amber-950/40 border-b border-amber-900/50 text-[11px] text-amber-300 flex items-start gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
+            <span>{formatTime12h(depositTime)} is past the {dueLabel} deadline — anything marked deposited is saved as a late deposit.</span>
           </p>
-          <p className="text-xs text-slate-400">{checkedToday}/{roomOccupants.length} checked today</p>
+        )}
+
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
+          <p className="text-xs text-slate-400 min-w-0 truncate">
+            <span className="font-semibold text-white">Room {selectedRoom || '—'}</span> · {checkedThisCycle}/{checkable.length} checked
+          </p>
+          {canEdit && checkable.length > 0 && (
+            <button
+              onClick={() => markAll('deposited')}
+              className="shrink-0 min-h-touch px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 text-xs font-semibold flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              All in
+            </button>
+          )}
         </div>
 
         <div className="divide-y divide-slate-800/70">
@@ -279,91 +466,119 @@ export const CellphoneCustodyView: React.FC = () => {
           )}
           {roomOccupants.map(student => {
             const item = cellphones.find(c => c.studentId === student.id);
-            const logged = todayDeposit(student.id);
+            const logged = depositFor(student.id);
             const status = statusFor(student.id);
-            const isConfiscated = item?.custodyStatus === 'confiscated';
+            const excuse = rollCallExcuse(student.id);
+            const open = openRow === student.id;
 
             return (
-              <div key={student.id} className={`p-3 sm:p-4 space-y-2.5 ${isConfiscated ? 'bg-rose-950/10' : ''}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-white text-sm truncate">{student.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">
-                      {item ? `${item.deviceModel} · Locker ${item.lockerVaultNumber}` : 'No phone on file'}
-                    </p>
-                    {logged && (
-                      <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${DEPOSIT_META[logged.status].chip}`}>
-                        {DEPOSIT_META[logged.status].short} · {formatTime12h(logged.depositTime)}
-                      </span>
-                    )}
-                  </div>
-                  {item && (
-                    <span className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                      isConfiscated ? 'bg-rose-900 text-rose-300' :
-                      item.custodyStatus === 'in_vault' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' :
-                      'bg-blue-950 text-blue-300 border border-blue-700'
-                    }`}>
-                      {item.custodyStatus.replace('_', ' ')}
+              <div key={student.id} className={item?.custodyStatus === 'confiscated' ? 'bg-rose-950/10' : ''}>
+                {/* Name on the left, the call on the right, one line. */}
+                <div className="p-3 sm:p-4 flex items-center justify-between gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setOpenRow(open ? null : student.id)}
+                    aria-expanded={open}
+                    className="min-w-0 flex-1 flex items-center gap-1.5 text-left"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white text-sm truncate" title={student.name}>{student.name}</p>
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {item ? `${item.deviceModel} · Locker ${item.lockerVaultNumber}` : 'Device not yet registered'}
+                        {logged ? ` · ${DEPOSIT_META[logged.status].short} ${formatTime12h(logged.depositTime)}` : ''}
+                      </p>
+                    </div>
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-600 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {excuse ? (
+                    <span className="shrink-0 text-[10px] font-bold px-2 py-1.5 rounded-lg bg-sky-950 text-sky-300 border border-sky-800/60 max-w-[45%] truncate">
+                      {excuse}
+                    </span>
+                  ) : canEdit ? (
+                    <div className="shrink-0 flex items-center gap-1">
+                      {STATUS_ORDER.map(s => {
+                        const meta = DEPOSIT_META[s];
+                        const Icon = meta.icon;
+                        const selected = status === s;
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            title={meta.label}
+                            aria-label={`${student.name}: ${meta.label}`}
+                            aria-pressed={selected}
+                            onClick={() => setStatus(student.id, s)}
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                              selected ? meta.active : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className={`shrink-0 px-2 py-1 rounded-md text-[11px] font-bold ${DEPOSIT_META[status].chip}`}>
+                      {DEPOSIT_META[status].short}
                     </span>
                   )}
                 </div>
 
-                {canEdit ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {(Object.keys(DEPOSIT_META) as DepositStatus[]).map(s => {
-                      const meta = DEPOSIT_META[s];
-                      const Icon = meta.icon;
-                      const selected = status === s;
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          aria-label={`${student.name}: ${meta.label}`}
-                          aria-pressed={selected}
-                          onClick={() => setStatus(student.id, s)}
-                          className={`min-h-touch px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
-                            selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                          <span>{meta.label}</span>
-                        </button>
-                      );
-                    })}
+                {open && (
+                  <div className="px-3 sm:px-4 pb-3 space-y-2">
                     {item && (
-                      <>
-                        <span className="w-px bg-slate-800 mx-0.5 self-stretch" aria-hidden="true" />
+                      <p className="text-[11px] text-slate-400">
+                        Custody: <span className="text-white font-semibold">{item.custodyStatus.replace(/_/g, ' ')}</span>
+                        {item.turnOverTime ? ` · in at ${formatTime12h(item.turnOverTime)}` : ''}
+                      </p>
+                    )}
+                    {item?.remarks && <p className="text-[10px] text-amber-300/80 italic">"{item.remarks}"</p>}
+                    {canEdit && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {item && (
+                          <>
+                            <button
+                              onClick={() => { setBorrowStudentId(student.id); setOpenRow(null); }}
+                              disabled={item.custodyStatus !== 'in_vault'}
+                              className="min-h-touch bg-violet-950 hover:bg-violet-900 text-violet-300 border border-violet-700/50 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1 disabled:opacity-40"
+                            >
+                              <PhoneOutgoing className="w-3.5 h-3.5" /> Lend phone
+                            </button>
+                            <button
+                              onClick={() => handleRelease(item.id)}
+                              className="min-h-touch bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-700/50 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1"
+                            >
+                              <Unlock className="w-3.5 h-3.5" /> Release
+                            </button>
+                          </>
+                        )}
                         <button
-                          onClick={() => handleReleaseFriday(item.id)}
-                          className="min-h-touch bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-700/50 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1"
+                          onClick={() => toggleExempt(student.id)}
+                          className="min-h-touch bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1"
+                          title="Resident keeps no phone in the dorm"
                         >
-                          <Unlock className="w-3.5 h-3.5" /> Release
+                          <Ban className="w-3.5 h-3.5" /> {item?.custodyStatus === 'exempted' ? 'Un-exempt' : 'No phone'}
                         </button>
-                        <button
-                          onClick={() => handleConfiscate(item)}
-                          className="min-h-touch bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-700/50 px-2.5 rounded-xl text-[11px] font-semibold"
-                          title="Confiscate unauthorized secondary phone"
-                        >
-                          Confiscate
-                        </button>
-                      </>
+                        {item && (
+                          <button
+                            onClick={() => handleConfiscate(item)}
+                            className="min-h-touch bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-700/50 px-2.5 rounded-xl text-[11px] font-semibold"
+                            title="Confiscate unauthorized secondary phone"
+                          >
+                            Confiscate
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
-                ) : (
-                  <span className={`inline-flex px-2 py-1 rounded-md text-[11px] font-bold ${DEPOSIT_META[status].chip}`}>
-                    {DEPOSIT_META[status].short}
-                  </span>
-                )}
-
-                {item?.remarks && (
-                  <p className="text-[10px] text-amber-300/80 italic">"{item.remarks}"</p>
                 )}
               </div>
             );
           })}
         </div>
 
-        {canEdit && roomOccupants.length > 0 && (
+        {canEdit && checkable.length > 0 && (
           <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
             <button
               onClick={submitRoom}
@@ -372,6 +587,139 @@ export const CellphoneCustodyView: React.FC = () => {
               <Save className="w-4 h-4" />
               <span>Save Room {selectedRoom} Deposit Check</span>
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Non-deposits this cycle */}
+      {missedThisCycle.length > 0 && (
+        <div className="bg-slate-900 border border-rose-900/50 rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <XCircle className="w-4 h-4 text-rose-400" />
+              No Phone Deposited
+            </h3>
+            <span className="text-xs text-slate-400">{missedThisCycle.length} flagged</span>
+          </div>
+          <div className="divide-y divide-slate-800/70">
+            {missedThisCycle.map(d => (
+              <div key={d.id} className="p-3 sm:p-4 flex items-center justify-between gap-2.5">
+                <div className="min-w-0">
+                  <p className="font-semibold text-white text-sm truncate">{d.studentName}</p>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    Room {d.roomNumber} · {d.autoLogged ? `flagged automatically at the ${dueLabel} deadline` : `logged by ${d.recordedBy}`}
+                  </p>
+                </div>
+                {canEdit && (
+                  <button
+                    onClick={() => excuseResident(d.studentId)}
+                    className="shrink-0 min-h-touch bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-700/50 px-3 rounded-xl text-[11px] font-semibold flex items-center gap-1.5"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Excuse
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Borrowed phones */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
+          <h3 className="font-bold text-white text-sm flex items-center gap-2">
+            <PhoneOutgoing className="w-4 h-4 text-violet-400" />
+            Borrowed From the Vault
+          </h3>
+          <span className="text-xs text-slate-400">{openBorrows.length} out now</span>
+        </div>
+
+        {canEdit && (
+          <div className="p-3 sm:p-4 border-b border-slate-800/70 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Resident</label>
+              <select value={borrowStudentId} onChange={e => setBorrowStudentId(e.target.value)} className={FIELD}>
+                <option value="">Select a resident with a phone in the vault</option>
+                {borrowable.map(o => (
+                  <option key={o.id} value={o.id}>{o.name} · Room {o.roomNumber}</option>
+                ))}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Reason</label>
+              <input
+                type="text"
+                placeholder="e.g. Calling parents about weekend pass"
+                value={borrowReason}
+                onChange={e => setBorrowReason(e.target.value)}
+                className={FIELD}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Taken out</label>
+              <input type="time" value={borrowOut} onChange={e => setBorrowOut(e.target.value)} className={FIELD} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Due back</label>
+              <input type="time" value={borrowBack} onChange={e => setBorrowBack(e.target.value)} className={FIELD} />
+            </div>
+            <button
+              onClick={startBorrow}
+              disabled={!borrowStudentId || !borrowReason.trim()}
+              className="sm:col-span-2 min-h-touch bg-violet-600 hover:bg-violet-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors"
+            >
+              <PhoneOutgoing className="w-4 h-4" />
+              Sign the phone out
+            </button>
+          </div>
+        )}
+
+        {openBorrows.length === 0 ? (
+          <p className="p-6 text-center text-xs text-slate-500">No phones are signed out right now.</p>
+        ) : (
+          <div className="divide-y divide-slate-800/70">
+            {openBorrows.map(b => {
+              const overdue = isOverdue(b.borrowedDate, b.expectedReturnTime);
+              return (
+                <div key={b.id} className="p-3 sm:p-4 flex items-center justify-between gap-2.5">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-semibold text-white text-sm truncate">{b.studentName}</p>
+                      {overdue && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300">OVERDUE</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      Room {b.roomNumber} · out {formatTime12h(b.borrowedTime)} · due {formatTime12h(b.expectedReturnTime)}
+                    </p>
+                    <p className="text-[11px] text-slate-400 truncate">{b.reason}</p>
+                  </div>
+                  {canEdit && (
+                    <button
+                      onClick={() => returnPhoneBorrow(b.id)}
+                      className="shrink-0 min-h-touch bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 px-3 rounded-xl text-[11px] font-semibold flex items-center gap-1.5"
+                    >
+                      <PhoneIncoming className="w-3.5 h-3.5" /> Back in
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {phoneBorrows.some(b => b.status === 'returned') && (
+          <div className="border-t border-slate-800 divide-y divide-slate-800/70 max-h-[240px] overflow-y-auto">
+            {phoneBorrows.filter(b => b.status === 'returned').slice(0, 25).map(b => (
+              <div key={b.id} className="px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+                <p className="text-[11px] text-slate-400 truncate">
+                  <span className="text-slate-300 font-semibold">{b.studentName}</span> · {b.reason}
+                </p>
+                <span className="shrink-0 text-[10px] text-slate-500 font-mono">
+                  {formatTime12h(b.borrowedTime)} → {formatTime12h(b.returnedTime)}
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -397,6 +745,9 @@ export const CellphoneCustodyView: React.FC = () => {
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${DEPOSIT_META[d.status].chip}`}>
                     {DEPOSIT_META[d.status].short.toUpperCase()}
                   </span>
+                  {d.autoLogged && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 bg-slate-800 text-slate-400">AUTO</span>
+                  )}
                 </div>
                 <span className="shrink-0 font-mono font-bold text-xs text-slate-300">{formatTime12h(d.depositTime)}</span>
               </div>

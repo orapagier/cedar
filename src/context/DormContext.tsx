@@ -13,6 +13,7 @@ import {
   LightsOutLog,
   CellphoneCustody,
   PhoneDepositLog,
+  PhoneBorrowLog,
   Violation,
   MedicalExcuseSlip,
   GatePassRecord,
@@ -33,6 +34,7 @@ import {
   INITIAL_LIGHTS_OUT,
   INITIAL_CELLPHONES,
   INITIAL_PHONE_DEPOSITS,
+  INITIAL_PHONE_BORROWS,
   INITIAL_VIOLATIONS,
   INITIAL_MEDICAL_SLIPS,
   INITIAL_GATE_PASSES,
@@ -42,7 +44,14 @@ import {
   INITIAL_SETTINGS,
   worshipLabel,
 } from '../data/dormSeed';
-import { manilaToday, manilaTime } from '../utils/date';
+import { manilaToday, manilaTime, manilaTimeValue } from '../utils/date';
+import {
+  vaultCycle,
+  isLateDeposit,
+  describeCyclePoint,
+  vaultExemptionReason,
+  WEEKDAY_NAMES,
+} from '../utils/phoneVault';
 
 interface DormContextType {
   currentUser: User;
@@ -61,6 +70,7 @@ interface DormContextType {
   lightsOutLogs: LightsOutLog[];
   cellphones: CellphoneCustody[];
   phoneDeposits: PhoneDepositLog[];
+  phoneBorrows: PhoneBorrowLog[];
   violations: Violation[];
   settings: DormSettings;
   updateSettings: (updates: Partial<DormSettings>) => void;
@@ -151,7 +161,15 @@ interface DormContextType {
   }) => void;
   saveLightsOutLog: (log: Omit<LightsOutLog, 'id'>) => void;
   updateCellphoneStatus: (id: string, updates: Partial<CellphoneCustody>) => void;
+  /** Mark a resident as keeping no phone in the dorm, or undo that. */
+  setPhoneExemption: (studentId: string, exempt: boolean) => void;
   savePhoneDepositBatch: (records: Omit<PhoneDepositLog, 'id'>[]) => void;
+  /** Sign a deposited phone back out to its owner for a while. */
+  savePhoneBorrow: (entry: Omit<PhoneBorrowLog, 'id' | 'status' | 'returnedDate' | 'returnedTime'>) => void;
+  /** Take a borrowed phone back into the vault. */
+  returnPhoneBorrow: (id: string, remarks?: string) => void;
+  /** Hand every vaulted phone back at the end of the cycle. */
+  releaseAllPhones: () => void;
   saveViolation: (viol: Omit<Violation, 'id' | 'createdAt'>) => void;
   updateViolationStatus: (id: string, status: Violation['status'], actionRequired?: string) => void;
   resetAllData: () => void;
@@ -315,6 +333,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return loaded.filter(d => !TEST_USER_IDS.has(d.studentId) && !TEST_NAMES.has(d.studentName));
   });
 
+  const [phoneBorrows, setPhoneBorrows] = useState<PhoneBorrowLog[]>(() => {
+    const loaded = loadFromStorage<PhoneBorrowLog[]>('phone_borrows', INITIAL_PHONE_BORROWS);
+    return loaded.filter(b => !TEST_USER_IDS.has(b.studentId) && !TEST_NAMES.has(b.studentName));
+  });
+
   const [violations, setViolations] = useState<Violation[]>(() => {
     const loaded = loadFromStorage<Violation[]>('violations', INITIAL_VIOLATIONS);
     return loaded.filter(v => !TEST_LOG_IDS.has(v.id) && !TEST_USER_IDS.has(v.studentId) && !TEST_NAMES.has(v.studentName));
@@ -370,6 +393,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => saveToStorage('lights_out', lightsOutLogs), [lightsOutLogs]);
   useEffect(() => saveToStorage('cellphones', cellphones), [cellphones]);
   useEffect(() => saveToStorage('phone_deposits', phoneDeposits), [phoneDeposits]);
+  useEffect(() => saveToStorage('phone_borrows', phoneBorrows), [phoneBorrows]);
   useEffect(() => saveToStorage('violations', violations), [violations]);
   useEffect(() => saveToStorage('medical_slips', medicalSlips), [medicalSlips]);
   useEffect(() => saveToStorage('gate_passes', gatePasses), [gatePasses]);
@@ -398,6 +422,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lightsOutLogs,
         cellphones,
         phoneDeposits,
+        phoneBorrows,
         violations,
         medicalSlips,
         gatePasses,
@@ -434,7 +459,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
     };
   }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, cleaningDuties, lightsOutLogs,
-        cellphones, phoneDeposits, violations, settings,
+        cellphones, phoneDeposits, phoneBorrows, violations, settings,
         medicalSlips, gatePasses, demeritClearances, confiscatedItems, studentMedicals]);
 
   // Pull the shared state on load, then poll for updates from other devices.
@@ -475,6 +500,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.lightsOutLogs) setLightsOutLogs(d.lightsOutLogs as LightsOutLog[]);
           if (d.cellphones) setCellphones(d.cellphones as CellphoneCustody[]);
           if (d.phoneDeposits) setPhoneDeposits(d.phoneDeposits as PhoneDepositLog[]);
+          if (d.phoneBorrows) setPhoneBorrows(d.phoneBorrows as PhoneBorrowLog[]);
           if (d.violations) setViolations(d.violations as Violation[]);
           if (d.medicalSlips) setMedicalSlips(d.medicalSlips as MedicalExcuseSlip[]);
           if (d.gatePasses) setGatePasses(d.gatePasses as GatePassRecord[]);
@@ -949,21 +975,29 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
-  // A room's deposit roll call: it records who handed a phone in, moves the
-  // matching custody entries, and flags late or withheld phones.
+  // A room's deposit roll call. Every check is filed against the vault cycle it
+  // falls in — one record per resident per cycle — so re-running a room
+  // replaces its own records instead of stacking new ones.
   const savePhoneDepositBatch = (records: Omit<PhoneDepositLog, 'id'>[]) => {
     if (!canEdit) return;
-    const stamped: PhoneDepositLog[] = records.map((r, idx) => ({
-      ...r,
-      id: `dep-${Date.now()}-${idx}`,
-    }));
-    setPhoneDeposits(prev => [...stamped, ...prev]);
 
-    setCellphones(prev =>
-      prev.map(c => {
-        const rec = records.find(r => r.studentId === c.studentId);
-        // Confiscated and exempted devices are not part of the nightly vault run.
-        if (!rec || c.custodyStatus === 'confiscated' || c.custodyStatus === 'exempted') return c;
+    // Anything handed in past the deadline is late, whatever the dean tapped.
+    const resolved: PhoneDepositLog[] = records.map(r => {
+      const cycleDate = r.cycleDate ?? vaultCycle(r.date, r.depositTime, settings).deadlineDate;
+      const late = r.status === 'deposited' && isLateDeposit(r.date, r.depositTime, settings);
+      return { ...r, cycleDate, status: late ? 'late' : r.status, id: `dep-${r.studentId}-${cycleDate}` };
+    });
+
+    const supersedes = (d: PhoneDepositLog) =>
+      resolved.some(r => r.studentId === d.studentId && (d.cycleDate ?? d.date) === r.cycleDate);
+    setPhoneDeposits(prev => [...resolved, ...prev.filter(d => !supersedes(d))]);
+
+    setCellphones(prev => {
+      const updated = prev.map(c => {
+        const rec = resolved.find(r => r.studentId === c.studentId);
+        // Confiscated, exempted and excused devices are not part of the vault run.
+        if (!rec || rec.status === 'excused') return c;
+        if (c.custodyStatus === 'confiscated' || c.custodyStatus === 'exempted') return c;
         const inVault = rec.status !== 'not_deposited';
         return {
           ...c,
@@ -972,11 +1006,32 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           returnedFriday: inVault ? false : c.returnedFriday,
           custodyStatus: inVault ? 'in_vault' : 'with_student',
         };
-      })
-    );
+      });
+      // First deposit for a resident whose device was never registered: the
+      // roll call itself puts them on the vault roster.
+      const fresh = resolved
+        .filter(r => r.status !== 'excused' && !prev.some(c => c.studentId === r.studentId))
+        .map<CellphoneCustody>(r => ({
+          id: `phone-${r.studentId}`,
+          studentId: r.studentId,
+          studentName: r.studentName,
+          roomNumber: r.roomNumber,
+          deviceModel: 'Not specified',
+          lockerVaultNumber: '—',
+          turnedOverSunday: r.status !== 'not_deposited',
+          turnOverTime: r.status !== 'not_deposited' ? r.depositTime : undefined,
+          returnedFriday: false,
+          custodyStatus: r.status === 'not_deposited' ? 'with_student' : 'in_vault',
+        }));
+      return fresh.length ? [...fresh, ...updated] : updated;
+    });
 
-    records.forEach(r => {
-      if (r.status === 'deposited') return;
+    const dueLabel = describeCyclePoint(settings.phoneDepositDay, settings.phoneDepositTime);
+    resolved.forEach(r => {
+      const sourceId = `phone-${r.studentId}-${r.cycleDate}`;
+      // A re-check replaces its own verdict rather than piling points on.
+      clearViolationsFrom(sourceId);
+      if (r.status === 'deposited' || r.status === 'excused') return;
       saveViolation({
         date: r.date,
         studentId: r.studentId,
@@ -985,16 +1040,181 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         category: 'cellphone_policy_breach',
         severity: r.status === 'late' ? 'minor' : 'moderate',
         description: r.status === 'late'
-          ? `Late phone deposit (logged ${r.depositTime}).${r.remarks ? ` ${r.remarks}` : ''}`
-          : `Did not deposit phone at vault check (${r.depositTime}).${r.remarks ? ` ${r.remarks}` : ''}`,
+          ? `Late phone deposit at ${r.depositTime} — due ${dueLabel}.${r.remarks ? ` ${r.remarks}` : ''}`
+          : `Did not deposit phone for the cycle due ${dueLabel}.${r.remarks ? ` ${r.remarks}` : ''}`,
         demeritPoints: VIOLATION_POINTS,
         reportedBy: currentUser.name,
         status: 'pending_settlement',
+        sourceId,
         actionRequired: r.status === 'late'
           ? 'Deposit on time at the next vault run.'
           : 'Surrender the device to the Dean immediately.',
       });
     });
+  };
+
+  /**
+   * Once the deadline has passed, a resident with no deposit record on file has
+   * not handed their phone in, so the cycle flags them on its own. Residents
+   * with no phone, an exempted or confiscated device, or an excused absence
+   * over the deadline are left alone. Ids are derived from the resident and the
+   * cycle, so the sweep can run on every device and still write one record.
+   */
+  const sweepMissingDeposits = () => {
+    if (!canEdit) return;
+    const cycle = vaultCycle(manilaToday(), manilaTimeValue(), settings);
+    if (!cycle.deadlinePassed) return;
+
+    const missing = users.filter(u =>
+      u.role === 'occupant' &&
+      !vaultExemptionReason(u, cycle.deadlineDate, { cellphones, medicalSlips, gatePasses }) &&
+      !phoneDeposits.some(d => d.studentId === u.id && (d.cycleDate ?? d.date) === cycle.deadlineDate)
+    );
+    if (!missing.length) return;
+
+    const dueLabel = describeCyclePoint(settings.phoneDepositDay, settings.phoneDepositTime);
+    const swept: PhoneDepositLog[] = missing.map(u => ({
+      id: `dep-${u.id}-${cycle.deadlineDate}`,
+      date: cycle.deadlineDate,
+      cycleDate: cycle.deadlineDate,
+      studentId: u.id,
+      studentName: u.name,
+      roomNumber: u.roomNumber || '—',
+      status: 'not_deposited',
+      depositTime: settings.phoneDepositTime,
+      autoLogged: true,
+      remarks: `No deposit recorded by ${dueLabel}.`,
+      recordedBy: 'Vault deadline',
+    }));
+    const sweptIds = new Set(swept.map(d => d.id));
+
+    const flagged: Violation[] = missing.map(u => ({
+      id: `viol-phone-${u.id}-${cycle.deadlineDate}`,
+      date: cycle.deadlineDate,
+      studentId: u.id,
+      studentName: u.name,
+      roomNumber: u.roomNumber || '—',
+      category: 'cellphone_policy_breach',
+      severity: 'moderate',
+      description: `No phone deposit recorded for the cycle due ${dueLabel}.`,
+      demeritPoints: VIOLATION_POINTS,
+      reportedBy: 'Vault deadline',
+      status: 'pending_settlement',
+      sourceId: `phone-${u.id}-${cycle.deadlineDate}`,
+      actionRequired: 'Surrender the device to the Dean, or have the absence excused.',
+      createdAt: manilaTime(),
+    }));
+    const flaggedSources = new Set(flagged.map(v => v.sourceId));
+
+    setPhoneDeposits(prev => [...swept, ...prev.filter(d => !sweptIds.has(d.id))]);
+    setViolations(prev => [...flagged, ...prev.filter(v => !v.sourceId || !flaggedSources.has(v.sourceId))]);
+    setCellphones(prev =>
+      prev.map(c =>
+        sweptIds.has(`dep-${c.studentId}-${cycle.deadlineDate}`) && c.custodyStatus === 'in_vault'
+          ? { ...c, custodyStatus: 'with_student', turnedOverSunday: false }
+          : c
+      )
+    );
+  };
+
+  // The sweep only ever writes what the deadline implies, so it is safe to
+  // re-run: on load once the shared records are in, and hourly after that.
+  useEffect(() => {
+    if (!canEdit) return;
+    const run = () => {
+      if (initialPullDone.current) sweepMissingDeposits();
+    };
+    const first = window.setTimeout(run, 2500);
+    const hourly = window.setInterval(run, 3_600_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(hourly);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, settings, users, cellphones, phoneDeposits, medicalSlips, gatePasses]);
+
+  /**
+   * Mark a resident as keeping no phone in the dorm, or put them back into the
+   * vault run. Residents whose device was never registered get a placeholder
+   * entry so the exemption has somewhere to live.
+   */
+  const setPhoneExemption = (studentId: string, exempt: boolean) => {
+    if (!canEdit) return;
+    const student = users.find(u => u.id === studentId);
+    setCellphones(prev => {
+      const existing = prev.find(c => c.studentId === studentId);
+      if (existing) {
+        return prev.map(c => (c.id === existing.id
+          ? {
+              ...c,
+              custodyStatus: exempt ? 'exempted' : 'with_student',
+              remarks: exempt ? 'No phone in the dorm — exempt from the vault run.' : undefined,
+            }
+          : c));
+      }
+      if (!exempt || !student) return prev;
+      return [{
+        id: `phone-${studentId}`,
+        studentId,
+        studentName: student.name,
+        roomNumber: student.roomNumber || '—',
+        deviceModel: 'None declared',
+        lockerVaultNumber: '—',
+        turnedOverSunday: false,
+        returnedFriday: false,
+        custodyStatus: 'exempted',
+        remarks: 'No phone in the dorm — exempt from the vault run.',
+      }, ...prev];
+    });
+  };
+
+  /** Sign a deposited phone back out to its owner for a while. */
+  const savePhoneBorrow = (entry: Omit<PhoneBorrowLog, 'id' | 'status' | 'returnedDate' | 'returnedTime'>) => {
+    if (!canEdit) return;
+    const record: PhoneBorrowLog = {
+      ...entry,
+      id: `brw-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      status: 'out',
+    };
+    setPhoneBorrows(prev => [record, ...prev]);
+    setCellphones(prev =>
+      prev.map(c => (c.studentId === entry.studentId && c.custodyStatus === 'in_vault'
+        ? { ...c, custodyStatus: 'borrowed' }
+        : c))
+    );
+  };
+
+  /** Take a borrowed phone back into the vault. */
+  const returnPhoneBorrow = (id: string, remarks?: string) => {
+    if (!canEdit) return;
+    const borrow = phoneBorrows.find(b => b.id === id);
+    if (!borrow || borrow.status === 'returned') return;
+    setPhoneBorrows(prev =>
+      prev.map(b => (b.id === id
+        ? { ...b, status: 'returned', returnedDate: manilaToday(), returnedTime: manilaTimeValue(), remarks: remarks || b.remarks }
+        : b))
+    );
+    setCellphones(prev =>
+      prev.map(c => (c.studentId === borrow.studentId && c.custodyStatus === 'borrowed'
+        ? { ...c, custodyStatus: 'in_vault' }
+        : c))
+    );
+  };
+
+  /** Hand every vaulted phone back at the end of the cycle. */
+  const releaseAllPhones = () => {
+    if (!canEdit) return;
+    const stamp = `${(WEEKDAY_NAMES[settings.phoneReleaseDay] || '').slice(0, 3)} ${manilaTime()}`;
+    setCellphones(prev =>
+      prev.map(c => (c.custodyStatus === 'in_vault' || c.custodyStatus === 'borrowed'
+        ? { ...c, custodyStatus: 'with_student', returnedFriday: true, returnTime: stamp }
+        : c))
+    );
+    setPhoneBorrows(prev =>
+      prev.map(b => (b.status === 'out'
+        ? { ...b, status: 'returned', returnedDate: manilaToday(), returnedTime: manilaTimeValue() }
+        : b))
+    );
   };
 
   const saveViolation = (viol: Omit<Violation, 'id' | 'createdAt'>) => {
@@ -1028,6 +1248,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLightsOutLogs(INITIAL_LIGHTS_OUT);
     setCellphones(INITIAL_CELLPHONES);
     setPhoneDeposits(INITIAL_PHONE_DEPOSITS);
+    setPhoneBorrows(INITIAL_PHONE_BORROWS);
     setViolations(INITIAL_VIOLATIONS);
     localStorage.clear();
   };
@@ -1337,6 +1558,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLightsOutLogs([]);
     setCellphones([]);
     setPhoneDeposits([]);
+    setPhoneBorrows([]);
     setViolations([]);
     setMedicalSlips([]);
     setGatePasses([]);
@@ -1359,6 +1581,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLightsOutLogs(INITIAL_LIGHTS_OUT);
     setCellphones(INITIAL_CELLPHONES);
     setPhoneDeposits(INITIAL_PHONE_DEPOSITS);
+    setPhoneBorrows(INITIAL_PHONE_BORROWS);
     setViolations(INITIAL_VIOLATIONS);
     setMedicalSlips(INITIAL_MEDICAL_SLIPS);
     setGatePasses(INITIAL_GATE_PASSES);
@@ -1386,6 +1609,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lightsOutLogs,
         cellphones,
         phoneDeposits,
+        phoneBorrows,
         violations,
         settings,
         updateSettings,
@@ -1418,7 +1642,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveCleaningDuty,
         saveLightsOutLog,
         updateCellphoneStatus,
+        setPhoneExemption,
         savePhoneDepositBatch,
+        savePhoneBorrow,
+        returnPhoneBorrow,
+        releaseAllPhones,
         saveViolation,
         updateViolationStatus,
         resetAllData,

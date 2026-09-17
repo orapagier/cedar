@@ -10,13 +10,19 @@ import {
   BookOpen,
   CalendarDays,
   Sun,
+  Smartphone,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { DormSettings } from '../types/dorm';
 import { formatFullDate, formatTime12h } from '../utils/date';
+import { describeCyclePoint, WEEKDAY_NAMES } from '../utils/phoneVault';
 import { useManilaToday } from '../hooks/useManilaToday';
 
 const TIME_FIELD =
   'w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500';
+
+/** The clock settings — everything but the weekday pickers, which are numbers. */
+type TimeKey = { [K in keyof DormSettings]: DormSettings[K] extends string ? K : never }[keyof DormSettings];
 
 export const ScheduleSettingsView: React.FC = () => {
   const { settings, updateSettings, canEdit } = useDorm();
@@ -24,7 +30,12 @@ export const ScheduleSettingsView: React.FC = () => {
   const [draft, setDraft] = useState({ ...settings });
   const [saved, setSaved] = useState(false);
 
-  const set = (key: keyof typeof draft, value: string) => {
+  const set = (key: TimeKey, value: string) => {
+    setDraft(prev => ({ ...prev, [key]: value }));
+    setSaved(false);
+  };
+
+  const setDay = (key: 'phoneDepositDay' | 'phoneReleaseDay', value: number) => {
     setDraft(prev => ({ ...prev, [key]: value }));
     setSaved(false);
   };
@@ -43,7 +54,7 @@ export const ScheduleSettingsView: React.FC = () => {
     );
   }
 
-  const sections: { title: string; icon: React.ComponentType<{ className?: string }>; desc: string; fields: { key: keyof typeof draft; label: string; hint: string }[] }[] = [
+  const sections: { title: string; icon: React.ComponentType<{ className?: string }>; desc: string; fields: { key: TimeKey; label: string; hint: string }[] }[] = [
     {
       title: 'Worship Services',
       icon: Church,
@@ -146,6 +157,52 @@ export const ScheduleSettingsView: React.FC = () => {
           );
         })}
 
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 shrink-0">
+              <Smartphone className="w-[18px] h-[18px]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-sm">Phone Vault Cycle</h3>
+              <p className="text-[11px] text-slate-500">When phones are due in, and when they go back out.</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {([
+              { dayKey: 'phoneDepositDay', timeKey: 'phoneDepositTime', label: 'Deposit deadline', hint: 'Phones handed in after this are logged late.' },
+              { dayKey: 'phoneReleaseDay', timeKey: 'phoneReleaseTime', label: 'Release', hint: 'Phones go back to their owners.' },
+            ] as const).map(row => (
+              <div key={row.dayKey}>
+                <span className="block text-[11px] font-medium text-slate-400 mb-1">{row.label}</span>
+                <div className="flex gap-2">
+                  <select
+                    value={draft[row.dayKey]}
+                    onChange={e => setDay(row.dayKey, Number(e.target.value))}
+                    aria-label={`${row.label} day`}
+                    className={TIME_FIELD}
+                  >
+                    {WEEKDAY_NAMES.map((day, index) => (
+                      <option key={day} value={index}>{day}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="time"
+                    value={draft[row.timeKey] || ''}
+                    onChange={e => set(row.timeKey, e.target.value)}
+                    aria-label={`${row.label} time`}
+                    className={`${TIME_FIELD} max-w-[9rem]`}
+                  />
+                </div>
+                <span className="block text-[10px] text-slate-500 mt-1">{row.hint}</span>
+              </div>
+            ))}
+            <p className="text-[10px] text-slate-500 leading-relaxed border-t border-slate-800 pt-2.5">
+              A resident with no deposit record once the deadline passes is flagged automatically, unless they are
+              excused or have no phone on file.
+            </p>
+          </div>
+        </div>
+
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-slate-900 to-slate-950">
           <div className="flex items-start gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-400 shrink-0">
@@ -188,6 +245,14 @@ export const ScheduleSettingsView: React.FC = () => {
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Afternoon Departure</p>
               <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.departureAfternoonStart)} – {formatTime12h(settings.departureAfternoonEnd)}</p>
+            </div>
+            <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wide">Phone Deposit</p>
+              <p className="text-white font-semibold mt-0.5">{describeCyclePoint(settings.phoneDepositDay, settings.phoneDepositTime)}</p>
+            </div>
+            <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wide">Phone Release</p>
+              <p className="text-white font-semibold mt-0.5">{describeCyclePoint(settings.phoneReleaseDay, settings.phoneReleaseTime)}</p>
             </div>
           </div>
         </div>

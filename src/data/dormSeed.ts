@@ -10,7 +10,8 @@ import {
   CleaningDutyRecord, 
   LightsOutLog, 
   CellphoneCustody, 
-  PhoneDepositLog, 
+  PhoneDepositLog,
+  PhoneBorrowLog,
   Violation,
   MedicalExcuseSlip,
   GatePassRecord,
@@ -175,6 +176,10 @@ export const INITIAL_SETTINGS: DormSettings = {
   departureEnd: '07:35',
   departureAfternoonStart: '13:00',
   departureAfternoonEnd: '13:35',
+  phoneDepositDay: 0,        // Sunday
+  phoneDepositTime: '20:00', // 8:00 PM
+  phoneReleaseDay: 5,        // Friday
+  phoneReleaseTime: '12:00', // 12:00 noon
 };
 export const INITIAL_ATTENDANCE: AttendanceRecord[] = [];
 export const INITIAL_CURFEW: CurfewRecord[] = [];
@@ -184,6 +189,7 @@ export const INITIAL_CLEANING_DUTIES: CleaningDutyRecord[] = [];
 export const INITIAL_LIGHTS_OUT: LightsOutLog[] = [];
 export const INITIAL_CELLPHONES: CellphoneCustody[] = [];
 export const INITIAL_PHONE_DEPOSITS: PhoneDepositLog[] = [];
+export const INITIAL_PHONE_BORROWS: PhoneBorrowLog[] = [];
 export const INITIAL_VIOLATIONS: Violation[] = [];
 export const INITIAL_MEDICAL_SLIPS: MedicalExcuseSlip[] = [];
 export const INITIAL_GATE_PASSES: GatePassRecord[] = [];

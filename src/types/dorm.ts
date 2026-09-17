@@ -72,6 +72,15 @@ export interface DormSettings {
   /** Afternoon school exit window, e.g. "13:00" - "13:35". */
   departureAfternoonStart: string;
   departureAfternoonEnd: string;
+  /**
+   * The weekly phone vault cycle. Phones are due in the vault on
+   * `phoneDepositDay` at `phoneDepositTime` and handed back on
+   * `phoneReleaseDay` at `phoneReleaseTime`; days are 0 (Sunday) to 6.
+   */
+  phoneDepositDay: number;
+  phoneDepositTime: string;  // e.g. "20:00"
+  phoneReleaseDay: number;
+  phoneReleaseTime: string;  // e.g. "12:00"
 }
 
 /** The two daily school departures; each has its own window in DormSettings. */
@@ -187,17 +196,44 @@ export interface LightsOutLog {
   inspectedBy: string;
 }
 
-/** Nightly/weekly per-resident phone deposit roll call, checked room by room. */
+/** Weekly per-resident phone deposit roll call, checked room by room. */
 export interface PhoneDepositLog {
   id: string;
   date: string;
+  /** Deadline date of the vault cycle this check belongs to, so a cycle's
+   *  records are found whichever day they were taken. Optional: records saved
+   *  before the cycle existed are keyed by their own date. */
+  cycleDate?: string;
   studentId: string;
   studentName: string;
   roomNumber: string;
-  status: 'deposited' | 'late' | 'not_deposited';
+  /** 'excused' covers residents off-campus, on medical rest, or without a phone. */
+  status: 'deposited' | 'late' | 'not_deposited' | 'excused';
   depositTime: string; // e.g. "18:30"
+  /** Set when the deadline swept the resident up rather than a dean logging it. */
+  autoLogged?: boolean;
   remarks?: string;
   recordedBy: string;
+}
+
+/**
+ * A phone signed back out to its owner mid-cycle — a call home, a school
+ * requirement — and its return to the vault.
+ */
+export interface PhoneBorrowLog {
+  id: string;
+  studentId: string;
+  studentName: string;
+  roomNumber: string;
+  reason: string;
+  borrowedDate: string;       // YYYY-MM-DD
+  borrowedTime: string;       // e.g. "16:20"
+  expectedReturnTime: string; // e.g. "17:00"
+  returnedDate?: string;
+  returnedTime?: string;
+  status: 'out' | 'returned';
+  approvedBy: string;
+  remarks?: string;
 }
 
 export interface CellphoneCustody {
@@ -211,7 +247,7 @@ export interface CellphoneCustody {
   turnOverTime?: string;
   returnedFriday: boolean;
   returnTime?: string;
-  custodyStatus: 'in_vault' | 'with_student' | 'confiscated' | 'exempted';
+  custodyStatus: 'in_vault' | 'with_student' | 'borrowed' | 'confiscated' | 'exempted';
   remarks?: string;
 }
 
