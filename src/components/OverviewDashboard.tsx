@@ -8,6 +8,7 @@ import {
   UserCheck,
   Brush,
   Smartphone,
+  Luggage,
   ChevronRight,
   Users,
   Shield,
@@ -26,6 +27,7 @@ const CHECKS: { id: string; label: string; sub: string; icon: React.ComponentTyp
   { id: 'uniform', label: 'Departure & Uniform', sub: 'Morning gate check', icon: UserCheck },
   { id: 'chores', label: 'Weekly Chores', sub: 'Maintenance duty roster', icon: Brush },
   { id: 'cellphones', label: 'Phone Vault', sub: 'Sunday lockup, Friday return', icon: Smartphone },
+  { id: 'gatepass', label: 'Gate Pass & Home Leave', sub: 'Campus exits & weekend leave', icon: Luggage },
 ];
 
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate }) => {
@@ -42,6 +44,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     uniformLogs,
     chores,
     cellphones,
+    gatePasses,
     violations,
   } = useDorm();
 
@@ -67,6 +70,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     uniform: `${uniformLogs.filter(u => u.date === today).length} cleared`,
     chores: `${chores.filter(c => c.status !== 'pending').length}/${chores.length} approved`,
     cellphones: `${cellphones.filter(c => c.custodyStatus === 'in_vault').length} in vault`,
+    gatepass: `${gatePasses.filter(p => p.status === 'approved' || p.status === 'departed').length} active`,
   };
 
   const myRecord = occupants.find(o => o.id === currentUser.id);

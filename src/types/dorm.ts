@@ -1,4 +1,4 @@
-export type UserRole = 'superadmin' | 'admin' | 'occupant';
+export type UserRole = 'superadmin' | 'admin' | 'occupant' | 'parent' | 'guest';
 
 export interface User {
   id: string;
@@ -10,6 +10,10 @@ export interface User {
   phone?: string;
   parentName?: string;
   parentPhone?: string;
+  /** Optional Gmail used to auto-link a parent account to this student. */
+  parentEmail?: string;
+  /** For parent sessions: id of the linked student they may view. */
+  relatedStudentId?: string;
   demeritPoints: number;
   status: 'active' | 'probation' | 'excused_leave';
 }

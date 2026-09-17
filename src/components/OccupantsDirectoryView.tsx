@@ -61,6 +61,7 @@ export const OccupantsDirectoryView: React.FC = () => {
     phone: '',
     parentName: '',
     parentPhone: '',
+    parentEmail: '',
     deviceModel: 'Samsung Galaxy A14',
     lockerVaultNumber: 'Vault-01',
   });
@@ -102,6 +103,7 @@ export const OccupantsDirectoryView: React.FC = () => {
       phone: occupant.phone || '',
       parentName: occupant.parentName || '',
       parentPhone: occupant.parentPhone || '',
+      parentEmail: occupant.parentEmail || '',
       deviceModel: phoneRecord?.deviceModel || 'Smartphone',
       lockerVaultNumber: phoneRecord?.lockerVaultNumber || 'Vault-01',
     });
@@ -120,6 +122,7 @@ export const OccupantsDirectoryView: React.FC = () => {
       phone: formData.phone.trim(),
       parentName: formData.parentName.trim(),
       parentPhone: formData.parentPhone.trim(),
+      parentEmail: formData.parentEmail.trim(),
       deviceModel: formData.deviceModel.trim(),
       lockerVaultNumber: formData.lockerVaultNumber.trim(),
     });
@@ -140,6 +143,7 @@ export const OccupantsDirectoryView: React.FC = () => {
       phone: formData.phone.trim(),
       parentName: formData.parentName.trim(),
       parentPhone: formData.parentPhone.trim(),
+      parentEmail: formData.parentEmail.trim(),
       deviceModel: formData.deviceModel.trim(),
       lockerVaultNumber: formData.lockerVaultNumber.trim(),
     });
@@ -157,6 +161,7 @@ export const OccupantsDirectoryView: React.FC = () => {
       phone: '',
       parentName: '',
       parentPhone: '',
+      parentEmail: '',
       deviceModel: 'Samsung Galaxy A14',
       lockerVaultNumber: `Vault-${Math.floor(Math.random() * 60 + 1).toString().padStart(2, '0')}`,
     });
@@ -214,6 +219,7 @@ export const OccupantsDirectoryView: React.FC = () => {
           const parentPhone = parts[5]?.trim() || '';
           const deviceModel = parts[6]?.trim() || 'Smartphone';
           const lockerVaultNumber = parts[7]?.trim() || `Vault-${(index + 1).toString().padStart(2, '0')}`;
+          const parentEmail = parts[8]?.trim() || '';
 
           if (name && roomNumber) {
             parsed.push({
@@ -223,6 +229,7 @@ export const OccupantsDirectoryView: React.FC = () => {
               phone,
               parentName,
               parentPhone,
+              parentEmail,
               deviceModel,
               lockerVaultNumber,
             });
@@ -232,7 +239,7 @@ export const OccupantsDirectoryView: React.FC = () => {
 
       setBulkPreview(parsed);
     } catch (err) {
-      setBulkError('Failed to parse text. Please ensure format: Name, Room, Email, Phone, Parent Name, Parent Phone');
+      setBulkError('Failed to parse text. Please ensure format: Name, Room, Email, Phone, Parent Name, Parent Phone, Device, Vault, Parent Email');
     }
   };
 
@@ -449,6 +456,12 @@ export const OccupantsDirectoryView: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <span className="text-slate-400">Emergency Contact:</span>
                           <span className="font-mono text-amber-400 font-medium">{occupant.parentPhone || 'Not provided'}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-slate-400 shrink-0">Parent Login:</span>
+                          <span className="font-mono text-[11px] text-emerald-300/90 text-right break-all">
+                            {occupant.parentEmail || 'No parent email'}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between border-t border-slate-800/80 pt-1.5">
                           <span className="text-slate-400">Phone & Vault Slot:</span>
@@ -675,6 +688,17 @@ export const OccupantsDirectoryView: React.FC = () => {
                 </div>
 
                 <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Parent Google Email</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. maria.santos@gmail.com"
+                    value={formData.parentEmail}
+                    onChange={e => setFormData({ ...formData, parentEmail: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+                  />
+                </div>
+
+                <div>
                   <label className="block font-semibold text-slate-300 mb-1">Smartphone Model</label>
                   <input
                     type="text"
@@ -792,6 +816,16 @@ export const OccupantsDirectoryView: React.FC = () => {
                     value={formData.parentPhone}
                     onChange={e => setFormData({ ...formData, parentPhone: e.target.value })}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Parent Google Email</label>
+                  <input
+                    type="email"
+                    value={formData.parentEmail}
+                    onChange={e => setFormData({ ...formData, parentEmail: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
                   />
                 </div>
 

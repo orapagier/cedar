@@ -78,6 +78,8 @@ interface DormContextType {
   canEdit: boolean;
   isSuperAdmin: boolean;
   isOccupant: boolean;
+  isParent: boolean;
+  isGuest: boolean;
 
   // Student & Room Management Actions
   addOccupant: (data: {
@@ -87,6 +89,7 @@ interface DormContextType {
     phone?: string;
     parentName?: string;
     parentPhone?: string;
+    parentEmail?: string;
     deviceModel?: string;
     lockerVaultNumber?: string;
   }) => User;
@@ -99,6 +102,7 @@ interface DormContextType {
     phone?: string;
     parentName?: string;
     parentPhone?: string;
+    parentEmail?: string;
     deviceModel?: string;
     lockerVaultNumber?: string;
   }>) => { count: number };
@@ -117,8 +121,7 @@ interface DormContextType {
   restoreDemoData: () => void;
 
   // Actions
-  loginWithRole: (role: UserRole, userSelectId?: string) => void;
-  loginGoogleOAuthMock: (email: string, name: string) => void;
+  loginWithGoogle: (session: { email: string; name: string; avatar?: string }) => void;
   updateUserRole: (userId: string, newRole: UserRole) => { success: boolean; message: string };
   addInspection: (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => void;
   saveAttendanceBatch: (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => void;
@@ -181,6 +184,10 @@ const DEAN_USER: User = {
   status: 'active',
 };
 
+// The single implicit super admin. Not stored in `users` — any Google account
+// with this email signs in as the Dean automatically.
+const SUPERADMIN_EMAIL = 'orapajelmar@gmail.com';
+
 function loadFromStorage<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PREFIX + key);
@@ -201,24 +208,33 @@ function saveToStorage<T>(key: string, value: T) {
 }
 
 export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // No preset accounts. Dean and admins are resolved only by the Google email
+  // they sign in with (orapajelmar@gmail.com is the implicit super admin).
   const [users, setUsers] = useState<User[]>(() => {
     const loaded = loadFromStorage<User[]>('users', INITIAL_USERS);
-    // Filter out test names and test IDs, while safely keeping every user encoded by the user!
-    const realUsers = loaded.filter(
-      u => !TEST_USER_IDS.has(u.id) && u.id !== 'user-dean' && u.email !== 'orapajelmar@gmail.com'
+    // Filter out test names and IDs, safely keeping every user encoded by the user!
+    return loaded.filter(
+      u => !TEST_USER_IDS.has(u.id) && u.id !== 'user-dean' && u.email !== SUPERADMIN_EMAIL
     );
-    return [DEAN_USER, ...realUsers];
   });
 
   const [currentUser, setCurrentUser] = useState<User>(() => {
     const wasAuthed = loadFromStorage<boolean>('isAuthenticated', false);
-    const savedId = loadFromStorage('currentUser_id', '');
-    if (!wasAuthed || !savedId || TEST_USER_IDS.has(savedId) || savedId === 'user-dean') {
-      return DEAN_USER;
+    if (!wasAuthed) return DEAN_USER;
+    // Preferred: restore the full persisted session (covers dean/parent/guest).
+    const savedUser = loadFromStorage<User | null>('currentUser', null);
+    if (savedUser && typeof savedUser.id === 'string' && !TEST_USER_IDS.has(savedUser.id)) {
+      return savedUser;
     }
-    const loadedUsers = loadFromStorage<User[]>('users', INITIAL_USERS);
-    const found = loadedUsers.find(u => u.id === savedId && !TEST_USER_IDS.has(u.id));
-    return found || DEAN_USER;
+    // Legacy: restore from saved id.
+    const savedId = loadFromStorage('currentUser_id', '');
+    if (savedId && !TEST_USER_IDS.has(savedId)) {
+      if (savedId === 'user-dean') return DEAN_USER;
+      const loadedUsers = loadFromStorage<User[]>('users', INITIAL_USERS);
+      const found = loadedUsers.find(u => u.id === savedId && !TEST_USER_IDS.has(u.id));
+      if (found) return found;
+    }
+    return DEAN_USER;
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => loadFromStorage('isAuthenticated', false));
@@ -305,7 +321,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sync to local storage
   useEffect(() => saveToStorage('users', users), [users]);
   useEffect(() => saveToStorage('rooms', rooms), [rooms]);
-  useEffect(() => saveToStorage('currentUser_id', currentUser.id), [currentUser]);
+  useEffect(() => {
+    saveToStorage('currentUser', currentUser);
+    saveToStorage('currentUser_id', currentUser.id);
+  }, [currentUser]);
   useEffect(() => saveToStorage('isAuthenticated', isAuthenticated), [isAuthenticated]);
   useEffect(() => saveToStorage('inspections', inspections), [inspections]);
   useEffect(() => saveToStorage('attendance', attendance), [attendance]);
@@ -455,6 +474,8 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const canEdit = currentUser.role === 'superadmin' || currentUser.role === 'admin';
   const isSuperAdmin = currentUser.role === 'superadmin';
   const isOccupant = currentUser.role === 'occupant';
+  const isParent = currentUser.role === 'parent';
+  const isGuest = currentUser.role === 'guest';
 
   const logout = () => {
     setIsAuthenticated(false);
@@ -465,42 +486,60 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(true);
   };
 
-  const loginWithRole = (role: UserRole, userSelectId?: string) => {
-    setIsAuthenticated(true);
-    if (userSelectId) {
-      const u = users.find(x => x.id === userSelectId);
-      if (u) {
-        setCurrentUser(u);
-        return;
-      }
-    }
-    const defaultForRole = users.find(u => u.role === role);
-    if (defaultForRole) {
-      setCurrentUser(defaultForRole);
-    }
-  };
+  // Google sign-in resolves the role purely from the verified Google email:
+  //   - orapajelmar@gmail.com  -> Super Admin (Dean), always
+  //   - a student's record email  -> that occupant (view-only)
+  //   - an admin's registered email -> that admin (write access)
+  //   - a student's parentEmail  -> a read-only parent scoped to that child
+  //   - anything else -> guest (bare app, no dormitory records)
+  const loginWithGoogle = (session: { email: string; name: string; avatar?: string }) => {
+    const email = session.email.trim().toLowerCase();
+    const avatar = session.avatar;
 
-  const loginGoogleOAuthMock = (email: string, name: string) => {
-    setIsAuthenticated(true);
-    // Check if user exists
-    let existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (existing) {
-      setCurrentUser(existing);
+    if (!email) return;
+
+    if (email === SUPERADMIN_EMAIL) {
+      setCurrentUser({ ...DEAN_USER, name: session.name || DEAN_USER.name, avatar: avatar || DEAN_USER.avatar });
+      setIsAuthenticated(true);
       return;
     }
-    // If user signs in with dean email
-    const isDeanEmail = email.toLowerCase().includes('orapa') || email.toLowerCase().includes('dean');
-    const newUser: User = {
-      id: 'google-' + Date.now(),
-      name: name || 'Google User',
-      email: email,
-      role: isDeanEmail ? 'superadmin' : 'occupant',
+
+    const existing = users.find(u => u.email.toLowerCase() === email);
+    if (existing) {
+      setCurrentUser({ ...existing, avatar: avatar || existing.avatar });
+      setIsAuthenticated(true);
+      return;
+    }
+
+    const linkedChild = users.find(
+      u => u.role === 'occupant' && u.parentEmail && u.parentEmail.toLowerCase() === email
+    );
+    if (linkedChild) {
+      setCurrentUser({
+        id: `parent-${linkedChild.id}`,
+        name: session.name || `Parent of ${linkedChild.name}`,
+        email,
+        role: 'parent',
+        relatedStudentId: linkedChild.id,
+        avatar,
+        phone: linkedChild.parentPhone,
+        demeritPoints: 0,
+        status: 'active',
+      });
+      setIsAuthenticated(true);
+      return;
+    }
+
+    setCurrentUser({
+      id: 'guest-' + Date.now(),
+      name: session.name || 'Guest',
+      email,
+      role: 'guest',
+      avatar,
       demeritPoints: 0,
       status: 'active',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    };
-    setUsers(prev => [newUser, ...prev]);
-    setCurrentUser(newUser);
+    });
+    setIsAuthenticated(true);
   };
 
   const updateUserRole = (userId: string, newRole: UserRole) => {
@@ -798,6 +837,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone?: string;
     parentName?: string;
     parentPhone?: string;
+    parentEmail?: string;
     deviceModel?: string;
     lockerVaultNumber?: string;
   }): User => {
@@ -814,6 +854,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       phone: data.phone || '',
       parentName: data.parentName || '',
       parentPhone: data.parentPhone || '',
+      parentEmail: data.parentEmail ? data.parentEmail.trim().toLowerCase() : undefined,
       demeritPoints: 0,
       status: 'active',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`,
@@ -915,6 +956,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone?: string;
     parentName?: string;
     parentPhone?: string;
+    parentEmail?: string;
     deviceModel?: string;
     lockerVaultNumber?: string;
   }>) => {
@@ -1156,8 +1198,9 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         canEdit,
         isSuperAdmin,
         isOccupant,
-        loginWithRole,
-        loginGoogleOAuthMock,
+        isParent,
+        isGuest,
+        loginWithGoogle,
         updateUserRole,
         addInspection,
         saveAttendanceBatch,
