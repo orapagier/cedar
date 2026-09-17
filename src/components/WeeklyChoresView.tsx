@@ -47,9 +47,9 @@ export const WeeklyChoresView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-lg font-bold text-white">9. Weekly Chore Assignments & Dormitory Maintenance</h2>
@@ -77,7 +77,7 @@ export const WeeklyChoresView: React.FC = () => {
 
       {/* Chore Assignment Form for Deans */}
       {canEdit && (
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
+        <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm">
           <h3 className="text-sm font-bold text-white mb-3 flex items-center space-x-2">
             <PlusCircle className="w-4 h-4 text-amber-400" />
             <span>Assign Weekly Maintenance Chore</span>
@@ -89,7 +89,7 @@ export const WeeklyChoresView: React.FC = () => {
               <select
                 value={dutyArea}
                 onChange={e => setDutyArea(e.target.value as any)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
               >
                 <option value="Corridor & Stairs">Corridor & Stairs</option>
                 <option value="CR & Bathroom Sanitation">CR & Bathroom Sanitation</option>
@@ -105,7 +105,7 @@ export const WeeklyChoresView: React.FC = () => {
               <select
                 value={selectedStudent}
                 onChange={e => setSelectedStudent(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
               >
                 {occupants.length === 0 ? (
                   <option value="">No residents found (Enter students in Residents tab)</option>
@@ -126,7 +126,7 @@ export const WeeklyChoresView: React.FC = () => {
                 placeholder="e.g. Daily 7:00 PM, or Mon/Wed/Fri"
                 value={daySchedule}
                 onChange={e => setDaySchedule(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
               />
             </div>
 
@@ -136,14 +136,14 @@ export const WeeklyChoresView: React.FC = () => {
                 type="text"
                 value={weekRange}
                 onChange={e => setWeekRange(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
               />
             </div>
 
             <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
               <button
                 type="submit"
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-colors"
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-1.5 transition-colors"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Assign Chore to Resident</span>
@@ -160,7 +160,49 @@ export const WeeklyChoresView: React.FC = () => {
           <span className="text-xs text-slate-400">{chores.length} duty stations assigned</span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="lg:hidden divide-y divide-slate-800/70">
+          {chores.length === 0 && (
+            <p className="p-6 text-center text-xs text-slate-500">No chores assigned yet.</p>
+          )}
+          {chores.map(chore => (
+            <div key={chore.id} className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-white text-sm min-w-0 truncate">{chore.dutyArea}</p>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                  chore.status === 'inspected_approved' ? 'bg-emerald-950 text-emerald-300' :
+                  chore.status === 'completed' ? 'bg-blue-950 text-blue-300' :
+                  chore.status === 'failed' ? 'bg-rose-950 text-rose-300' :
+                  'bg-slate-800 text-slate-400'
+                }`}>
+                  {chore.status.replace('_', ' ').toUpperCase()}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">{chore.studentName} · Room {chore.roomNumber}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{chore.daySchedule}</p>
+              {canEdit ? (
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => updateChoreStatus(chore.id, 'inspected_approved', 'Inspected: Spotless and properly sanitized.')}
+                    className="flex-1 min-h-touch px-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 rounded-lg text-[11px] border border-emerald-700/50"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => updateChoreStatus(chore.id, 'failed', 'Incomplete chore / missed duty')}
+                    className="flex-1 min-h-touch px-2 bg-rose-950/80 hover:bg-rose-900 text-rose-300 rounded-lg text-[11px] border border-rose-700/50"
+                  >
+                    Fail (-2 pts)
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400 mt-1">{chore.inspectorRemarks || 'Awaiting Dean review'}</p>
+              )}
+              <p className="text-[11px] text-slate-500 mt-1">Verified by {chore.verifiedBy || '-'}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>

@@ -21,10 +21,10 @@ export const GoogleOAuthModal: React.FC<GoogleOAuthModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-slate-100">
+    <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
         {/* Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -39,13 +39,13 @@ export const GoogleOAuthModal: React.FC<GoogleOAuthModalProps> = ({ isOpen, onCl
               <p className="text-xs text-slate-400">Authenticate for Dormitory Access</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg">
+          <button onClick={onClose} className="min-h-touch min-w-touch flex items-center justify-center text-slate-400 hover:text-white rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           <p className="text-xs text-slate-300">
             Select an authorized account to sign into the Cedar Hall Dormitory portal:
           </p>
@@ -129,19 +129,19 @@ export const GoogleOAuthModal: React.FC<GoogleOAuthModalProps> = ({ isOpen, onCl
                 placeholder="Full Name"
                 value={customName}
                 onChange={e => setCustomName(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-xs text-white focus:outline-none focus:border-amber-500"
               />
               <input
                 type="email"
                 placeholder="user@gmail.com"
                 value={customEmail}
                 onChange={e => setCustomEmail(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-xs text-white focus:outline-none focus:border-amber-500"
               />
               <button
                 disabled={!customEmail}
                 onClick={() => handleSignIn(customEmail, customName || 'Dorm User')}
-                className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-semibold py-2 rounded-lg text-xs transition-colors"
+                className="w-full min-h-touch bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-semibold py-2 rounded-lg text-xs transition-colors"
               >
                 Sign In with this Google Account
               </button>
@@ -150,12 +150,12 @@ export const GoogleOAuthModal: React.FC<GoogleOAuthModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-950/60 px-6 py-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+        <div className="bg-slate-950/60 px-4 sm:px-6 py-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
           <div className="flex items-center space-x-1">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>Secure 256-bit OAuth Token Handshake</span>
           </div>
-          <button onClick={onClose} className="hover:text-white">Cancel</button>
+          <button onClick={onClose} className="min-h-touch min-w-touch hover:text-white">Cancel</button>
         </div>
       </div>
     </div>

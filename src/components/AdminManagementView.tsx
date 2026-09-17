@@ -80,9 +80,9 @@ export const AdminManagementView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-lg font-bold text-white">Admin Staff & Role-Based Access Control (RBAC)</h2>
@@ -99,7 +99,7 @@ export const AdminManagementView: React.FC = () => {
           {isSuperAdmin && (
             <button
               onClick={() => setShowAddAdminModal(true)}
-              className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md"
+              className="min-h-touch bg-purple-600 hover:bg-purple-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md"
             >
               <UserPlus className="w-4 h-4" />
               <span>+ Add Admin Email</span>
@@ -200,18 +200,86 @@ export const AdminManagementView: React.FC = () => {
           </div>
 
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search name, email, role..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 min-h-touch text-xs text-white focus:outline-none focus:border-purple-500"
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="lg:hidden divide-y divide-slate-800/70">
+          {filtered.map(user => {
+            const isThisSuperAdmin = user.role === 'superadmin' || user.email.toLowerCase() === 'orapajelmar@gmail.com';
+            const isCustomAdmin = user.role === 'admin';
+
+            return (
+              <div key={user.id} className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white text-sm truncate">{user.name}</p>
+                    <p className="text-[11px] text-slate-400 font-mono truncate">{user.email}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                    user.role === 'superadmin' ? 'bg-purple-950 text-purple-300 border border-purple-700' :
+                    user.role === 'admin' ? 'bg-blue-950 text-blue-300 border border-blue-700' :
+                    'bg-emerald-950 text-emerald-300 border border-emerald-700'
+                  }`}>
+                    {user.role === 'superadmin' ? 'DEAN' : user.role}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {user.roomNumber ? `Room ${user.roomNumber}` : 'Faculty / Staff'} ·{' '}
+                  <span className={`font-bold ${user.demeritPoints > 5 ? 'text-rose-400' : 'text-slate-300'}`}>
+                    {user.demeritPoints} pts
+                  </span>
+                </p>
+                <div className="mt-2">
+                  {isThisSuperAdmin ? (
+                    <span className="text-xs text-purple-400 font-medium">Dean Jelmar Orapa</span>
+                  ) : isSuperAdmin ? (
+                    <div className="flex items-center gap-2">
+                      {user.role === 'occupant' ? (
+                        <button
+                          onClick={() => handleRoleChange(user.id, 'admin')}
+                          className="flex-1 min-h-touch bg-blue-600 hover:bg-blue-500 text-white px-2.5 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>Promote to Admin</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleRoleChange(user.id, 'occupant')}
+                          className="flex-1 min-h-touch bg-slate-800 hover:bg-slate-700 text-rose-300 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 border border-slate-700"
+                        >
+                          <UserX className="w-3.5 h-3.5" />
+                          <span>Demote to Occupant</span>
+                        </button>
+                      )}
+
+                      {isCustomAdmin && (
+                        <button
+                          onClick={() => handleRemoveAdmin(user.id, user.name)}
+                          className="min-h-touch min-w-touch bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 rounded-lg text-xs transition-colors flex items-center justify-center"
+                          title="Delete Admin Record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-500 italic">Protected</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>
@@ -297,19 +365,19 @@ export const AdminManagementView: React.FC = () => {
 
       {/* ADD ADMIN MODAL */}
       {showAddAdminModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-slate-100">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">Register New Administrator Email</h3>
                 <p className="text-xs text-slate-400">Grant administrative write privileges</p>
               </div>
-              <button onClick={() => setShowAddAdminModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowAddAdminModal(false)} className="min-h-touch min-w-touch flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateAdmin} className="p-6 space-y-3.5 text-xs">
+            <form onSubmit={handleCreateAdmin} className="p-4 sm:p-6 space-y-3.5 text-xs">
               <div>
                 <label className="block font-semibold text-slate-300 mb-1">Staff / Assistant Dean Full Name *</label>
                 <input
@@ -318,7 +386,7 @@ export const AdminManagementView: React.FC = () => {
                   placeholder="e.g. Bro. Carlos Mendez"
                   value={newAdminName}
                   onChange={e => setNewAdminName(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-white"
                 />
               </div>
 
@@ -330,7 +398,7 @@ export const AdminManagementView: React.FC = () => {
                   placeholder="e.g. assistant.dean@gmail.com"
                   value={newAdminEmail}
                   onChange={e => setNewAdminEmail(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-white font-mono"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
                   When this person signs in using Google OAuth with this email, they will automatically receive Admin write-access.
@@ -344,7 +412,7 @@ export const AdminManagementView: React.FC = () => {
                   placeholder="e.g. 0917-555-4321"
                   value={newAdminPhone}
                   onChange={e => setNewAdminPhone(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-white"
                 />
               </div>
 
@@ -352,13 +420,13 @@ export const AdminManagementView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddAdminModal(false)}
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="min-h-touch px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold"
+                  className="min-h-touch px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold"
                 >
                   Register Admin
                 </button>

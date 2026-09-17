@@ -75,9 +75,9 @@ export const CellphoneCustodyView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-lg font-bold text-white">12. Cellphone Vault Custody & Weekend Return</h2>
@@ -140,7 +140,7 @@ export const CellphoneCustodyView: React.FC = () => {
       </div>
 
       {/* Locker Vault Grid & Search */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="font-bold text-white text-sm flex items-center space-x-2">
             <Smartphone className="w-4 h-4 text-rose-400" />
@@ -148,13 +148,13 @@ export const CellphoneCustodyView: React.FC = () => {
           </h3>
 
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search resident, room or vault #..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 min-h-touch text-xs text-white focus:outline-none focus:border-rose-500"
             />
           </div>
         </div>
@@ -212,19 +212,19 @@ export const CellphoneCustodyView: React.FC = () => {
                   <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between gap-1.5">
                     <button
                       onClick={() => handleTurnInSunday(item.id, item.studentName, item.roomNumber)}
-                      className="flex-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 py-1 rounded text-[10px] font-semibold transition-colors"
+                      className="flex-1 min-h-touch bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 py-1.5 rounded-lg text-[10px] font-semibold transition-colors"
                     >
                       Sun Turn-in (Lock)
                     </button>
                     <button
                       onClick={() => handleReleaseFriday(item.id)}
-                      className="flex-1 bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-700/50 py-1 rounded text-[10px] font-semibold transition-colors"
+                      className="flex-1 min-h-touch bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-700/50 py-1.5 rounded-lg text-[10px] font-semibold transition-colors"
                     >
                       Fri Return
                     </button>
                     <button
                       onClick={() => handleConfiscate(item)}
-                      className="bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-700/50 px-2 py-1 rounded text-[10px] font-semibold transition-colors"
+                      className="min-h-touch bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-700/50 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-colors"
                       title="Confiscate unauthorized secondary phone"
                     >
                       Confiscate

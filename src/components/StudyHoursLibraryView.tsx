@@ -49,9 +49,9 @@ export const StudyHoursLibraryView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-lg font-bold text-white">8. Scheduled Study Hours & Mandatory Library Time</h2>
@@ -79,7 +79,7 @@ export const StudyHoursLibraryView: React.FC = () => {
 
       {/* Log Form */}
       {canEdit && (
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
+        <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm">
           <h3 className="text-sm font-bold text-white mb-3 flex items-center space-x-2">
             <Library className="w-4 h-4 text-indigo-400" />
             <span>Log Resident Study & Library Attendance</span>
@@ -91,7 +91,7 @@ export const StudyHoursLibraryView: React.FC = () => {
               <select
                 value={selectedStudent}
                 onChange={e => setSelectedStudent(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
               >
                 {occupants.length === 0 ? (
                   <option value="">No residents found (Enter students in Residents tab)</option>
@@ -110,7 +110,7 @@ export const StudyHoursLibraryView: React.FC = () => {
               <select
                 value={location}
                 onChange={e => setLocation(e.target.value as any)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
               >
                 <option value="library">Campus Library</option>
                 <option value="study_hall">Dorm Study Hall</option>
@@ -123,7 +123,7 @@ export const StudyHoursLibraryView: React.FC = () => {
               <select
                 value={status}
                 onChange={e => setStatus(e.target.value as any)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
               >
                 <option value="present">Present (On-Time)</option>
                 <option value="late">Late Arrival</option>
@@ -137,7 +137,7 @@ export const StudyHoursLibraryView: React.FC = () => {
               <select
                 value={focusRating}
                 onChange={e => setFocusRating(e.target.value as any)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
               >
                 <option value="focused">Focused & Silent</option>
                 <option value="distracted">Distracted / Loitering</option>
@@ -151,14 +151,14 @@ export const StudyHoursLibraryView: React.FC = () => {
                 placeholder="Study session notes (e.g. Working on Thesis draft, or chatting loudly)..."
                 value={remarks}
                 onChange={e => setRemarks(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-white"
               />
             </div>
 
             <div className="flex justify-end items-center">
               <button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors"
+                className="w-full min-h-touch bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Save Study Record</span>
@@ -175,7 +175,42 @@ export const StudyHoursLibraryView: React.FC = () => {
           <span className="text-xs text-slate-400">{studyLogs.length} entries</span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="lg:hidden divide-y divide-slate-800/70">
+          {studyLogs.length === 0 && (
+            <p className="p-6 text-center text-xs text-slate-500">No study logs recorded yet.</p>
+          )}
+          {studyLogs.map(log => (
+            <div key={log.id} className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="font-semibold text-white text-sm truncate">{log.studentName}</p>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                    log.status === 'present' ? 'bg-emerald-950 text-emerald-300' :
+                    log.status === 'late' ? 'bg-amber-950 text-amber-300' :
+                    log.status === 'absent' ? 'bg-rose-950 text-rose-300' :
+                    'bg-sky-950 text-sky-300'
+                  }`}>
+                    {log.status.toUpperCase()}
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-mono shrink-0">{log.date}</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Room {log.roomNumber} · <span className="capitalize text-indigo-300 font-medium">{log.location.replace('_', ' ')}</span>
+              </p>
+              <p className={`text-[11px] mt-1 font-medium ${
+                log.focusRating === 'focused' ? 'text-emerald-400' :
+                log.focusRating === 'distracted' ? 'text-amber-400' : 'text-rose-400 font-bold'
+              }`}>
+                {log.focusRating.replace('_', ' ')}
+              </p>
+              {log.remarks && <p className="text-[11px] text-slate-400 mt-0.5">{log.remarks}</p>}
+              <p className="text-[11px] text-slate-500 mt-1">Proctor: {log.recordedBy}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>

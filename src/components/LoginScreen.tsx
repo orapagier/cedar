@@ -23,7 +23,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ openGoogleModal }) => 
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12 selection:bg-amber-500/30 selection:text-amber-200">
+    <div className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-8 sm:py-12 pb-safe selection:bg-amber-500/30 selection:text-amber-200">
       <div className="w-full max-w-xl space-y-8">
         {/* Crest & Dorm Identity Header */}
         <div className="text-center space-y-3">
@@ -63,7 +63,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ openGoogleModal }) => 
             <button
               id="login-as-dean-orapa"
               onClick={() => loginWithRole('superadmin', 'user-dean')}
-              className="w-full text-left p-4 rounded-2xl bg-purple-950/30 hover:bg-purple-950/60 border border-purple-500/40 hover:border-purple-400 transition-all flex items-center justify-between group"
+              className="w-full min-h-touch text-left p-4 rounded-2xl bg-purple-950/30 hover:bg-purple-950/60 border border-purple-500/40 hover:border-purple-400 transition-all flex items-center justify-between group"
             >
               <div className="flex items-center space-x-3.5">
                 <div className="w-12 h-12 rounded-xl bg-purple-900/60 border border-purple-400/40 flex items-center justify-center text-purple-200 font-bold text-lg shadow-sm">
@@ -95,7 +95,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ openGoogleModal }) => 
                   key={user.id}
                   id={`login-as-${user.id}`}
                   onClick={() => loginWithRole(user.role, user.id)}
-                  className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between group ${
+                  className={`w-full min-h-touch text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between group ${
                     isAdmin 
                       ? 'bg-blue-950/30 hover:bg-blue-950/60 border-blue-500/40 hover:border-blue-400' 
                       : 'bg-slate-800/40 hover:bg-slate-800/80 border-slate-700 hover:border-slate-600'
@@ -176,7 +176,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ openGoogleModal }) => 
             <button
               type="submit"
               disabled={isSubmitting || !customEmail.trim()}
-              className="w-full bg-white hover:bg-slate-100 disabled:opacity-50 text-slate-900 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-md transition-all text-sm"
+              className="w-full min-h-touch bg-white hover:bg-slate-100 disabled:opacity-50 text-slate-900 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-md transition-all text-sm"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -192,7 +192,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ openGoogleModal }) => 
           <div className="pt-2 text-center">
             <button
               onClick={openGoogleModal}
-              className="text-xs text-amber-400 hover:text-amber-300 underline font-medium"
+              className="min-h-touch px-2 text-xs text-amber-400 hover:text-amber-300 underline font-medium"
             >
               Open Interactive Google Account Selector Modal
             </button>
