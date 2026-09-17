@@ -99,9 +99,9 @@ export const ViolationsDashboardView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-lg font-bold text-white">Real-Time Rule Violations & Demerit Ledger</h2>
@@ -117,7 +117,7 @@ export const ViolationsDashboardView: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={handleExportCSV}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-slate-700"
+            className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 min-h-touch rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-slate-700"
             title="Download CSV Report"
           >
             <Download className="w-3.5 h-3.5" />
@@ -127,7 +127,7 @@ export const ViolationsDashboardView: React.FC = () => {
           {canEdit ? (
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md"
+              className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Log Incident / Violation</span>
@@ -151,7 +151,7 @@ export const ViolationsDashboardView: React.FC = () => {
           <select
             value={filterCategory}
             onChange={e => setFilterCategory(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white"
+            className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
           >
             <option value="all">All 12 Policies</option>
             <option value="cleanliness">Room & CR Cleanliness</option>
@@ -171,7 +171,7 @@ export const ViolationsDashboardView: React.FC = () => {
           <select
             value={filterSeverity}
             onChange={e => setFilterSeverity(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white"
+            className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 min-h-touch text-white"
           >
             <option value="all">All Severities</option>
             <option value="minor">Minor (1-2 pts)</option>
@@ -181,13 +181,13 @@ export const ViolationsDashboardView: React.FC = () => {
         </div>
 
         <div className="relative w-full md:w-64">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search resident, room, incident..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-white focus:outline-none focus:border-rose-500"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 min-h-touch text-white focus:outline-none focus:border-rose-500"
           />
         </div>
       </div>
@@ -202,7 +202,7 @@ export const ViolationsDashboardView: React.FC = () => {
           filtered.map(violation => (
             <div 
               key={violation.id}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors shadow-sm"
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors shadow-sm"
             >
               <div className="flex items-start space-x-3.5">
                 <div className={`mt-0.5 p-2 rounded-xl border text-xs font-bold text-center min-w-16 ${
@@ -258,7 +258,7 @@ export const ViolationsDashboardView: React.FC = () => {
                     {violation.status !== 'cleared_service' && (
                       <button
                         onClick={() => updateViolationStatus(violation.id, 'cleared_service', 'Completed dorm maintenance service')}
-                        className="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2.5 py-1.5 rounded-lg border border-slate-700 font-medium"
+                        className="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2.5 min-h-touch rounded-lg border border-slate-700 font-medium"
                       >
                         Clear Service
                       </button>
@@ -266,7 +266,7 @@ export const ViolationsDashboardView: React.FC = () => {
                     {violation.status !== 'confirmed' && (
                       <button
                         onClick={() => updateViolationStatus(violation.id, 'confirmed')}
-                        className="text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-2.5 py-1.5 rounded-lg border border-rose-800 font-medium"
+                        className="text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-2.5 min-h-touch rounded-lg border border-rose-800 font-medium"
                       >
                         Confirm Demerit
                       </button>
@@ -281,17 +281,17 @@ export const ViolationsDashboardView: React.FC = () => {
 
       {/* Manual Violation Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden text-slate-100">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">Log Rule Violation & Demerit</h3>
                 <p className="text-xs text-slate-400">Dean / Admin Disciplinary Incident Form</p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">✕</button>
             </div>
 
-            <form onSubmit={handleCreateViolation} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleCreateViolation} className="p-4 sm:p-6 space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Resident Student</label>
@@ -394,13 +394,13 @@ export const ViolationsDashboardView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-3 py-2 min-h-touch rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-500"
+                  className="px-4 py-2 min-h-touch rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-500"
                 >
                   Record Violation
                 </button>

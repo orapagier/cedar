@@ -62,9 +62,9 @@ export const SchoolDepartureUniformView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
           <div className="flex items-center space-x-2">
             <h2 className="text-lg font-bold text-white">5 & 7. School Departure Time & Uniform Standards</h2>
@@ -92,7 +92,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
 
       {/* Interactive Gate Inspection Form for Dean / RA */}
       {canEdit && (
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
+        <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm">
           <h3 className="text-sm font-bold text-white mb-3 flex items-center space-x-2">
             <UserCheck className="w-4 h-4 text-emerald-400" />
             <span>Inspect Resident Departure & School Uniform</span>
@@ -105,7 +105,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                 <select
                   value={selectedStudent}
                   onChange={e => setSelectedStudent(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-white"
                 >
                   {occupants.length === 0 ? (
                     <option value="">No residents found (Enter students in Residents tab)</option>
@@ -125,7 +125,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                   type="time"
                   value={departureTime}
                   onChange={e => setDepartureTime(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-white font-mono"
                 />
                 {!isTimeOnSchedule && (
                   <span className="text-[10px] text-amber-400 mt-1 block">
@@ -141,14 +141,14 @@ export const SchoolDepartureUniformView: React.FC = () => {
                   placeholder="e.g., Untucked shirt, long hair..."
                   value={remarks}
                   onChange={e => setRemarks(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 min-h-touch text-white"
                 />
               </div>
             </div>
 
             {/* Checklist of 4 Uniform Standards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <label className="flex items-center space-x-2 p-2 rounded-lg hover:bg-slate-800/40 cursor-pointer">
+              <label className="flex items-center space-x-2 p-3 min-h-touch rounded-lg hover:bg-slate-800/40 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={uniformCompliant}
@@ -164,7 +164,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                 </div>
               </label>
 
-              <label className="flex items-center space-x-2 p-2 rounded-lg hover:bg-slate-800/40 cursor-pointer">
+              <label className="flex items-center space-x-2 p-3 min-h-touch rounded-lg hover:bg-slate-800/40 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={hairCompliant}
@@ -180,7 +180,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                 </div>
               </label>
 
-              <label className="flex items-center space-x-2 p-2 rounded-lg hover:bg-slate-800/40 cursor-pointer">
+              <label className="flex items-center space-x-2 p-3 min-h-touch rounded-lg hover:bg-slate-800/40 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={idBadgeCompliant}
@@ -196,7 +196,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                 </div>
               </label>
 
-              <label className="flex items-center space-x-2 p-2 rounded-lg hover:bg-slate-800/40 cursor-pointer">
+              <label className="flex items-center space-x-2 p-3 min-h-touch rounded-lg hover:bg-slate-800/40 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={shoesCompliant}
@@ -216,7 +216,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-colors"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-1.5 transition-colors"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Log Gate Clearance</span>
@@ -233,7 +233,49 @@ export const SchoolDepartureUniformView: React.FC = () => {
           <span className="text-xs text-slate-400">{uniformLogs.length} logged departures</span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="lg:hidden divide-y divide-slate-800/70">
+          {uniformLogs.length === 0 && (
+            <p className="p-6 text-center text-xs text-slate-500">No departure logs recorded yet.</p>
+          )}
+          {uniformLogs.map(log => (
+            <div key={log.id} className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="font-semibold text-white text-sm truncate">{log.studentName}</p>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                    log.status === 'cleared' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
+                  }`}>
+                    {log.status.toUpperCase()}
+                  </span>
+                </div>
+                <span className={`shrink-0 font-mono font-bold text-xs ${log.isDepartureOnSchedule ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {log.departureTime}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Room {log.roomNumber} · {log.date} · by {log.inspectedBy}
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[
+                  { label: 'Uniform', ok: log.uniformCompliant },
+                  { label: 'Haircut', ok: log.hairGroomingCompliant },
+                  { label: 'ID Badge', ok: log.idBadgeCompliant },
+                  { label: 'Shoes', ok: log.shoesCompliant },
+                ].map(c => (
+                  <span key={c.label} className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 ${
+                    c.ok ? 'bg-emerald-950/70 text-emerald-300' : 'bg-rose-950/70 text-rose-300'
+                  }`}>
+                    {c.ok ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                    {c.label}
+                  </span>
+                ))}
+              </div>
+              {log.remarks && <p className="text-[11px] text-slate-400 mt-1.5">{log.remarks}</p>}
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>
