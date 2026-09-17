@@ -1,324 +1,457 @@
-import React, { useState } from 'react';
-import { 
-  BookOpen, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
-  Calendar, 
-  Save, 
-  Users, 
+import React, { useEffect, useState } from 'react';
+import {
+  BookOpen,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Clock,
+  Save,
+  Users,
+  User,
+  DoorOpen,
+  Check,
   Lock,
-  Church
+  Church,
+  ChevronDown,
+  CalendarDays,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { WorshipType, AttendanceRecord } from '../types/dorm';
+import { Segmented } from './ui/Segmented';
+
+type AttendanceStatus = AttendanceRecord['status'];
+type CheckInMode = 'individual' | 'by_room';
+
+const DEFAULT_ENTRY = { status: 'present' as AttendanceStatus, broughtBible: true, notes: '' };
+
+const STATUS_META: Record<AttendanceStatus, { label: string; icon: React.ComponentType<{ className?: string }>; active: string; chip: string }> = {
+  present: { label: 'Present', icon: CheckCircle2, active: 'bg-emerald-600 text-white', chip: 'bg-emerald-950 text-emerald-300' },
+  late: { label: 'Late', icon: Clock, active: 'bg-amber-600 text-white', chip: 'bg-amber-950 text-amber-300' },
+  absent: { label: 'Absent', icon: XCircle, active: 'bg-rose-600 text-white', chip: 'bg-rose-950 text-rose-300' },
+  excused: { label: 'Excused', icon: AlertTriangle, active: 'bg-sky-600 text-white', chip: 'bg-sky-950 text-sky-300' },
+};
+
+const SESSIONS: { id: WorshipType; label: string; short: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'morning_worship', label: 'Morning Worship (05:30 AM)', short: 'Morning · 05:30', icon: Clock },
+  { id: 'evening_worship', label: 'Evening Worship (06:30 PM)', short: 'Evening · 18:30', icon: Clock },
+  { id: 'church_midweek', label: 'Midweek Church Prayer', short: 'Midweek Prayer', icon: Church },
+  { id: 'church_sabbath', label: 'Weekend / Sabbath Church', short: 'Sabbath Church', icon: Church },
+];
+
+const FIELD =
+  'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40';
 
 export const WorshipAttendanceView: React.FC = () => {
-  const { users, attendance, saveAttendanceBatch, canEdit, currentUser } = useDorm();
+  const { users, rooms, attendance, saveAttendanceBatch, canEdit, currentUser } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
   const [sessionType, setSessionType] = useState<WorshipType>('morning_worship');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [mode, setMode] = useState<CheckInMode>('by_room');
 
-  // Temporary local roster state for roll-call
-  const [roster, setRoster] = useState<{ [studentId: string]: { status: AttendanceRecord['status']; broughtBible: boolean; notes: string } }>(() => {
-    const init: any = {};
-    occupants.forEach(occ => {
-      init[occ.id] = { status: 'present', broughtBible: true, notes: '' };
-    });
-    return init;
-  });
+  const [roster, setRoster] = useState<Record<string, { status: AttendanceStatus; broughtBible: boolean; notes: string }>>({});
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [selectedRoom, setSelectedRoom] = useState('');
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
+  const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
+  const selectedStudent = occupants.find(o => o.id === selectedStudentId);
 
-  const updateStudent = (id: string, field: 'status' | 'broughtBible' | 'notes', value: any) => {
-    setRoster(prev => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value,
-      },
-    }));
+  useEffect(() => {
+    if ((!selectedStudentId || !occupants.some(o => o.id === selectedStudentId)) && occupants.length) {
+      setSelectedStudentId(occupants[0].id);
+    }
+  }, [occupants, selectedStudentId]);
+
+  useEffect(() => {
+    if ((!selectedRoom || !roomNumbers.includes(selectedRoom)) && roomNumbers.length) {
+      setSelectedRoom(roomNumbers[0]);
+    }
+  }, [roomNumbers, selectedRoom]);
+
+  const getEntry = (id: string) => roster[id] ?? DEFAULT_ENTRY;
+
+  const updateStudent = (id: string, field: 'status' | 'broughtBible' | 'notes', value: AttendanceStatus | boolean | string) => {
+    setRoster(prev => ({ ...prev, [id]: { ...(prev[id] ?? DEFAULT_ENTRY), [field]: value } }));
   };
 
-  const markAllPresentWithBible = () => {
-    const next: any = {};
-    occupants.forEach(occ => {
-      next[occ.id] = { status: 'present', broughtBible: true, notes: '' };
+  const markRoomAllPresent = () => {
+    setRoster(prev => {
+      const next = { ...prev };
+      roomOccupants.forEach(o => {
+        next[o.id] = { ...DEFAULT_ENTRY };
+      });
+      return next;
     });
-    setRoster(next);
   };
 
-  const handleSaveAttendance = () => {
-    if (!canEdit) return;
+  const saveAttendance = (ids: string[]) => {
+    if (!canEdit || !ids.length) return;
 
-    const records = occupants.map(occ => {
-      const entry = roster[occ.id] || { status: 'present', broughtBible: true, notes: '' };
-      return {
-        date: selectedDate,
-        type: sessionType,
-        studentId: occ.id,
-        studentName: occ.name,
-        roomNumber: occ.roomNumber || '101',
-        status: entry.status,
-        broughtBible: entry.broughtBible,
-        notes: entry.notes || undefined,
-        recordedBy: currentUser.name,
-      };
-    });
+    const records = ids
+      .map(id => {
+        const occ = occupants.find(o => o.id === id);
+        if (!occ) return null;
+        const entry = getEntry(id);
+        return {
+          date: selectedDate,
+          type: sessionType,
+          studentId: occ.id,
+          studentName: occ.name,
+          roomNumber: occ.roomNumber || '—',
+          status: entry.status,
+          broughtBible: entry.broughtBible,
+          notes: entry.notes || undefined,
+          recordedBy: currentUser.name,
+        };
+      })
+      .filter(Boolean) as Parameters<typeof saveAttendanceBatch>[0];
 
     saveAttendanceBatch(records);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    setSavedMessage(`Saved ${records.length} ${records.length === 1 ? 'record' : 'records'} for ${SESSIONS.find(s => s.id === sessionType)?.short}. Missing Bibles and unexcused absences were pushed to the demerit stream.`);
+    setTimeout(() => setSavedMessage(null), 4000);
   };
 
-  // Filter history for current session
   const historyForSession = attendance.filter(a => a.type === sessionType);
+  const selectedWing = rooms.find(r => r.roomNumber === selectedRoom)?.wing;
 
   return (
-    <div className="space-y-6">
-      {/* Policy Heading */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-        <div>
-          <div className="flex items-center space-x-2">
-            <h2 className="text-lg font-bold text-white">2, 3 & 6. Worship & Church Services Attendance</h2>
-            <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
-              Devotional Policy
-            </span>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center flex-wrap gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-white">Worship, Bibles & Church</h2>
+              <span className="text-[11px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
+                Devotional Policy
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Morning & evening worship, physical Bibles in hand, and weekend church attendance with lates and absences.
+            </p>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Tracking morning/evening worship, physical Bibles in hand, and weekend church service attendance with lates & absences.
-          </p>
-        </div>
 
-        {canEdit ? (
-          <button
-            onClick={handleSaveAttendance}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md self-start sm:self-auto"
-          >
-            <Save className="w-4 h-4" />
-            <span>Save Attendance Roll</span>
-          </button>
-        ) : (
-          <div className="bg-slate-800 border border-slate-700 text-slate-400 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5">
-            <Lock className="w-3.5 h-3.5" />
-            <span>Occupant View-Only</span>
-          </div>
-        )}
-      </div>
-
-      {savedSuccess && (
-        <div className="p-3 bg-emerald-950/70 border border-emerald-600 text-emerald-300 rounded-xl text-xs flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4" />
-          <span>Attendance records saved successfully! Any unexcused absences or missing Bibles have been automatically logged into the Disciplinary Demerit Stream.</span>
-        </div>
-      )}
-
-      {/* Session Selector & Date Filter */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'morning_worship', label: 'Morning Worship (05:30 AM)', icon: Clock },
-            { id: 'evening_worship', label: 'Evening Worship (06:30 PM)', icon: Clock },
-            { id: 'church_midweek', label: 'Midweek Church Prayer', icon: Church },
-            { id: 'church_sabbath', label: 'Weekend / Sabbath Church', icon: Church },
-          ].map(s => {
-            const Icon = s.icon;
-            const isSelected = sessionType === s.id;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setSessionType(s.id as WorshipType)}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                  isSelected
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{s.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <label className="text-xs text-slate-400">Date:</label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-blue-500"
-          />
-          {canEdit && (
-            <button
-              onClick={markAllPresentWithBible}
-              className="bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 text-xs px-2.5 py-1 rounded-lg font-medium"
-            >
-              Mark All Present + Bible
-            </button>
+          {!canEdit && (
+            <div className="bg-slate-800 border border-slate-700 text-slate-400 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 self-start">
+              <Lock className="w-3.5 h-3.5" />
+              <span>View-only access</span>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Interactive Roll-Call Grid for Deans */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Users className="w-4 h-4 text-blue-400" />
-            <h3 className="font-bold text-white text-sm">Roll-Call Register & Bible Physical Check</h3>
-          </div>
-          <span className="text-xs text-slate-400">{occupants.length} dormitory residents</span>
+      {savedMessage && (
+        <div className="p-3 bg-emerald-950/70 border border-emerald-600 text-emerald-300 rounded-xl text-xs flex items-start gap-2">
+          <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{savedMessage}</span>
+        </div>
+      )}
+
+      {/* Session, Date & Mode */}
+      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-4">
+        <Segmented<WorshipType>
+          ariaLabel="Worship session"
+          value={sessionType}
+          onChange={setSessionType}
+          options={SESSIONS.map(s => ({ value: s.id, label: s.short, icon: s.icon, activeClass: 'bg-blue-600 text-white shadow-sm' }))}
+        />
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-slate-400">
+            <CalendarDays className="w-4 h-4 text-slate-500" />
+            <span>Date</span>
+          </label>
+          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className={`${FIELD} sm:max-w-[200px]`} />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
-              <tr>
-                <th className="p-3.5">Resident</th>
-                <th className="p-3.5">Room</th>
-                <th className="p-3.5">Attendance Status</th>
-                <th className="p-3.5">Brought Bible? (Item 3)</th>
-                <th className="p-3.5">Dean Notes / Excuse</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {occupants.map(occ => {
-                const currentEntry = roster[occ.id] || { status: 'present', broughtBible: true, notes: '' };
-                return (
-                  <tr key={occ.id} className="hover:bg-slate-800/40">
-                    <td className="p-3.5">
-                      <div className="font-semibold text-white">{occ.name}</div>
-                      <div className="text-[10px] text-slate-400">{occ.email}</div>
-                    </td>
-                    <td className="p-3.5 whitespace-nowrap font-mono text-slate-300">
-                      Room {occ.roomNumber || '101'}
-                    </td>
-                    <td className="p-3.5">
-                      {canEdit ? (
-                        <div className="flex items-center space-x-1">
-                          {(['present', 'late', 'absent', 'excused'] as const).map(st => (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={() => updateStudent(occ.id, 'status', st)}
-                              className={`px-2 py-1 rounded-md text-[11px] font-semibold capitalize transition-colors ${
-                                currentEntry.status === st
-                                  ? st === 'present' ? 'bg-emerald-600 text-white' :
-                                    st === 'late' ? 'bg-amber-600 text-white' :
-                                    st === 'absent' ? 'bg-rose-600 text-white' :
-                                    'bg-sky-600 text-white'
-                                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                              }`}
-                            >
-                              {st}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className={`px-2 py-1 rounded-md text-xs font-semibold capitalize ${
-                          currentEntry.status === 'present' ? 'bg-emerald-950 text-emerald-300' :
-                          currentEntry.status === 'late' ? 'bg-amber-950 text-amber-300' :
-                          currentEntry.status === 'absent' ? 'bg-rose-950 text-rose-300' :
-                          'bg-sky-950 text-sky-300'
-                        }`}>
-                          {currentEntry.status}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      {canEdit ? (
-                        <label className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={currentEntry.broughtBible}
-                            onChange={e => updateStudent(occ.id, 'broughtBible', e.target.checked)}
-                            className="w-4 h-4 rounded text-blue-500 accent-blue-500"
-                          />
-                          <span className={`text-xs ${currentEntry.broughtBible ? 'text-blue-300 font-medium' : 'text-rose-400 font-semibold'}`}>
-                            {currentEntry.broughtBible ? 'Bible in hand' : 'No Bible (-1 pt)'}
-                          </span>
-                        </label>
-                      ) : (
-                        <span className={`text-xs ${currentEntry.broughtBible ? 'text-blue-300' : 'text-rose-400 font-semibold'}`}>
-                          {currentEntry.broughtBible ? 'Yes' : 'No'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      {canEdit ? (
-                        <input
-                          type="text"
-                          placeholder="e.g. 10 mins late, or sick slip"
-                          value={currentEntry.notes}
-                          onChange={e => updateStudent(occ.id, 'notes', e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
-                        />
-                      ) : (
-                        <span className="text-slate-400">{currentEntry.notes || '-'}</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Check-in method</p>
+          <Segmented<CheckInMode>
+            ariaLabel="Check-in method"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'by_room', label: 'By Room', icon: DoorOpen, activeClass: 'bg-blue-600 text-white shadow-sm' },
+              { value: 'individual', label: 'Individual', icon: User, activeClass: 'bg-blue-600 text-white shadow-sm' },
+            ]}
+          />
         </div>
       </div>
 
-      {/* Historical Records Table for this Session */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="font-bold text-white text-sm">Past Worship Attendance Logs</h3>
-          <span className="text-xs text-slate-400">{historyForSession.length} recorded entries</span>
-        </div>
+      {/* BY ROOM MODE */}
+      {mode === 'by_room' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-400" />
+              <h3 className="font-bold text-white text-sm">Room Roll Call</h3>
+            </div>
+            <select value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)} className={`${FIELD} sm:max-w-[220px]`}>
+              {roomNumbers.length === 0 ? (
+                <option value="">No residents on file</option>
+              ) : (
+                roomNumbers.map(room => (
+                  <option key={room} value={room}>
+                    Room {room}
+                    {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
-              <tr>
-                <th className="p-3">Date</th>
-                <th className="p-3">Session</th>
-                <th className="p-3">Student</th>
-                <th className="p-3">Room</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Bible Brought</th>
-                <th className="p-3">Remarks</th>
-                <th className="p-3">Logged By</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {historyForSession.map(item => (
-                <tr key={item.id} className="hover:bg-slate-800/40">
-                  <td className="p-3 whitespace-nowrap font-mono text-slate-400">{item.date} {item.timestamp}</td>
-                  <td className="p-3 capitalize text-blue-300 font-medium">{item.type.replace('_', ' ')}</td>
-                  <td className="p-3 font-semibold text-white">{item.studentName}</td>
-                  <td className="p-3">Room {item.roomNumber}</td>
-                  <td className="p-3">
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                      item.status === 'present' ? 'bg-emerald-950 text-emerald-300' :
-                      item.status === 'late' ? 'bg-amber-950 text-amber-300' :
-                      item.status === 'absent' ? 'bg-rose-950 text-rose-300' :
-                      'bg-sky-950 text-sky-300'
-                    }`}>
-                      {item.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    {item.broughtBible ? (
-                      <span className="text-emerald-400">Yes</span>
+          <div className="p-3 sm:p-4 flex items-center justify-between gap-3 border-b border-slate-800/70">
+            <div className="text-xs text-slate-400">
+              <span className="font-semibold text-white">Room {selectedRoom || '—'}</span>
+              {selectedWing ? ` · ${selectedWing}` : ''} · {roomOccupants.length} residents
+            </div>
+            {canEdit && roomOccupants.length > 0 && (
+              <button
+                onClick={markRoomAllPresent}
+                className="min-h-touch px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 text-xs font-semibold flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                All present
+              </button>
+            )}
+          </div>
+
+          <div className="divide-y divide-slate-800/70">
+            {roomOccupants.length === 0 && (
+              <p className="p-6 text-center text-xs text-slate-500">No residents assigned to this room.</p>
+            )}
+            {roomOccupants.map(occ => {
+              const entry = getEntry(occ.id);
+              return (
+                <div key={occ.id} className="p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white text-sm truncate">{occ.name}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{occ.email}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {canEdit ? (
+                      <>
+                        <div className="flex gap-1.5 flex-1 sm:flex-none">
+                          {(Object.keys(STATUS_META) as AttendanceStatus[]).map(status => {
+                            const meta = STATUS_META[status];
+                            const Icon = meta.icon;
+                            const selected = entry.status === status;
+                            return (
+                              <button
+                                key={status}
+                                type="button"
+                                title={meta.label}
+                                aria-label={`${occ.name}: ${meta.label}`}
+                                aria-pressed={selected}
+                                onClick={() => updateStudent(occ.id, 'status', status)}
+                                className={`min-w-touch min-h-touch flex-1 sm:flex-none rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                                  selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                }`}
+                              >
+                                <Icon className="w-4 h-4" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button
+                          type="button"
+                          aria-label={`${occ.name}: Bible in hand`}
+                          aria-pressed={entry.broughtBible}
+                          onClick={() => updateStudent(occ.id, 'broughtBible', !entry.broughtBible)}
+                          className={`min-w-touch min-h-touch rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                            entry.broughtBible ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
+                          }`}
+                        >
+                          <BookOpen className="w-4 h-4" />
+                        </button>
+                      </>
                     ) : (
-                      <span className="text-rose-400 font-bold">No Bible</span>
+                      <>
+                        <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${STATUS_META[entry.status].chip}`}>
+                          {STATUS_META[entry.status].label}
+                        </span>
+                        <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${entry.broughtBible ? 'bg-blue-950 text-blue-300' : 'bg-slate-800 text-slate-500'}`}>
+                          <BookOpen className="w-4 h-4" />
+                        </span>
+                      </>
                     )}
-                  </td>
-                  <td className="p-3 text-slate-400">{item.notes || '-'}</td>
-                  <td className="p-3 text-slate-400">{item.recordedBy}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {canEdit && roomOccupants.length > 0 && (
+            <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
+              <button
+                onClick={() => saveAttendance(roomOccupants.map(o => o.id))}
+                className="w-full min-h-touch bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Room {selectedRoom} Roll Call</span>
+              </button>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* INDIVIDUAL MODE */}
+      {mode === 'individual' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+            <User className="w-4 h-4 text-blue-400" />
+            <h3 className="font-bold text-white text-sm">Individual Check-In</h3>
+          </div>
+
+          <div className="p-4 space-y-4">
+            <div className="relative">
+              <select
+                value={selectedStudentId}
+                onChange={e => setSelectedStudentId(e.target.value)}
+                className={`${FIELD} appearance-none pr-10`}
+              >
+                {occupants.length === 0 ? (
+                  <option value="">No residents found</option>
+                ) : (
+                  occupants.map(o => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} · Room {o.roomNumber}
+                    </option>
+                  ))
+                )}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {selectedStudent && (
+              <div className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3">
+                <div className="w-11 h-11 rounded-full bg-slate-700 flex items-center justify-center text-amber-300 font-bold border border-slate-600 shrink-0">
+                  {selectedStudent.name.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-white text-sm truncate">{selectedStudent.name}</p>
+                  <p className="text-[11px] text-slate-400">
+                    Room {selectedStudent.roomNumber} · {selectedStudent.email}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Attendance status</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(STATUS_META) as AttendanceStatus[]).map(status => {
+                  const meta = STATUS_META[status];
+                  const Icon = meta.icon;
+                  const selected = selectedStudent ? getEntry(selectedStudent.id).status === status : false;
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      disabled={!canEdit || !selectedStudent}
+                      onClick={() => selectedStudent && updateStudent(selectedStudent.id, 'status', status)}
+                      className={`min-h-touch rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
+                        selected ? meta.active : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={!canEdit || !selectedStudent}
+              onClick={() => selectedStudent && updateStudent(selectedStudent.id, 'broughtBible', !getEntry(selectedStudent.id).broughtBible)}
+              className={`w-full min-h-touch rounded-xl border flex items-center justify-between px-4 text-sm font-medium transition-colors disabled:opacity-50 ${
+                selectedStudent && getEntry(selectedStudent.id).broughtBible
+                  ? 'bg-blue-950/50 border-blue-600/60 text-blue-200'
+                  : 'bg-slate-800 border-slate-700 text-slate-300'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                Brought physical Bible
+              </span>
+              <span className={`w-11 h-6 rounded-full p-0.5 transition-colors ${selectedStudent && getEntry(selectedStudent.id).broughtBible ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                <span className={`block w-5 h-5 rounded-full bg-white transition-transform ${selectedStudent && getEntry(selectedStudent.id).broughtBible ? 'translate-x-5' : 'translate-x-0'}`} />
+              </span>
+            </button>
+
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Notes / excuse</label>
+              <input
+                type="text"
+                placeholder="e.g. 10 mins late, or sick slip"
+                disabled={!canEdit || !selectedStudent}
+                value={selectedStudent ? getEntry(selectedStudent.id).notes : ''}
+                onChange={e => selectedStudent && updateStudent(selectedStudent.id, 'notes', e.target.value)}
+                className={`${FIELD} disabled:opacity-50`}
+              />
+            </div>
+          </div>
+
+          {canEdit && selectedStudent && (
+            <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
+              <button
+                onClick={() => saveAttendance([selectedStudent.id])}
+                className="w-full min-h-touch bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save {selectedStudent.name.split(' ')[0]}'s Check-In</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* History */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setShowHistory(v => !v)}
+          className="w-full min-h-touch p-4 flex items-center justify-between"
+        >
+          <h3 className="font-bold text-white text-sm">Past {SESSIONS.find(s => s.id === sessionType)?.short} Logs</h3>
+          <span className="flex items-center gap-2 text-xs text-slate-400">
+            {historyForSession.length} entries
+            <ChevronDown className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+          </span>
+        </button>
+
+        {showHistory && (
+          <div className="border-t border-slate-800 divide-y divide-slate-800/70 max-h-[420px] overflow-y-auto">
+            {historyForSession.length === 0 && (
+              <p className="p-6 text-center text-xs text-slate-500">No records yet for this session.</p>
+            )}
+            {historyForSession.map(item => {
+              const meta = STATUS_META[item.status];
+              return (
+                <div key={item.id} className="p-3 sm:p-4 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-white text-sm truncate">{item.studentName}</p>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${meta.chip}`}>{meta.label}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Room {item.roomNumber} · {item.date} {item.timestamp} · by {item.recordedBy}
+                    </p>
+                    {item.notes && <p className="text-[11px] text-slate-400 mt-0.5">{item.notes}</p>}
+                  </div>
+                  <span className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${item.broughtBible ? 'bg-blue-950 text-blue-300' : 'bg-rose-950 text-rose-300'}`} title={item.broughtBible ? 'Bible in hand' : 'No Bible'}>
+                    <BookOpen className="w-4 h-4" />
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
