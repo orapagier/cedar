@@ -15,6 +15,7 @@ import { AdminManagementView } from './components/AdminManagementView';
 import { ResidentPerformanceView } from './components/ResidentPerformanceView';
 import { GatePassView } from './components/GatePassView';
 import { UnauthorizedExitView } from './components/UnauthorizedExitView';
+import { BadLanguageView } from './components/BadLanguageView';
 import { GuestView } from './components/GuestView';
 import { ParentView } from './components/ParentView';
 import { OccupantRecordsView } from './components/OccupantRecordsView';
@@ -56,6 +57,7 @@ function AppContent() {
         {!isGuest && !isParent && activeTab === 'performance' && <ResidentPerformanceView />}
         {!isGuest && !isParent && activeTab === 'gatepass' && <GatePassView />}
         {!isGuest && !isParent && activeTab === 'offcampus' && <UnauthorizedExitView />}
+        {!isGuest && !isParent && activeTab === 'language' && <BadLanguageView />}
         {!isGuest && !isParent && activeTab === 'roster' && <OccupantsDirectoryView />}
         {!isGuest && !isParent && activeTab === 'rbac' && <AdminManagementView />}
         {!isGuest && !isParent && activeTab === 'occupant-records' && <OccupantRecordsView />}

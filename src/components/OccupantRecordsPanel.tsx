@@ -8,6 +8,7 @@ import {
   Smartphone,
   Luggage,
   Siren,
+  MessageSquareWarning,
   HeartPulse,
   AlertTriangle,
   HandHeart,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Violation } from '../types/dorm';
+import { LANGUAGE_KIND_LABELS, LANGUAGE_SETTING_LABELS } from '../utils/checkViolations';
 import { formatFullDate, formatTime12h } from '../utils/date';
 
 const PASS_LABELS: Record<string, string> = {
@@ -67,6 +69,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
     violations,
     gatePasses,
     unauthorizedExits,
+    badLanguageLogs,
     medicalSlips,
   } = useDorm();
 
@@ -264,6 +267,32 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
         ))}
         {unauthorizedExits.filter(e => e.studentId === studentId).length === 0 && (
           <Empty text="No unauthorized exits on file." />
+        )}
+      </Section>
+
+      <Section icon={MessageSquareWarning} title="Foul Language">
+        {badLanguageLogs.filter(l => l.studentId === studentId).slice(0, limit).map(l => (
+          <div key={l.id} className="px-4 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-white">{LANGUAGE_KIND_LABELS[l.kind]}</p>
+              <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                l.status === 'excused' ? 'bg-emerald-950 text-emerald-300' : 'bg-orange-950 text-orange-300'
+              }`}>
+                {l.status === 'excused' ? 'excused' : 'confirmed'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {formatFullDate(l.date)} · {formatTime12h(l.heardTime)} · {LANGUAGE_SETTING_LABELS[l.setting].toLowerCase()}
+              {l.directedAt ? ` · said to ${l.directedAt}` : ''}
+            </p>
+            {l.apologyMade && <p className="text-[11px] text-emerald-400/90 mt-0.5">Apology made.</p>}
+            {l.status === 'excused' && l.excuseReason && (
+              <p className="text-[11px] text-emerald-400/90 mt-0.5">Excused: {l.excuseReason}</p>
+            )}
+          </div>
+        ))}
+        {badLanguageLogs.filter(l => l.studentId === studentId).length === 0 && (
+          <Empty text="No foul language reports on file." />
         )}
       </Section>
 

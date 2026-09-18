@@ -135,13 +135,43 @@ reason: it stays in the register with what settled it, and the point is
 withdrawn. **Reinstate** puts it back. Either way the resident is never asked to
 work off a point the dormitory has taken back.
 
+## Cursing, swearing and foul language
+
+**Foul Language** is the register of how residents speak to one another. A
+resident heard cursing, swearing, mocking another boy or taking God's name in
+vain is recorded room by room from their own row, the way every other check is
+taken.
+
+Each report says what kind of language it was — cursing or swearing, vulgar
+talk, blasphemy, name-calling, or speech meant to threaten or degrade — where in
+dormitory life it was heard, and how it came to light: staff heard it, someone
+reported it, the resident admitted it, or it was written down or posted in a
+group chat. There is room for **the words themselves**, kept verbatim so a dean
+inquiry is not working from memory, and it can be left blank if you would rather
+not write them down.
+
+Naming **who it was said to** asks the resident for an apology as well as a
+reflection, and the register counts how many apologies are still owed. Each
+resident's row also shows how many confirmed reports they have picked up in the
+last 30 days, so a first slip and a standing habit are not read the same way.
+
+A confirmed report is **1 pt** and a reflection on clean speech with the dean,
+and it shows on the resident's Occupant Records and on their parent's view. The
+grade the dormitory puts on it follows the words, not the volume: a cuss word
+said in temper is minor, God's name taken in vain or mockery of another resident
+is moderate, and language meant to threaten or degrade is major.
+
+If the words turn out not to have been his — misheard, or another resident —
+**Excuse** the record with a reason: it stays in the register with what settled
+it, and the point is withdrawn. **Reinstate** puts it back.
+
 ## Correcting a check after it is filed
 
 Administrators file checks; the Dean is the one who can go back and change one
 afterwards — **whoever took it**. Every register (room inspections, worship roll
 calls, curfew, departures, study hours, cleaning, lights-out rounds, phone
 deposits) carries a pencil and a bin beside each record, visible to the Super
-Admin only — off-campus-without-pass records included.
+Admin only — off-campus-without-pass and foul language records included.
 
 - **Override** reopens that record's checks. Saving re-scores it — an inspection
   score, a gate clearance, a lights-out verdict all recompute — and the record

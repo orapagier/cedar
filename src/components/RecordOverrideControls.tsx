@@ -126,6 +126,60 @@ const FIELDS: Record<CheckKind, Field[]> = {
     { key: 'excuseReason', label: 'Reason it was excused', kind: 'text', placeholder: 'e.g. Pass was issued on paper' },
     { key: 'remarks', label: 'Remarks', kind: 'text', placeholder: 'What happened' },
   ],
+  badLanguage: [
+    { key: 'date', label: 'Date heard', kind: 'date' },
+    {
+      key: 'status',
+      label: 'Verdict',
+      kind: 'select',
+      options: [['confirmed', 'Confirmed — the words were said'], ['excused', 'Excused — not as reported']],
+    },
+    { key: 'heardTime', label: 'Heard at', kind: 'time' },
+    {
+      key: 'kind',
+      label: 'Kind of language',
+      kind: 'select',
+      options: [
+        ['cursing', 'Cursing / swearing'],
+        ['vulgar_talk', 'Vulgar or crude talk'],
+        ['blasphemy', "God's name taken in vain"],
+        ['name_calling', 'Name-calling / mockery'],
+        ['abusive', 'Abusive or threatening speech'],
+      ],
+    },
+    {
+      key: 'setting',
+      label: 'Where it happened',
+      kind: 'select',
+      options: [
+        ['dorm_room', 'In a dorm room'],
+        ['hallway_grounds', 'Hallway or grounds'],
+        ['worship', 'During worship'],
+        ['study_hours', 'During study hours'],
+        ['dining_kitchen', 'Dining hall or kitchen'],
+        ['school_run', 'On the school run'],
+        ['online_chat', 'In a chat or group message'],
+        ['other', 'Elsewhere in the dormitory'],
+      ],
+    },
+    { key: 'quote', label: 'What was said', kind: 'text', placeholder: 'The words, as near as they were heard' },
+    { key: 'directedAt', label: 'Who it was said to', kind: 'text', placeholder: 'Blank if aimed at no one' },
+    {
+      key: 'discoveredVia',
+      label: 'How it came to light',
+      kind: 'select',
+      options: [
+        ['staff_heard', 'Heard by staff'],
+        ['reported', 'Reported by someone else'],
+        ['self_admitted', 'Resident admitted it'],
+        ['written', 'Written down or posted'],
+      ],
+    },
+    { key: 'apologyMade', label: 'Apology made', kind: 'toggle' },
+    { key: 'parentNotified', label: 'Parents notified', kind: 'toggle' },
+    { key: 'excuseReason', label: 'Reason it was excused', kind: 'text', placeholder: 'e.g. Misheard — another resident' },
+    { key: 'remarks', label: 'Remarks', kind: 'text', placeholder: 'What happened' },
+  ],
   phoneDeposit: [
     {
       key: 'status',
@@ -141,6 +195,7 @@ const FIELDS: Record<CheckKind, Field[]> = {
 /** Optional text left blank clears the field rather than storing an empty one. */
 const OPTIONAL_TEXT = new Set([
   'remarks', 'notes', 'violatorRemarks', 'actualCheckInTime', 'destination', 'excuseReason', 'returnedTime',
+  'quote', 'directedAt',
 ]);
 
 /** Whoever filed the check, under whichever name its kind gives the signer. */

@@ -33,6 +33,7 @@ export const LOG_COLLECTIONS: LogCollection[] = [
   { key: 'medicalSlips', label: 'Medical excuse slips', dateField: 'startDate' },
   { key: 'gatePasses', label: 'Gate passes', dateField: 'departureDate' },
   { key: 'unauthorizedExits', label: 'Off-campus without pass', dateField: 'date' },
+  { key: 'badLanguageLogs', label: 'Foul language reports', dateField: 'date' },
   { key: 'demeritClearances', label: 'Redemption records', dateField: 'completionDate' },
   { key: 'confiscatedItems', label: 'Confiscated items', dateField: 'confiscatedDate' },
 ];

@@ -273,6 +273,7 @@ export type ViolationCategory =
   | 'church_absence'
   | 'irregular_school_departure'
   | 'unauthorized_campus_exit'
+  | 'foul_language'
   | 'study_hour_skipping'
   | 'chore_neglect'
   | 'lights_out_violation'
@@ -402,6 +403,63 @@ export interface UnauthorizedExitLog extends OverrideStamp {
   /** Why an excused exit was cleared, e.g. "Pass was issued on paper". */
   excuseReason?: string;
   parentNotified: boolean;
+  remarks?: string;
+  loggedBy: string;
+}
+
+/**
+ * The kind of language a resident was heard using. Cedar Hall is a Christian
+ * dormitory, so the register separates a cuss word said in temper from God's
+ * name taken in vain, and both from words aimed at another person.
+ */
+export type BadLanguageKind =
+  | 'cursing'      // swearing, cuss words
+  | 'vulgar_talk'  // obscene or crude talk and jokes
+  | 'blasphemy'    // God's name taken in vain
+  | 'name_calling' // insults and mockery aimed at a person
+  | 'abusive';     // threatening or degrading language
+
+/** Where in dormitory life the words were heard. */
+export type BadLanguageSetting =
+  | 'dorm_room'
+  | 'hallway_grounds'
+  | 'worship'
+  | 'study_hours'
+  | 'dining_kitchen'
+  | 'school_run'
+  | 'online_chat'
+  | 'other';
+
+/**
+ * A resident heard cursing, swearing or otherwise speaking foul language — the
+ * record the dormitory keeps of how residents speak to one another. It is filed
+ * against the resident who spoke, carries a point unless the Dean later excuses
+ * it, and keeps room for the words themselves so a dean inquiry is not working
+ * from memory.
+ */
+export interface BadLanguageLog extends OverrideStamp {
+  id: string;
+  date: string; // YYYY-MM-DD — the day the words were heard
+  studentId: string;
+  studentName: string;
+  roomNumber: string;
+  /** When it was heard, e.g. "19:40". */
+  heardTime: string;
+  kind: BadLanguageKind;
+  setting: BadLanguageSetting;
+  /** What was said, as near as it was heard. Kept verbatim, or left blank. */
+  quote?: string;
+  /** Who the words were aimed at, when they were aimed at anyone. */
+  directedAt?: string;
+  /** How the incident came to light. */
+  discoveredVia: 'staff_heard' | 'reported' | 'self_admitted' | 'written';
+  /** Whether the resident has since apologized to whoever it was said to. */
+  apologyMade: boolean;
+  parentNotified: boolean;
+  /** 'confirmed' — the words were said; 'excused' — it was not as reported. */
+  status: 'confirmed' | 'excused';
+  /** Why an excused report was cleared, e.g. "Misheard — another resident". */
+  excuseReason?: string;
   remarks?: string;
   loggedBy: string;
 }

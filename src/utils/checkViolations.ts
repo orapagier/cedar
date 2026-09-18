@@ -1,5 +1,6 @@
 import {
   AttendanceRecord,
+  BadLanguageLog,
   CleaningDutyRecord,
   CurfewRecord,
   LightsOutLog,
@@ -39,7 +40,8 @@ export type CheckKind =
   | 'cleaning'
   | 'lightsOut'
   | 'phoneDeposit'
-  | 'unauthorizedExit';
+  | 'unauthorizedExit'
+  | 'badLanguage';
 
 export const CHECK_LABELS: Record<CheckKind, string> = {
   inspection: 'Room inspection',
@@ -51,6 +53,7 @@ export const CHECK_LABELS: Record<CheckKind, string> = {
   lightsOut: 'Lights-out round',
   phoneDeposit: 'Phone deposit',
   unauthorizedExit: 'Off-campus without pass',
+  badLanguage: 'Foul language report',
 };
 
 /**
@@ -278,6 +281,75 @@ export const unauthorizedExitDrafts = (log: UnauthorizedExitLog): ViolationDraft
     reportedBy: log.loggedBy,
     status: 'pending_settlement',
     actionRequired: 'Dean inquiry with the parents before any further gate pass is issued.',
+  }];
+};
+
+/** What kind of language it was, as the record and the register both word it. */
+export const LANGUAGE_KIND_LABELS: Record<BadLanguageLog['kind'], string> = {
+  cursing: 'Cursing / swearing',
+  vulgar_talk: 'Vulgar or crude talk',
+  blasphemy: "God's name taken in vain",
+  name_calling: 'Name-calling / mockery',
+  abusive: 'Abusive or threatening speech',
+};
+
+/** Where in dormitory life the words were heard. */
+export const LANGUAGE_SETTING_LABELS: Record<BadLanguageLog['setting'], string> = {
+  dorm_room: 'In a dorm room',
+  hallway_grounds: 'Hallway or grounds',
+  worship: 'During worship',
+  study_hours: 'During study hours',
+  dining_kitchen: 'Dining hall or kitchen',
+  school_run: 'On the school run',
+  online_chat: 'In a chat or group message',
+  other: 'Elsewhere in the dormitory',
+};
+
+/** How the report came to the dormitory. */
+export const LANGUAGE_DISCOVERY_LABELS: Record<BadLanguageLog['discoveredVia'], string> = {
+  staff_heard: 'Heard by staff',
+  reported: 'Reported by someone else',
+  self_admitted: 'Admitted by the resident',
+  written: 'Written down or posted',
+};
+
+/**
+ * Speech is graded by what the words did, not by how loud they were: a cuss
+ * word said in temper is a minor slip, God's name taken in vain or mockery of
+ * another resident is moderate, and language meant to threaten or degrade is
+ * major. Every one of them is still the same single point; the grade only says
+ * how the dormitory reads it. An excused report carries nothing at all.
+ */
+const LANGUAGE_SEVERITY: Record<BadLanguageLog['kind'], ViolationDraft['severity']> = {
+  cursing: 'minor',
+  vulgar_talk: 'minor',
+  blasphemy: 'moderate',
+  name_calling: 'moderate',
+  abusive: 'major',
+};
+
+export const badLanguageDrafts = (log: BadLanguageLog): ViolationDraft[] => {
+  if (log.status !== 'confirmed') return [];
+  const at = log.directedAt ? ` at ${log.directedAt}` : '';
+  const said = log.quote ? ` Said: "${log.quote}".` : '';
+  const note = log.remarks ? ` ${log.remarks}` : '';
+  return [{
+    date: log.date,
+    studentId: log.studentId,
+    studentName: log.studentName,
+    roomNumber: log.roomNumber,
+    category: 'foul_language',
+    severity: LANGUAGE_SEVERITY[log.kind],
+    description:
+      `${LANGUAGE_KIND_LABELS[log.kind]}${at} — ${LANGUAGE_SETTING_LABELS[log.setting].toLowerCase()}, ` +
+      `${formatTime12h(log.heardTime, log.heardTime)} ` +
+      `(${LANGUAGE_DISCOVERY_LABELS[log.discoveredVia].toLowerCase()}).${said}${note}`,
+    demeritPoints: VIOLATION_POINTS,
+    reportedBy: log.loggedBy,
+    status: 'pending_settlement',
+    actionRequired: log.directedAt
+      ? 'Apology to the resident it was said to, and a reflection on speech.'
+      : 'Reflection on clean speech with the dean.',
   }];
 };
 

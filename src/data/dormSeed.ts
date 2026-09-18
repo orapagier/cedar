@@ -16,6 +16,7 @@ import {
   MedicalExcuseSlip,
   GatePassRecord,
   UnauthorizedExitLog,
+  BadLanguageLog,
   DemeritClearanceLog,
   ConfiscatedItemRecord,
   StudentMedicalRecord,
@@ -197,6 +198,7 @@ export const INITIAL_VIOLATIONS: Violation[] = [];
 export const INITIAL_MEDICAL_SLIPS: MedicalExcuseSlip[] = [];
 export const INITIAL_GATE_PASSES: GatePassRecord[] = [];
 export const INITIAL_UNAUTHORIZED_EXITS: UnauthorizedExitLog[] = [];
+export const INITIAL_BAD_LANGUAGE: BadLanguageLog[] = [];
 export const INITIAL_DEMERIT_CLEARANCES: DemeritClearanceLog[] = [];
 export const INITIAL_CONFISCATED_ITEMS: ConfiscatedItemRecord[] = [];
 export const INITIAL_STUDENT_MEDICALS: StudentMedicalRecord[] = [];
