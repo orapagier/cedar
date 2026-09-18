@@ -21,6 +21,7 @@ import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { Segmented } from './ui/Segmented';
 import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
+import { useManilaToday } from '../hooks/useManilaToday';
 
 type CurfewStatus = 'in_dorm' | 'late' | 'missing' | 'official_pass';
 
@@ -51,6 +52,7 @@ export const CurfewLightsOutView: React.FC = () => {
   } = useDorm();
 
   const occupants = users.filter(u => u.role === 'occupant');
+  const today = useManilaToday();
   const occupiedRooms = rooms.filter(r => occupants.some(o => o.roomNumber === r.roomNumber));
   const curfewRoomOptions = occupiedRooms.length ? occupiedRooms : rooms;
 
@@ -86,7 +88,11 @@ export const CurfewLightsOutView: React.FC = () => {
     setTimeout(() => setSavedMessage(null), 4000);
   };
 
-  const statusFor = (id: string): CurfewStatus => roomStatuses[id] ?? 'in_dorm';
+  /** Tonight's check-in for this resident, if one is already on file. */
+  const filedFor = (id: string) => curfewRecords.find(c => c.studentId === id && c.date === today);
+
+  const statusFor = (id: string): CurfewStatus =>
+    roomStatuses[id] ?? (filedFor(id)?.status as CurfewStatus | undefined) ?? 'in_dorm';
 
   const setStudentStatus = (id: string, status: CurfewStatus) => {
     setRoomStatuses(prev => ({ ...prev, [id]: status }));
@@ -103,7 +109,7 @@ export const CurfewLightsOutView: React.FC = () => {
   };
 
   const buildRecord = (student: (typeof occupants)[number], status: CurfewStatus) => ({
-    date: manilaToday(),
+    date: today,
     studentId: student.id,
     studentName: student.name,
     roomNumber: student.roomNumber || '—',
@@ -122,6 +128,17 @@ export const CurfewLightsOutView: React.FC = () => {
     setCurfewRemarks('');
     flash(`Checked in ${roomOccupants.length} residents in Room ${selectedRoom}.`);
   };
+
+  /** One resident checked in on his own, as he comes through the door. */
+  const handleStudentSubmit = (student: (typeof occupants)[number]) => {
+    if (!canEdit) return;
+    saveCurfewRecord(buildRecord(student, statusFor(student.id)));
+    flash(
+      `${student.name} checked in at ${formatTime12h(checkInTime)}. Saving the name again corrects tonight's record rather than filing a second one.`
+    );
+  };
+
+  const checkedInCount = roomOccupants.filter(o => filedFor(o.id)).length;
 
   const handleLightsOutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,6 +268,11 @@ export const CurfewLightsOutView: React.FC = () => {
                   <p className="text-xs text-slate-400">
                     <span className="font-semibold text-white">Room {selectedRoom || '—'}</span>
                     {selectedRoomMeta ? ` · ${selectedRoomMeta.wing}` : ''} · {roomOccupants.length} residents
+                    {roomOccupants.length > 0 && (
+                      <span className={checkedInCount === roomOccupants.length ? ' text-emerald-400' : ''}>
+                        {' '}· {checkedInCount}/{roomOccupants.length} checked in
+                      </span>
+                    )}
                   </p>
                   {canEdit && roomOccupants.length > 0 && (
                     <button
@@ -270,15 +292,25 @@ export const CurfewLightsOutView: React.FC = () => {
                 )}
                 {roomOccupants.map(student => {
                   const status = statusFor(student.id);
+                  const filed = filedFor(student.id);
                   return (
                     <div key={student.id} className="p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <p className="font-semibold text-white text-sm truncate">{student.name}</p>
                         <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
+                        {filed && (
+                          <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                            CURFEW_STATUS_META[filed.status as CurfewStatus]?.chip ?? CURFEW_STATUS_META.in_dorm.chip
+                          }`}>
+                            <Check className="w-3 h-3" />
+                            {CURFEW_STATUS_META[filed.status as CurfewStatus]?.label ?? filed.status}
+                            {filed.actualCheckInTime ? ` · ${formatTime12h(filed.actualCheckInTime)}` : ''}
+                          </span>
+                        )}
                       </div>
 
                       {canEdit ? (
-                        <div className="flex gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap">
                           {(Object.keys(CURFEW_STATUS_META) as CurfewStatus[]).map(s => {
                             const meta = CURFEW_STATUS_META[s];
                             const Icon = meta.icon;
@@ -299,6 +331,20 @@ export const CurfewLightsOutView: React.FC = () => {
                               </button>
                             );
                           })}
+                          <button
+                            type="button"
+                            title={`Check ${student.name} in on his own`}
+                            aria-label={`Save ${student.name}`}
+                            onClick={() => handleStudentSubmit(student)}
+                            className={`min-w-touch min-h-touch px-2.5 rounded-xl flex flex-1 sm:flex-none items-center justify-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                              filed
+                                ? 'bg-slate-800 text-purple-300 border border-purple-800/60 hover:bg-slate-700'
+                                : 'bg-purple-600 text-white hover:bg-purple-500'
+                            }`}
+                          >
+                            <Save className="w-4 h-4" />
+                            <span>{filed ? 'Update' : 'Save'}</span>
+                          </button>
                         </div>
                       ) : (
                         <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${CURFEW_STATUS_META[status].chip}`}>
@@ -317,8 +363,11 @@ export const CurfewLightsOutView: React.FC = () => {
                     className="w-full min-h-touch bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
                   >
                     <Save className="w-4 h-4" />
-                    <span>Save Room {selectedRoom} Curfew</span>
+                    <span>Save All · Room {selectedRoom} Curfew</span>
                   </button>
+                  <p className="text-[11px] text-slate-500 text-center mt-2">
+                    Or check residents in one at a time as they come through the door.
+                  </p>
                 </div>
               )}
             </div>

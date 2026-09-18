@@ -165,6 +165,44 @@ If the words turn out not to have been his — misheard, or another resident —
 **Excuse** the record with a reason: it stays in the register with what settled
 it, and the point is withdrawn. **Reinstate** puts it back.
 
+## Saving a check one resident at a time
+
+Residents do not move as a room. They drift to vespers in ones and twos, leave
+for school as they are ready, and hand their phones in across the evening — so a
+check that can only be filed once the whole room is accounted for is a check
+that cannot be taken at all.
+
+Every roll call therefore saves **per resident as well as per room**. Each row
+carries its own **Save** button beside the marks, and the footer button now
+reads **Save All** for the times a room really is together. This applies to:
+
+- **Worship roll call** — the six weekly services
+- **Curfew check-in**
+- **Study hours**
+- **School departure & uniform** — each run, morning and afternoon
+- **Phone vault deposits**
+
+Room inspections, the daily cleaning duty and the lights-out round stay room-wide,
+because what they grade is the room itself rather than the boys in it.
+
+**Saving a name twice never files it twice.** One record is kept per resident per
+check per day — per service for worship, per run for departures, per cycle for
+the phone vault — so a boy logged on his own and then swept up again in the
+room's **Save All** ends with a single record and a single point. Saving him
+again corrects what is on file, keeping the record's id, so a point he has
+already redeemed stays redeemed and a correction never asks him to work it off
+twice.
+
+Because of this, each row shows what is **already on file** — the verdict and the
+time it was taken — and opens with those marks rather than with blank defaults.
+The room header counts how far the check has got (`3/5 logged`), and the row's
+button reads **Update** rather than **Save** once a record exists.
+
+Worship, study hours and departures also offer **All rooms** in the room picker,
+which lists the whole dormitory as one queue sorted by room. That is the roll
+call taken standing at the church door or the gate, marking boys off as they
+arrive, rather than walking the building room by room.
+
 ## Occupant Records
 
 Every resident's file, filed the way the dormitory is walked: **by room**. Each

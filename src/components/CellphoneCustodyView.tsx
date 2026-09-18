@@ -177,6 +177,26 @@ export const CellphoneCustodyView: React.FC = () => {
     );
   };
 
+  /** One resident's phone logged on its own, as he hands it over. */
+  const submitStudent = (student: (typeof occupants)[number]) => {
+    if (!canEdit) return;
+    savePhoneDepositBatch([{
+      date: today,
+      cycleDate: cycle.deadlineDate,
+      studentId: student.id,
+      studentName: student.name,
+      roomNumber: student.roomNumber || '—',
+      status: statusFor(student.id),
+      depositTime,
+      remarks: remarks || undefined,
+      recordedBy: currentUser.name,
+    }]);
+    flash(
+      `${student.name}'s phone logged at ${formatTime12h(depositTime)}` +
+        (cycle.deadlinePassed ? ' — past the deadline, so it saved as late.' : '.')
+    );
+  };
+
   const markAll = (status: DepositStatus) =>
     setStatuses(prev => ({ ...prev, ...Object.fromEntries(checkable.map(o => [o.id, status])) }));
 
@@ -513,7 +533,7 @@ export const CellphoneCustodyView: React.FC = () => {
                       {excuse}
                     </span>
                   ) : canEdit ? (
-                    <div className="shrink-0 flex items-center gap-1">
+                    <div className="shrink-0 flex flex-wrap items-center justify-end gap-1">
                       {STATUS_ORDER.map(s => {
                         const meta = DEPOSIT_META[s];
                         const Icon = meta.icon;
@@ -534,6 +554,20 @@ export const CellphoneCustodyView: React.FC = () => {
                           </button>
                         );
                       })}
+                      <button
+                        type="button"
+                        title={`Save ${student.name} on his own`}
+                        aria-label={`Save ${student.name}`}
+                        onClick={() => submitStudent(student)}
+                        className={`h-10 px-2.5 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                          logged
+                            ? 'bg-slate-800 text-rose-300 border border-rose-800/60 hover:bg-slate-700'
+                            : 'bg-rose-600 text-white hover:bg-rose-500'
+                        }`}
+                      >
+                        <Save className="w-4 h-4" />
+                        <span className="hidden sm:inline">{logged ? 'Update' : 'Save'}</span>
+                      </button>
                     </div>
                   ) : (
                     <span className={`shrink-0 px-2 py-1 rounded-md text-[11px] font-bold ${DEPOSIT_META[status].chip}`}>
@@ -600,8 +634,11 @@ export const CellphoneCustodyView: React.FC = () => {
               className="w-full min-h-touch bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
             >
               <Save className="w-4 h-4" />
-              <span>Save Room {selectedRoom} Deposit Check</span>
+              <span>Save All · Room {selectedRoom} Deposit Check</span>
             </button>
+            <p className="text-[11px] text-slate-500 text-center mt-2">
+              Or log each phone as it is handed in — the room does not deposit together.
+            </p>
           </div>
         )}
       </div>

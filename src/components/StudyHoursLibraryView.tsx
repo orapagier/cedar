@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
-import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
+import { formatFullDate, formatTime12h } from '../utils/date';
+import { useManilaToday } from '../hooks/useManilaToday';
 
 type StudyStatus = 'present' | 'absent';
 type Quietness = 'quiet' | 'noisy';
@@ -30,9 +31,13 @@ const QUIET_META: Record<Quietness, { label: string; icon: React.ComponentType<{
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40';
 
+/** The check taken at the hall itself rather than room by room. */
+const ALL_ROOMS = '__all__';
+
 export const StudyHoursLibraryView: React.FC = () => {
   const { studyLogs, users, rooms, saveStudyLog, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
+  const today = useManilaToday();
 
   const studyWindow =
     settings.studyStart && settings.studyEnd
@@ -48,7 +53,14 @@ export const StudyHoursLibraryView: React.FC = () => {
   const [quietness, setQuietness] = useState<Record<string, Quietness>>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
-  const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
+  const allRooms = selectedRoom === ALL_ROOMS;
+  // The hall fills from every room at once, so the dormitory can be listed as
+  // one queue and each resident marked off as he arrives.
+  const roomOccupants = allRooms
+    ? [...occupants].sort(
+        (a, b) => (a.roomNumber || '').localeCompare(b.roomNumber || '') || a.name.localeCompare(b.name)
+      )
+    : occupants.filter(o => o.roomNumber === selectedRoom);
 
   useEffect(() => {
     if (!selectedRoom && roomNumbers.length) setSelectedRoom(roomNumbers[0]);
@@ -59,28 +71,45 @@ export const StudyHoursLibraryView: React.FC = () => {
     setTimeout(() => setSavedMessage(null), 4000);
   };
 
+  /** Tonight's study check for this resident, if one is already on file. */
+  const filedFor = (id: string) => studyLogs.find(l => l.studentId === id && l.date === today);
+
+  const statusFor = (id: string): StudyStatus => statuses[id] ?? filedFor(id)?.status ?? 'present';
+  const quietFor = (id: string): Quietness => quietness[id] ?? filedFor(id)?.quietness ?? 'quiet';
+
   const setStatus = (id: string, status: StudyStatus) => setStatuses(prev => ({ ...prev, [id]: status }));
   const setQuiet = (id: string, quiet: Quietness) => setQuietness(prev => ({ ...prev, [id]: quiet }));
 
+  const buildLog = (student: (typeof occupants)[number]) => ({
+    date: today,
+    studentId: student.id,
+    studentName: student.name,
+    roomNumber: student.roomNumber || '—',
+    location,
+    checkTime,
+    status: statusFor(student.id),
+    quietness: quietFor(student.id),
+    remarks: remarks || undefined,
+    recordedBy: currentUser.name,
+  });
+
   const submitRoom = () => {
     if (!canEdit || !roomOccupants.length) return;
-    roomOccupants.forEach(student => {
-      saveStudyLog({
-        date: manilaToday(),
-        studentId: student.id,
-        studentName: student.name,
-        roomNumber: student.roomNumber || '—',
-        location,
-        checkTime,
-        status: statuses[student.id] ?? 'present',
-        quietness: quietness[student.id] ?? 'quiet',
-        remarks: remarks || undefined,
-        recordedBy: currentUser.name,
-      });
-    });
+    roomOccupants.forEach(student => saveStudyLog(buildLog(student)));
     setRemarks('');
     flash(`Saved study hours for ${roomOccupants.length} residents in Room ${selectedRoom}.`);
   };
+
+  /** One resident logged on his own, as he turns up at the hall. */
+  const submitStudent = (student: (typeof occupants)[number]) => {
+    if (!canEdit) return;
+    saveStudyLog(buildLog(student));
+    flash(
+      `${student.name} logged at ${formatTime12h(checkTime)}. Saving the name again corrects tonight's record rather than filing a second one.`
+    );
+  };
+
+  const loggedCount = roomOccupants.filter(o => filedFor(o.id)).length;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -119,18 +148,21 @@ export const StudyHoursLibraryView: React.FC = () => {
         <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Library className="w-4 h-4 text-indigo-400" />
-            <h3 className="font-bold text-white text-sm">Study Roll Call</h3>
+            <h3 className="font-bold text-white text-sm">{allRooms ? 'Hall Roll Call' : 'Study Roll Call'}</h3>
           </div>
           <select value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)} className={`${FIELD} sm:max-w-[220px]`}>
             {roomNumbers.length === 0 ? (
               <option value="">No residents on file</option>
             ) : (
-              roomNumbers.map(room => (
-                <option key={room} value={room}>
-                  Room {room}
-                  {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
-                </option>
-              ))
+              <>
+                <option value={ALL_ROOMS}>All rooms · {occupants.length} residents</option>
+                {roomNumbers.map(room => (
+                  <option key={room} value={room}>
+                    Room {room}
+                    {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
+                  </option>
+                ))}
+              </>
             )}
           </select>
         </div>
@@ -175,23 +207,39 @@ export const StudyHoursLibraryView: React.FC = () => {
 
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
           <p className="text-xs text-slate-400">
-            <span className="font-semibold text-white">Room {selectedRoom || '—'}</span> · {roomOccupants.length} residents
+            <span className="font-semibold text-white">{allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`}</span> · {roomOccupants.length} residents
+            {roomOccupants.length > 0 && (
+              <span className={loggedCount === roomOccupants.length ? ' text-emerald-400' : ''}>
+                {' '}· {loggedCount}/{roomOccupants.length} logged
+              </span>
+            )}
           </p>
           <p className="text-xs text-slate-400">{formatTime12h(checkTime)}</p>
         </div>
 
         <div className="divide-y divide-slate-800/70">
           {roomOccupants.length === 0 && (
-            <p className="p-6 text-center text-xs text-slate-500">No residents assigned to this room.</p>
+            <p className="p-6 text-center text-xs text-slate-500">
+              {allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
+            </p>
           )}
           {roomOccupants.map(student => {
-            const status = statuses[student.id] ?? 'present';
-            const quiet = quietness[student.id] ?? 'quiet';
+            const status = statusFor(student.id);
+            const quiet = quietFor(student.id);
+            const filed = filedFor(student.id);
             return (
               <div key={student.id} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white text-sm truncate">{student.name}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {allRooms ? `Room ${student.roomNumber || '—'}` : student.email}
+                  </p>
+                  {filed && (
+                    <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_META[filed.status].chip}`}>
+                      <CheckCircle2 className="w-3 h-3" />
+                      {STATUS_META[filed.status].label} · {formatTime12h(filed.checkTime)}
+                    </span>
+                  )}
                 </div>
 
                 {canEdit ? (
@@ -237,6 +285,20 @@ export const StudyHoursLibraryView: React.FC = () => {
                         </button>
                       );
                     })}
+                    <button
+                      type="button"
+                      title={`Save ${student.name} on his own`}
+                      aria-label={`Save ${student.name}`}
+                      onClick={() => submitStudent(student)}
+                      className={`min-h-touch px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all active:scale-95 ${
+                        filed
+                          ? 'bg-slate-800 text-indigo-300 border border-indigo-800/60 hover:bg-slate-700'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                      }`}
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>{filed ? 'Update' : 'Save'}</span>
+                    </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -260,8 +322,11 @@ export const StudyHoursLibraryView: React.FC = () => {
               className="w-full min-h-touch bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
             >
               <Save className="w-4 h-4" />
-              <span>Save Room {selectedRoom} Study Hours</span>
+              <span>Save All · {allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`} Study Hours</span>
             </button>
+            <p className="text-[11px] text-slate-500 text-center mt-2">
+              Or save each resident as he turns up — the hall does not fill by room.
+            </p>
           </div>
         )}
       </div>

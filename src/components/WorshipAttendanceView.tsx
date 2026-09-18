@@ -45,6 +45,9 @@ const SESSION_ICONS: Record<WorshipType, React.ComponentType<{ className?: strin
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40';
 
+/** The roll call taken at the church door rather than room by room. */
+const ALL_ROOMS = '__all__';
+
 export const WorshipAttendanceView: React.FC = () => {
   const { users, rooms, attendance, saveAttendanceBatch, canEdit, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
@@ -68,18 +71,47 @@ export const WorshipAttendanceView: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
-  const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
+  const allRooms = selectedRoom === ALL_ROOMS;
+  // Residents trickle to church from every room at once, so the whole dormitory
+  // can be listed as one queue and marked off as each boy arrives.
+  const roomOccupants = allRooms
+    ? [...occupants].sort(
+        (a, b) => (a.roomNumber || '').localeCompare(b.roomNumber || '') || a.name.localeCompare(b.name)
+      )
+    : occupants.filter(o => o.roomNumber === selectedRoom);
 
   useEffect(() => {
-    if ((!selectedRoom || !roomNumbers.includes(selectedRoom)) && roomNumbers.length) {
+    if ((!selectedRoom || !(selectedRoom === ALL_ROOMS || roomNumbers.includes(selectedRoom))) && roomNumbers.length) {
       setSelectedRoom(roomNumbers[0]);
     }
   }, [roomNumbers, selectedRoom]);
 
-  const getEntry = (id: string) => roster[id] ?? DEFAULT_ENTRY;
+  /** What is already on file for this resident at this service, if anything. */
+  const filedFor = (id: string) =>
+    attendance.find(a => a.studentId === id && a.date === selectedDate && a.type === sessionType);
+
+  // A row reads from the draft first, then from whatever was already saved for
+  // this service, so a room half-logged earlier opens showing what it holds.
+  const getEntry = (id: string) => {
+    if (roster[id]) return roster[id];
+    const filed = filedFor(id);
+    if (!filed) return DEFAULT_ENTRY;
+    return {
+      status: filed.status,
+      broughtBible: filed.broughtBible,
+      properAttire: filed.properAttire !== false,
+      notes: filed.notes ?? '',
+    };
+  };
+
+  // Drafts belong to the service and date they were taken for; switching either
+  // reads the new one off the register rather than carrying marks across.
+  useEffect(() => {
+    setRoster({});
+  }, [selectedDate, sessionType]);
 
   const updateStudent = (id: string, field: 'status' | 'broughtBible' | 'properAttire' | 'notes', value: AttendanceStatus | boolean | string) => {
-    setRoster(prev => ({ ...prev, [id]: { ...(prev[id] ?? DEFAULT_ENTRY), [field]: value } }));
+    setRoster(prev => ({ ...prev, [id]: { ...(prev[id] ?? getEntry(id)), [field]: value } }));
   };
 
   const markRoomAllPresent = () => {
@@ -116,9 +148,16 @@ export const WorshipAttendanceView: React.FC = () => {
       .filter(Boolean) as Parameters<typeof saveAttendanceBatch>[0];
 
     saveAttendanceBatch(records);
-    setSavedMessage(`Saved ${records.length} ${records.length === 1 ? 'record' : 'records'} for ${SESSIONS.find(s => s.id === sessionType)?.short}. Missing Bibles, improper attire and unexcused absences were each logged as 1 pt.`);
+    const service = SESSIONS.find(s => s.id === sessionType)?.short;
+    setSavedMessage(
+      records.length === 1
+        ? `${records[0].studentName} logged for ${service}. Saving the name again corrects this record rather than filing a second one.`
+        : `Saved ${records.length} records for ${service}. Missing Bibles, improper attire and unexcused absences were each logged as 1 pt.`
+    );
     setTimeout(() => setSavedMessage(null), 4000);
   };
+
+  const loggedCount = roomOccupants.filter(o => filedFor(o.id)).length;
 
   const historyForSession = attendance.filter(a => a.type === sessionType);
   const selectedWing = rooms.find(r => r.roomNumber === selectedRoom)?.wing;
@@ -180,26 +219,34 @@ export const WorshipAttendanceView: React.FC = () => {
           <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-400" />
-              <h3 className="font-bold text-white text-sm">Room Roll Call</h3>
+              <h3 className="font-bold text-white text-sm">{allRooms ? 'Church Door Roll Call' : 'Room Roll Call'}</h3>
             </div>
             <select value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)} className={`${FIELD} sm:max-w-[220px]`}>
               {roomNumbers.length === 0 ? (
                 <option value="">No residents on file</option>
               ) : (
-                roomNumbers.map(room => (
-                  <option key={room} value={room}>
-                    Room {room}
-                    {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
-                  </option>
-                ))
+                <>
+                  <option value={ALL_ROOMS}>All rooms · {occupants.length} residents</option>
+                  {roomNumbers.map(room => (
+                    <option key={room} value={room}>
+                      Room {room}
+                      {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
+                    </option>
+                  ))}
+                </>
               )}
             </select>
           </div>
 
           <div className="p-3 sm:p-4 flex items-center justify-between gap-3 border-b border-slate-800/70">
             <div className="text-xs text-slate-400">
-              <span className="font-semibold text-white">Room {selectedRoom || '—'}</span>
-              {selectedWing ? ` · ${selectedWing}` : ''} · {roomOccupants.length} residents
+              <span className="font-semibold text-white">{allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`}</span>
+              {!allRooms && selectedWing ? ` · ${selectedWing}` : ''} · {roomOccupants.length} residents
+              {roomOccupants.length > 0 && (
+                <span className={loggedCount === roomOccupants.length ? ' text-emerald-400' : ''}>
+                  {' '}· {loggedCount}/{roomOccupants.length} logged
+                </span>
+              )}
             </div>
             {canEdit && roomOccupants.length > 0 && (
               <button
@@ -207,25 +254,36 @@ export const WorshipAttendanceView: React.FC = () => {
                 className="min-h-touch px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 text-xs font-semibold flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
-                All present
+                Mark all present
               </button>
             )}
           </div>
 
           <div className="divide-y divide-slate-800/70">
             {roomOccupants.length === 0 && (
-              <p className="p-6 text-center text-xs text-slate-500">No residents assigned to this room.</p>
+              <p className="p-6 text-center text-xs text-slate-500">
+                {allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
+              </p>
             )}
             {roomOccupants.map(occ => {
               const entry = getEntry(occ.id);
+              const filed = filedFor(occ.id);
               return (
                 <div key={occ.id} className="p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-semibold text-white text-sm truncate">{occ.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{occ.email}</p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {allRooms ? `Room ${occ.roomNumber || '—'}` : occ.email}
+                    </p>
+                    {filed && (
+                      <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_META[filed.status].chip}`}>
+                        <Check className="w-3 h-3" />
+                        {STATUS_META[filed.status].label} · {filed.timestamp}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                     {canEdit ? (
                       <>
                         <div className="flex gap-1.5 flex-1 sm:flex-none">
@@ -274,6 +332,20 @@ export const WorshipAttendanceView: React.FC = () => {
                         >
                           <Shirt className="w-4 h-4" />
                         </button>
+                        <button
+                          type="button"
+                          title={`Save ${occ.name} on their own`}
+                          aria-label={`Save ${occ.name}`}
+                          onClick={() => saveAttendance([occ.id])}
+                          className={`min-w-touch min-h-touch px-2.5 rounded-xl flex flex-1 sm:flex-none items-center justify-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                            filed
+                              ? 'bg-slate-800 text-blue-300 border border-blue-800/60 hover:bg-slate-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-500'
+                          }`}
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{filed ? 'Update' : 'Save'}</span>
+                        </button>
                       </>
                     ) : (
                       <>
@@ -301,8 +373,11 @@ export const WorshipAttendanceView: React.FC = () => {
                 className="w-full min-h-touch bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
               >
                 <Save className="w-4 h-4" />
-                <span>Save Room {selectedRoom} Roll Call</span>
+                <span>Save All · {allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`} Roll Call</span>
               </button>
+              <p className="text-[11px] text-slate-500 text-center mt-2">
+                Or save each resident on their own as they leave for church — the room does not have to go together.
+              </p>
             </div>
           )}
         </div>

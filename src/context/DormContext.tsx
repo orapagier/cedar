@@ -5,6 +5,7 @@ import {
   Room,
   RoomInspection,
   AttendanceRecord,
+  WorshipType,
   CurfewRecord,
   SchoolUniformLog,
   StudyHoursLog,
@@ -796,39 +797,69 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     syncViolationsFor(record.id, inspectionDrafts(record, roomMembers(record.roomNumber)));
   };
 
+  // One roll call per resident per service per date. Residents rarely leave for
+  // church as a room, so a name saved on its own and then again in the room's
+  // sweep corrects the record already on file instead of filing a second one.
   const saveAttendanceBatch = (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => {
     if (!canEdit) return;
     const timeStr = manilaTime();
-    const formatted: AttendanceRecord[] = records.map((r, idx) => ({
+    const sameRollCall = (a: { studentId: string; date: string; type: WorshipType }, b: typeof a) =>
+      a.studentId === b.studentId && a.date === b.date && a.type === b.type;
+    const formatted: AttendanceRecord[] = records.map(r => ({
       ...r,
-      id: `att-${Date.now()}-${idx}-${r.studentId}`,
+      // Keeping the id a record already has carries its points, its redemptions
+      // and its correction stamp over; a new one is derived so the same roll
+      // call taken on two devices lands on one record rather than two.
+      id: attendance.find(a => sameRollCall(a, r))?.id ?? `att-${r.date}-${r.type}-${r.studentId}`,
       timestamp: timeStr,
     }));
-    setAttendance(prev => [...formatted, ...prev]);
+    const superseded = (a: AttendanceRecord) => formatted.some(r => sameRollCall(a, r));
+    setAttendance(prev => [...formatted, ...prev.filter(a => !superseded(a))]);
     // Unexcused absences, missing Bibles and improper attire are each 1 pt.
     formatted.forEach(r => syncViolationsFor(r.id, attendanceDrafts(r)));
   };
 
+  // One check-in per resident per night, so residents drifting back in ones and
+  // twos can each be logged as they arrive without doubling anyone's record.
   const saveCurfewRecord = (rec: Omit<CurfewRecord, 'id'>) => {
     if (!canEdit) return;
-    // The resident is in the id: a room's roll call files every resident in one
-    // tick, and a bare timestamp would hand them all the same one.
-    const record: CurfewRecord = { ...rec, id: `cur-${Date.now()}-${rec.studentId}` };
-    setCurfewRecords(prev => [record, ...prev]);
+    const sameNight = (c: { studentId: string; date: string }) =>
+      c.studentId === rec.studentId && c.date === rec.date;
+    const record: CurfewRecord = {
+      ...rec,
+      id: curfewRecords.find(sameNight)?.id ?? `cur-${rec.date}-${rec.studentId}`,
+    };
+    setCurfewRecords(prev => [record, ...prev.filter(c => !sameNight(c))]);
     syncViolationsFor(record.id, curfewDrafts(record));
   };
 
+  // One gate clearance per resident per run. Boys leave for school as they are
+  // ready rather than by room, so each is cleared on his own and a re-check
+  // replaces his record instead of stacking a second departure.
   const saveUniformLog = (log: Omit<SchoolUniformLog, 'id'>) => {
     if (!canEdit) return;
-    const record: SchoolUniformLog = { ...log, id: `uni-${Date.now()}-${log.studentId}` };
-    setUniformLogs(prev => [record, ...prev]);
+    const session = log.session ?? 'morning';
+    const sameRun = (u: SchoolUniformLog) =>
+      u.studentId === log.studentId && u.date === log.date && (u.session ?? 'morning') === session;
+    const record: SchoolUniformLog = {
+      ...log,
+      id: uniformLogs.find(sameRun)?.id ?? `uni-${log.date}-${session}-${log.studentId}`,
+    };
+    setUniformLogs(prev => [record, ...prev.filter(u => !sameRun(u))]);
     syncViolationsFor(record.id, uniformDrafts(record));
   };
 
+  // One study check per resident per evening, so a hall filling up over the
+  // first half hour can be taken name by name and corrected as boys arrive.
   const saveStudyLog = (log: Omit<StudyHoursLog, 'id'>) => {
     if (!canEdit) return;
-    const record: StudyHoursLog = { ...log, id: `sty-${Date.now()}-${log.studentId}` };
-    setStudyLogs(prev => [record, ...prev]);
+    const sameEvening = (l: { studentId: string; date: string }) =>
+      l.studentId === log.studentId && l.date === log.date;
+    const record: StudyHoursLog = {
+      ...log,
+      id: studyLogs.find(sameEvening)?.id ?? `sty-${log.date}-${log.studentId}`,
+    };
+    setStudyLogs(prev => [record, ...prev.filter(l => !sameEvening(l))]);
     syncViolationsFor(record.id, studyDrafts(record));
   };
 

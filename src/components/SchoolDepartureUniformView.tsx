@@ -17,7 +17,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { DepartureSession } from '../types/dorm';
-import { manilaToday, manilaHour, formatFullDate, formatTime12h } from '../utils/date';
+import { manilaHour, formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 import { Segmented } from './ui/Segmented';
 
@@ -28,6 +28,9 @@ const SESSIONS: { id: DepartureSession; label: string; icon: React.ComponentType
 
 const FIELD =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40';
+
+/** The check taken standing at the gate rather than room by room. */
+const ALL_ROOMS = '__all__';
 
 export const SchoolDepartureUniformView: React.FC = () => {
   const { uniformLogs, users, rooms, saveUniformLog, canEdit, currentUser, settings } = useDorm();
@@ -45,7 +48,14 @@ export const SchoolDepartureUniformView: React.FC = () => {
   const [compliance, setCompliance] = useState<Record<string, { uniform: boolean; hair: boolean; idBadge: boolean; shoes: boolean }>>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
-  const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
+  const allRooms = selectedRoom === ALL_ROOMS;
+  // Boys leave for school as they are ready, so the whole dormitory can stand
+  // as one queue at the gate and each be cleared as he goes through.
+  const roomOccupants = allRooms
+    ? [...occupants].sort(
+        (a, b) => (a.roomNumber || '').localeCompare(b.roomNumber || '') || a.name.localeCompare(b.name)
+      )
+    : occupants.filter(o => o.roomNumber === selectedRoom);
 
   useEffect(() => {
     if (!selectedRoom && roomNumbers.length) setSelectedRoom(roomNumbers[0]);
@@ -62,9 +72,11 @@ export const SchoolDepartureUniformView: React.FC = () => {
     || (session === 'morning' ? '07:35' : '13:35');
   const isTimeOnSchedule = departureTime >= start && departureTime <= end;
 
-  // Switching runs re-arms the clock with that run's scheduled start time.
+  // Switching runs re-arms the clock with that run's scheduled start time, and
+  // reads the new run off the register rather than carrying marks across.
   const switchSession = (next: DepartureSession) => {
     setSession(next);
+    setCompliance({});
     setDepartureTime(
       (next === 'morning' ? settings.departureStart : settings.departureAfternoonStart)
         || (next === 'morning' ? '07:00' : '13:00')
@@ -84,40 +96,56 @@ export const SchoolDepartureUniformView: React.FC = () => {
     }));
   };
 
-  const flagsFor = (id: string) => ({
-    uniform: true,
-    hair: true,
-    idBadge: true,
-    shoes: true,
-    ...compliance[id],
-  });
+  // A row reads from the draft first, then from whatever was already cleared
+  // for this run, so a gate half-checked earlier opens showing what it holds.
+  const flagsFor = (id: string) => {
+    const filed = loggedFor(id);
+    return {
+      uniform: filed?.uniformCompliant ?? true,
+      hair: filed?.hairGroomingCompliant ?? true,
+      idBadge: filed?.idBadgeCompliant ?? true,
+      shoes: filed?.shoesCompliant ?? true,
+      ...compliance[id],
+    };
+  };
+
+  const buildLog = (student: (typeof occupants)[number]) => {
+    const flags = flagsFor(student.id);
+    const fullyCompliant = flags.uniform && flags.hair && flags.idBadge && flags.shoes && isTimeOnSchedule;
+    return {
+      date: today,
+      studentId: student.id,
+      studentName: student.name,
+      roomNumber: student.roomNumber || '—',
+      session,
+      departureTime,
+      uniformCompliant: flags.uniform,
+      hairGroomingCompliant: flags.hair,
+      idBadgeCompliant: flags.idBadge,
+      shoesCompliant: flags.shoes,
+      isDepartureOnSchedule: isTimeOnSchedule,
+      status: (fullyCompliant ? 'cleared' : 'flagged') as 'cleared' | 'flagged',
+      remarks: remarks || (!isTimeOnSchedule
+        ? `Departed outside the ${session} window ${formatTime12h(start)}-${formatTime12h(end)} (${formatTime12h(departureTime)})`
+        : undefined),
+      inspectedBy: currentUser.name,
+    };
+  };
 
   const submitRoom = () => {
     if (!canEdit || !roomOccupants.length) return;
-    roomOccupants.forEach(student => {
-      const flags = flagsFor(student.id);
-      const fullyCompliant = flags.uniform && flags.hair && flags.idBadge && flags.shoes && isTimeOnSchedule;
-      saveUniformLog({
-        date: manilaToday(),
-        studentId: student.id,
-        studentName: student.name,
-        roomNumber: student.roomNumber || '—',
-        session,
-        departureTime,
-        uniformCompliant: flags.uniform,
-        hairGroomingCompliant: flags.hair,
-        idBadgeCompliant: flags.idBadge,
-        shoesCompliant: flags.shoes,
-        isDepartureOnSchedule: isTimeOnSchedule,
-        status: fullyCompliant ? 'cleared' : 'flagged',
-        remarks: remarks || (!isTimeOnSchedule
-          ? `Departed outside the ${session} window ${formatTime12h(start)}-${formatTime12h(end)} (${formatTime12h(departureTime)})`
-          : undefined),
-        inspectedBy: currentUser.name,
-      });
-    });
+    roomOccupants.forEach(student => saveUniformLog(buildLog(student)));
     setRemarks('');
     flash(`Saved ${session} gate clearance for ${roomOccupants.length} residents in Room ${selectedRoom}.`);
+  };
+
+  /** One resident cleared on his own, at the moment he goes through the gate. */
+  const submitStudent = (student: (typeof occupants)[number]) => {
+    if (!canEdit) return;
+    saveUniformLog(buildLog(student));
+    flash(
+      `${student.name} cleared for the ${session} run at ${formatTime12h(departureTime)}. Saving the name again corrects this record rather than filing a second departure.`
+    );
   };
 
   const checklist = [
@@ -174,12 +202,15 @@ export const SchoolDepartureUniformView: React.FC = () => {
               {roomNumbers.length === 0 ? (
                 <option value="">No residents on file</option>
               ) : (
-                roomNumbers.map(room => (
-                  <option key={room} value={room}>
-                    Room {room}
-                    {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
-                  </option>
-                ))
+                <>
+                  <option value={ALL_ROOMS}>All rooms · {occupants.length} residents</option>
+                  {roomNumbers.map(room => (
+                    <option key={room} value={room}>
+                      Room {room}
+                      {rooms.find(r => r.roomNumber === room)?.wing ? ` · ${rooms.find(r => r.roomNumber === room)?.wing}` : ''}
+                    </option>
+                  ))}
+                </>
               )}
             </select>
           </div>
@@ -226,7 +257,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
 
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
           <p className="text-xs text-slate-400">
-            <span className="font-semibold text-white">Room {selectedRoom || '—'}</span> · {roomOccupants.length} residents
+            <span className="font-semibold text-white">{allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`}</span> · {roomOccupants.length} residents
           </p>
           <p className="text-xs text-slate-400">
             {roomOccupants.filter(o => loggedFor(o.id)).length}/{roomOccupants.length} logged this run
@@ -235,7 +266,9 @@ export const SchoolDepartureUniformView: React.FC = () => {
 
         <div className="divide-y divide-slate-800/70">
           {roomOccupants.length === 0 && (
-            <p className="p-6 text-center text-xs text-slate-500">No residents assigned to this room.</p>
+            <p className="p-6 text-center text-xs text-slate-500">
+              {allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
+            </p>
           )}
           {roomOccupants.map(student => {
             const flags = flagsFor(student.id);
@@ -244,7 +277,9 @@ export const SchoolDepartureUniformView: React.FC = () => {
               <div key={student.id} className="p-3 sm:p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white text-sm truncate">{student.name}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {allRooms ? `Room ${student.roomNumber || '—'}` : student.email}
+                  </p>
                   {logged && (
                     <span className={`mt-1 inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
                       logged.status === 'cleared' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
@@ -278,6 +313,20 @@ export const SchoolDepartureUniformView: React.FC = () => {
                         </button>
                       );
                     })}
+                    <button
+                      type="button"
+                      title={`Clear ${student.name} on his own`}
+                      aria-label={`Save ${student.name}`}
+                      onClick={() => submitStudent(student)}
+                      className={`min-h-touch rounded-xl px-2.5 flex items-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                        logged
+                          ? 'bg-slate-800 text-emerald-300 border border-emerald-800/60 hover:bg-slate-700'
+                          : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                      }`}
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {logged ? 'Update' : 'Save'}
+                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
@@ -303,8 +352,14 @@ export const SchoolDepartureUniformView: React.FC = () => {
               className="w-full min-h-touch bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
             >
               <Save className="w-4 h-4" />
-              <span>Save Room {selectedRoom} {session === 'morning' ? 'Morning' : 'Afternoon'} Departure</span>
+              <span>
+                Save All · {allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`}{' '}
+                {session === 'morning' ? 'Morning' : 'Afternoon'} Departure
+              </span>
             </button>
+            <p className="text-[11px] text-slate-500 text-center mt-2">
+              Or clear each resident at the gate as he leaves — a room rarely goes out together.
+            </p>
           </div>
         )}
       </div>
