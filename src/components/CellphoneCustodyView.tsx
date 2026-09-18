@@ -605,13 +605,13 @@ export const CellphoneCustodyView: React.FC = () => {
                         title={`Save ${student.name} on his own`}
                         aria-label={`Save ${student.name}`}
                         onClick={() => submitStudent(student)}
-                        className={`min-w-touch min-h-touch flex-1 sm:flex-none sm:px-2.5 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${(
+                        className={`min-w-touch min-h-touch flex-1 sm:flex-none px-3 sm:px-2.5 rounded-xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${(
                           logged
                             ? 'bg-slate-800 text-rose-300 border border-rose-800/60 hover:bg-slate-700'
                             : 'bg-rose-600 text-white hover:bg-rose-500'
                         )}`}
                       >
-                        <Save className="w-4 h-4" />
+                        <Save className="w-3.5 h-3.5" />
                         <span>{logged ? 'Update' : 'Save'}</span>
                       </button>
                     </div>
