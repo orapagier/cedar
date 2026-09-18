@@ -165,6 +165,56 @@ If the words turn out not to have been his — misheard, or another resident —
 **Excuse** the record with a reason: it stays in the register with what settled
 it, and the point is withdrawn. **Reinstate** puts it back.
 
+## Occupant Records
+
+Every resident's file, filed the way the dormitory is walked: **by room**. Each
+room is a card carrying its wing, its captain and the points its residents have
+between them, with the names inside it. Tap a name and their whole record opens
+as a popup over the roster — full screen on a phone, and the roster is still
+there when it closes.
+
+The record itself is five tabs rather than one long column:
+
+- **Overview** — the numbers that decide a standing (points, open violations,
+  worship kept, room cleanliness), who to call, who he rooms with, and a
+  **recent activity feed**: every module's entries — worship, curfew, study,
+  passes, violations — merged into one dated list, newest first.
+- **Attendance** — worship roll calls, study hours, curfew.
+- **Conduct** — off-campus without a pass, foul language, violations, redemptions.
+- **Daily** — school departures, cleaning duty, the phone vault.
+- **Away & Health** — gate passes and medical slips.
+
+The arrows in the header (or the left/right keys) step to the next resident
+without going back to the list, so a room can be read boy after boy. Above the
+rooms: a search across name, room, email and parent name, filters for
+**With points** and **On notice**, and a switch to a flat A–Z list when the room
+is not what you are looking for.
+
+## Installing it on a phone
+
+Cedar Hall is a **PWA**, so it installs from the browser onto an Android home
+screen — no Play Store listing, no native app to build or sign. On Chrome for
+Android the app offers an **Install** banner (also in the menu drawer, under the
+sign-out row); on an iPhone, Safari's Share sheet has **Add to Home Screen**.
+
+Once installed it opens full screen with no browser bar, keeps the cedar as its
+launcher icon, and long-pressing that icon on Android jumps straight to
+**Occupant Records**, **Worship Roll Call**, **Curfew** or **Room Check**.
+
+A service worker (`public/sw.js`) caches the app shell, so a launch in a
+corridor with poor signal still paints. **Records are never cached**: everything
+behind `/api/state` always goes to the network, because a stale roll call read
+out of a cache would be worse than none. When a new version is deployed the app
+shows a **Reload** bar rather than swapping itself out mid-roll-call.
+
+The launcher icons are generated from `public/icons/icon.svg` (rounded tile) and
+`public/icons/icon-maskable.svg` (full-bleed, for Android's adaptive shapes):
+
+```
+magick -background none public/icons/icon.svg -resize 512x512 public/icons/icon-512.png
+magick public/icons/icon-maskable.svg -resize 512x512 public/icons/maskable-512.png
+```
+
 ## Correcting a check after it is filed
 
 Administrators file checks; the Dean is the one who can go back and change one

@@ -23,9 +23,12 @@ import {
   Settings,
   ClipboardList,
   Database,
+  Download,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { useDismissOnOutside } from './ui/Modal';
+import { useCanInstall } from './PwaPrompts';
+import { promptInstall } from '../utils/pwa';
 
 interface NavbarProps {
   activeTab: string;
@@ -82,6 +85,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const { currentUser, logout, canEdit, isGuest, isParent } = useDorm();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  // The install banner is dismissible, so the menu keeps a way back to it.
+  const canInstall = useCanInstall();
   // Wraps the avatar button as well as the panel, so tapping the button is its
   // own toggle rather than an outside tap that closes and reopens in one go.
   const profileRef = useDismissOnOutside<HTMLDivElement>(() => setProfileOpen(false), profileOpen);
@@ -251,6 +256,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </div>
 
             <div className="border-t border-slate-800 p-3 space-y-1 pb-safe">
+              {canInstall && (
+                <button
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    void promptInstall();
+                  }}
+                  className="w-full min-h-touch flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15 transition-colors"
+                >
+                  <Download className="w-[18px] h-[18px] shrink-0" />
+                  <span className="text-sm font-semibold">Install app</span>
+                </button>
+              )}
               <div className="flex items-center justify-between px-2 py-2">
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold text-slate-500 truncate">{currentUser.name}</p>

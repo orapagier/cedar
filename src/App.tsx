@@ -21,9 +21,21 @@ import { ParentView } from './components/ParentView';
 import { OccupantRecordsView } from './components/OccupantRecordsView';
 import { ScheduleSettingsView } from './components/ScheduleSettingsView';
 import { DataStorageView } from './components/DataStorageView';
+import { PwaPrompts } from './components/PwaPrompts';
+import { MENU_ITEMS } from './components/Navbar';
+
+/**
+ * The tab an Android home-screen shortcut asked for, e.g. "/?tab=curfew".
+ * Anything unrecognised falls back to the dashboard.
+ */
+function initialTab(): string {
+  if (typeof window === 'undefined') return 'overview';
+  const requested = new URLSearchParams(window.location.search).get('tab');
+  return requested && MENU_ITEMS.some(item => item.id === requested) ? requested : 'overview';
+}
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   const { isAuthenticated, isGuest, isParent } = useDorm();
 
   // Each tab is a page of its own, so it opens at the top rather than inheriting
@@ -76,6 +88,9 @@ export default function App() {
   return (
     <DormProvider>
       <AppContent />
+      {/* Outside the auth gate: staff should be able to install the app from
+          the login screen, before they have signed in for the first time. */}
+      <PwaPrompts />
     </DormProvider>
   );
 }

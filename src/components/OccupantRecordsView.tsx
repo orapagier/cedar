@@ -2,39 +2,123 @@ import React, { useMemo, useState } from 'react';
 import {
   ClipboardList,
   Search,
-  ChevronRight,
-  Users,
+  ChevronDown,
+  DoorClosed,
   ShieldAlert,
-  BadgeCheck,
+  X,
+  ArrowDownUp,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
-import { OccupantRecordsPanel } from './OccupantRecordsPanel';
+import { OccupantRecordModal } from './OccupantRecordModal';
+import { User } from '../types/dorm';
 
+type Grouping = 'room' | 'name';
+type Filter = 'all' | 'flagged' | 'notice';
+
+const FILTERS: Array<{ id: Filter; label: string }> = [
+  { id: 'all', label: 'Everyone' },
+  { id: 'flagged', label: 'With points' },
+  { id: 'notice', label: 'On notice' },
+];
+
+const WING_CLASSES: Record<string, string> = {
+  North: 'bg-sky-950 text-sky-300 border-sky-800/60',
+  South: 'bg-rose-950 text-rose-300 border-rose-800/60',
+  East: 'bg-amber-950 text-amber-300 border-amber-800/60',
+  West: 'bg-emerald-950 text-emerald-300 border-emerald-800/60',
+};
+
+const initials = (name: string) =>
+  name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+
+const pointClasses = (points: number) =>
+  points >= 8
+    ? 'bg-rose-950 text-rose-300 border-rose-800/60'
+    : points > 0
+      ? 'bg-amber-950 text-amber-300 border-amber-800/60'
+      : 'bg-slate-800 text-slate-400 border-slate-700';
+
+const byRoomThenName = (a: User, b: User) =>
+  String(a.roomNumber).localeCompare(String(b.roomNumber), undefined, { numeric: true }) ||
+  a.name.localeCompare(b.name);
+
+/**
+ * The resident file cabinet: every occupant, filed under the room they sleep
+ * in, and one tap from their whole record.
+ *
+ * Grouping by room is the point. A dean walks the dormitory room by room, so
+ * that is how the roster reads here — a card per room carrying its own wing,
+ * captain and point total, with its residents inside it. Names open a popup
+ * rather than a side panel, so the record gets the whole screen on a phone and
+ * the roster is still there underneath when it closes.
+ */
 export const OccupantRecordsView: React.FC = () => {
   const { users, rooms, violations, canEdit } = useDorm();
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [grouping, setGrouping] = useState<Grouping>('room');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const occupants = users.filter(u => u.role === 'occupant' && u.status !== 'excused_leave');
+  const pointsById = useMemo(() => {
+    const totals = new Map<string, number>();
+    violations.forEach(v => {
+      if (v.status === 'cleared_service') return;
+      totals.set(v.studentId, (totals.get(v.studentId) ?? 0) + v.demeritPoints);
+    });
+    return totals;
+  }, [violations]);
 
-  const demeritsFor = (id: string) =>
-    violations
-      .filter(v => v.studentId === id && v.status !== 'cleared_service')
-      .reduce((s, v) => s + v.demeritPoints, 0);
+  const pointsFor = (id: string) => pointsById.get(id) ?? 0;
 
-  const filtered = useMemo(() => {
+  const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q
-      ? occupants.filter(o =>
-          o.name.toLowerCase().includes(q) ||
-          o.roomNumber?.toLowerCase().includes(q) ||
-          (o.email || '').toLowerCase().includes(q)
-        )
-      : occupants;
-    return [...list].sort((a, b) => String(a.roomNumber).localeCompare(String(b.roomNumber), undefined, { numeric: true }));
-  }, [occupants, query]);
+    return users
+      .filter(u => u.role === 'occupant')
+      .filter(u => {
+        if (filter === 'flagged') return pointsFor(u.id) > 0;
+        if (filter === 'notice') return pointsFor(u.id) >= 8;
+        return true;
+      })
+      .filter(u =>
+        !q ||
+        u.name.toLowerCase().includes(q) ||
+        (u.roomNumber || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.parentName || '').toLowerCase().includes(q)
+      )
+      .sort(byRoomThenName);
+  }, [users, query, filter, pointsById]);
 
-  const selected = users.find(u => u.id === selectedId && u.role === 'occupant');
+  /** The flat order the popup's arrows walk, whichever way the page is grouped. */
+  const walkOrder = useMemo(
+    () => (grouping === 'room' ? visible : [...visible].sort((a, b) => a.name.localeCompare(b.name))),
+    [visible, grouping]
+  );
+
+  const grouped = useMemo(() => {
+    const byRoom = new Map<string, User[]>();
+    visible.forEach(u => {
+      const key = u.roomNumber || 'Unassigned';
+      byRoom.set(key, [...(byRoom.get(key) ?? []), u]);
+    });
+    return [...byRoom.entries()].sort(([a], [b]) =>
+      a.localeCompare(b, undefined, { numeric: true })
+    );
+  }, [visible]);
+
+  const openIndex = walkOrder.findIndex(u => u.id === openId);
+
+  const step = (direction: -1 | 1) => {
+    const next = walkOrder[openIndex + direction];
+    if (next) setOpenId(next.id);
+  };
+
+  const onNotice = visible.filter(u => pointsFor(u.id) >= 8).length;
+  const withPoints = visible.filter(u => pointsFor(u.id) > 0).length;
+  // A search should not leave a matching name hidden inside a room the dean
+  // happened to collapse earlier.
+  const searching = query.trim().length > 0;
 
   if (!canEdit) {
     return (
@@ -45,123 +129,200 @@ export const OccupantRecordsView: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
-        <div className="flex items-center space-x-2">
-          <ClipboardList className="w-5 h-5 text-amber-400" />
-          <h2 className="text-base sm:text-lg font-bold text-white">Occupant Records</h2>
+    <div className="space-y-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-amber-400 shrink-0" />
+              Occupant Records
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Tap a name to open their full record.
+            </p>
+          </div>
+          <div className="hidden sm:flex shrink-0 gap-2 text-center">
+            <Tally label="Residents" value={visible.length} />
+            <Tally label="With points" value={withPoints} tone={withPoints ? 'text-amber-300' : undefined} />
+            <Tally label="On notice" value={onNotice} tone={onNotice ? 'text-rose-400' : undefined} />
+          </div>
         </div>
-        <p className="text-xs text-slate-400 mt-1">
-          Select a resident to view their complete records — worship, study, curfew, departures, cleaning duty, phone vault, gate passes, medical, and standing.
-        </p>
-        <div className="relative mt-3">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search by name, room, or email…"
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+            placeholder="Search name, room, email, or parent…"
+            aria-label="Search residents"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
           />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-slate-400" /> Residents
-            </h3>
-            <span className="text-[11px] text-slate-400">{filtered.length} shown</span>
-          </div>
-          <div className="divide-y divide-slate-800/70 max-h-[70vh] overflow-y-auto">
-            {filtered.length === 0 && (
-              <p className="p-6 text-center text-xs text-slate-500">No residents match your search.</p>
-            )}
-            {filtered.map(o => {
-              const d = demeritsFor(o.id);
-              const room = rooms.find(r => r.roomNumber === o.roomNumber);
-              const isSelected = selectedId === o.id;
-              return (
-                <button
-                  key={o.id}
-                  onClick={() => setSelectedId(o.id)}
-                  className={`w-full min-h-touch flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                    isSelected ? 'bg-amber-500/10' : 'hover:bg-slate-800/60'
-                  }`}
-                >
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 border ${
-                    isSelected ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-slate-800 border-slate-700 text-slate-300'
-                  }`}>
-                    {o.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white truncate">{o.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">
-                      Room {o.roomNumber}{room ? ` · ${room.wing}` : ''}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      d >= 8 ? 'bg-rose-950 text-rose-300' : d > 0 ? 'bg-amber-950 text-amber-300' : 'bg-emerald-950 text-emerald-300'
-                    }`}>
-                      {d} pts
-                    </span>
-                    <ChevronRight className={`w-4 h-4 text-slate-500 mt-1 ml-auto ${isSelected ? 'text-amber-300' : ''}`} />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="lg:col-span-2">
-          {selected ? (
-            <div className="space-y-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-300 font-bold text-lg">
-                      {selected.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-base font-bold text-white">{selected.name}</p>
-                      <p className="text-xs text-slate-400">
-                        {selected.email || 'no email on file'} · Room {selected.roomNumber}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                      demeritsFor(selected.id) >= 8 ? 'bg-rose-950 text-rose-300 border border-rose-700/50' : 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
-                    }`}>
-                      {demeritsFor(selected.id) >= 8 ? 'On Notice' : 'Good Standing'}
-                    </span>
-                    {selected.parentEmail && (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-sky-950 text-sky-300 border border-sky-700/50 flex items-center gap-1">
-                        <BadgeCheck className="w-3 h-3" /> Parent Linked
-                      </span>
-                    )}
-                    {selected.demeritPoints > 0 && (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-rose-950 text-rose-300 border border-rose-700/50 flex items-center gap-1">
-                        <ShieldAlert className="w-3 h-3" /> {selected.demeritPoints} pts
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <OccupantRecordsPanel studentId={selected.id} limit={10} />
-            </div>
-          ) : (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
-                <ClipboardList className="w-7 h-7" />
-              </div>
-              <p className="text-sm font-semibold text-white mt-4">Select a resident</p>
-              <p className="text-xs text-slate-500 mt-1">Choose a name from the list to view their full records.</p>
-            </div>
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="absolute right-1 top-1/2 -translate-y-1/2 min-w-touch min-h-touch flex items-center justify-center text-slate-500 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
         </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {FILTERS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              aria-pressed={filter === f.id}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors border ${
+                filter === f.id
+                  ? 'bg-amber-500/15 text-amber-200 border-amber-500/30'
+                  : 'bg-slate-800 text-slate-300 border-transparent hover:bg-slate-700'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setGrouping(g => (g === 'room' ? 'name' : 'room'))}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+          >
+            <ArrowDownUp className="w-3.5 h-3.5" />
+            {grouping === 'room' ? 'By room' : 'A–Z'}
+          </button>
+        </div>
       </div>
+
+      {visible.length === 0 ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
+            <Search className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-semibold text-white mt-4">No residents match</p>
+          <p className="text-xs text-slate-500 mt-1">Try a different name, room, or filter.</p>
+        </div>
+      ) : grouping === 'name' ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/70 overflow-hidden">
+          {walkOrder.map(o => (
+            <ResidentRow key={o.id} occupant={o} points={pointsFor(o.id)} onOpen={() => setOpenId(o.id)} showRoom />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {grouped.map(([roomNumber, residents]) => {
+            const room = rooms.find(r => r.roomNumber === roomNumber);
+            const wingKey = room?.wing.split(' ')[0] ?? '';
+            const roomPoints = residents.reduce((sum, r) => sum + pointsFor(r.id), 0);
+            const isOpen = searching || !collapsed.has(roomNumber);
+
+            return (
+              <section key={roomNumber} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                <button
+                  onClick={() =>
+                    setCollapsed(prev => {
+                      const next = new Set(prev);
+                      if (next.has(roomNumber)) next.delete(roomNumber);
+                      else next.add(roomNumber);
+                      return next;
+                    })
+                  }
+                  aria-expanded={isOpen}
+                  className="w-full min-h-touch flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-800/50 transition-colors"
+                >
+                  <div className="w-10 h-10 shrink-0 rounded-xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center text-slate-300">
+                    <DoorClosed className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-white">
+                      Room {roomNumber}
+                      <span className="text-slate-500 font-normal"> · {residents.length} resident{residents.length === 1 ? '' : 's'}</span>
+                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      {room && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${WING_CLASSES[wingKey] || 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                          {room.wing}
+                        </span>
+                      )}
+                      {room?.captainName && (
+                        <span className="text-[10px] text-slate-500 truncate">Captain: {room.captainName}</span>
+                      )}
+                    </div>
+                  </div>
+                  {roomPoints > 0 && (
+                    <span className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${pointClasses(roomPoints)}`}>
+                      <ShieldAlert className="w-3 h-3" /> {roomPoints}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`w-4 h-4 shrink-0 text-slate-500 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                  />
+                </button>
+
+                {isOpen && (
+                  <div className="border-t border-slate-800 divide-y divide-slate-800/70">
+                    {residents.map(o => (
+                      <ResidentRow key={o.id} occupant={o} points={pointsFor(o.id)} onOpen={() => setOpenId(o.id)} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {openId && (
+        <OccupantRecordModal
+          studentId={openId}
+          onClose={() => setOpenId(null)}
+          onStep={step}
+          hasPrev={openIndex > 0}
+          hasNext={openIndex >= 0 && openIndex < walkOrder.length - 1}
+          position={openIndex >= 0 ? `${openIndex + 1}/${walkOrder.length}` : undefined}
+        />
+      )}
     </div>
+  );
+};
+
+const Tally: React.FC<{ label: string; value: number; tone?: string }> = ({ label, value, tone }) => {
+  return (
+    <div className="bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 min-w-[74px]">
+      <p className={`text-lg font-bold leading-none ${tone || 'text-white'}`}>{value}</p>
+      <p className="text-[10px] text-slate-500 mt-1">{label}</p>
+    </div>
+  );
+};
+
+interface ResidentRowProps {
+  occupant: User;
+  points: number;
+  onOpen: () => void;
+  /** The A–Z list has no room header above it, so each row carries its room. */
+  showRoom?: boolean;
+}
+
+const ResidentRow: React.FC<ResidentRowProps> = ({ occupant, points, onOpen, showRoom = false }) => {
+  return (
+    <button
+      onClick={onOpen}
+      className="w-full min-h-touch flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-800/60 active:bg-slate-800 transition-colors"
+    >
+      <span className="w-8 h-8 shrink-0 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
+        {initials(occupant.name)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-white truncate">{occupant.name}</span>
+        <span className="block text-[11px] text-slate-500 truncate">
+          {showRoom ? `Room ${occupant.roomNumber} · ` : ''}
+          {occupant.status === 'excused_leave'
+            ? 'On excused leave'
+            : occupant.email || 'No email on file'}
+        </span>
+      </span>
+      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${pointClasses(points)}`}>
+        {points} pts
+      </span>
+    </button>
   );
 };

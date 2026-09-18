@@ -1,0 +1,14 @@
+<!-- The tab favicon drawn at launcher size: same cedar, rounded tile, for the
+     "any" purpose icons a browser shows unmasked. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#0b1220"/>
+  <rect x="12" y="12" width="488" height="488" rx="100" fill="none" stroke="#10b981" stroke-opacity="0.35" stroke-width="24"/>
+  <g transform="scale(16)">
+    <path d="M16 23.5v5.5" stroke="#047857" stroke-width="3" stroke-linecap="round"/>
+    <g fill="#10b981">
+      <path d="M16 3.5 21.2 12H10.8z"/>
+      <path d="M16 9 23.4 18.5H8.6z"/>
+      <path d="M16 14.5 26 25.5H6z"/>
+    </g>
+  </g>
+</svg>
