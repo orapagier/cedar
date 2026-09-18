@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { DormProvider, useDorm } from './context/DormContext';
 import { Navbar } from './components/Navbar';
 import { LoginScreen } from './components/LoginScreen';
@@ -24,6 +24,13 @@ import { DataStorageView } from './components/DataStorageView';
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const { isAuthenticated, isGuest, isParent } = useDorm();
+
+  // Each tab is a page of its own, so it opens at the top rather than inheriting
+  // however far down the tab before it was scrolled. Before paint, and instantly
+  // — the smooth scrolling `html` asks for would otherwise animate the whole way up.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [activeTab]);
 
   if (!isAuthenticated) {
     return <LoginScreen />;

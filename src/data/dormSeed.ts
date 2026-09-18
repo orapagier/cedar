@@ -156,6 +156,7 @@ export const WORSHIP_SESSIONS: {
   { id: 'morning_worship', label: 'Morning Worship', short: 'Morning', timeKey: 'worshipMorning' },
   { id: 'evening_worship', label: 'Evening Worship', short: 'Evening', timeKey: 'worshipEvening' },
   { id: 'midweek_worship', label: 'Midweek Worship', short: 'Midweek', timeKey: 'worshipMidweek' },
+  { id: 'vesper_worship', label: 'Vesper Worship', short: 'Vespers', timeKey: 'worshipVespers' },
   { id: 'sabbath_morning', label: 'Sabbath Morning', short: 'Sabbath AM', timeKey: 'sabbathMorning' },
   { id: 'sabbath_afternoon', label: 'Sabbath Afternoon', short: 'Sabbath PM', timeKey: 'sabbathAfternoon' },
 ];
@@ -167,6 +168,7 @@ export const INITIAL_SETTINGS: DormSettings = {
   worshipMorning: '05:30',
   worshipEvening: '18:30',
   worshipMidweek: '18:00',
+  worshipVespers: '19:00',   // Friday evening vespers
   sabbathMorning: '09:00',
   sabbathAfternoon: '14:00',
   studyStart: '19:30',

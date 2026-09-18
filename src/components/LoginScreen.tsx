@@ -44,7 +44,7 @@ export const LoginScreen: React.FC = () => {
       <div className="w-full max-w-xl space-y-8">
         {/* Crest & Dorm Identity Header */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-400 shadow-xl shadow-amber-950/20">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/40 text-emerald-400 shadow-xl shadow-emerald-950/20">
             <TreePine className="w-11 h-11" />
           </div>
           <div>

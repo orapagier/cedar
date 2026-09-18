@@ -13,6 +13,7 @@ import {
   ChevronDown,
   CalendarDays,
   Shirt,
+  Sunset,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
@@ -36,6 +37,7 @@ const SESSION_ICONS: Record<WorshipType, React.ComponentType<{ className?: strin
   morning_worship: Clock,
   evening_worship: Clock,
   midweek_worship: Church,
+  vesper_worship: Sunset,
   sabbath_morning: Church,
   sabbath_afternoon: Church,
 };
@@ -134,7 +136,7 @@ export const WorshipAttendanceView: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              All five weekly services — Bible in hand, proper worship attire, and lates or absences on record.
+              All six weekly services — Bible in hand, proper worship attire, and lates or absences on record.
             </p>
           </div>
 

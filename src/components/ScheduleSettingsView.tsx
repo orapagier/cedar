@@ -63,6 +63,7 @@ export const ScheduleSettingsView: React.FC = () => {
         { key: 'worshipMorning', label: 'Morning Worship', hint: 'e.g. 05:30' },
         { key: 'worshipEvening', label: 'Evening Worship', hint: 'e.g. 18:30' },
         { key: 'worshipMidweek', label: 'Midweek Worship', hint: 'e.g. 18:00' },
+        { key: 'worshipVespers', label: 'Friday Vespers', hint: 'e.g. 19:00' },
         { key: 'sabbathMorning', label: 'Sabbath Morning', hint: 'e.g. 09:00' },
         { key: 'sabbathAfternoon', label: 'Sabbath Afternoon', hint: 'e.g. 14:00' },
       ],
@@ -221,6 +222,10 @@ export const ScheduleSettingsView: React.FC = () => {
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Evening Worship</p>
               <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.worshipEvening)}</p>
+            </div>
+            <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wide">Friday Vespers</p>
+              <p className="text-white font-semibold mt-0.5">{formatTime12h(settings.worshipVespers)}</p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5">
               <p className="text-slate-500 text-[10px] uppercase tracking-wide">Sabbath AM / PM</p>

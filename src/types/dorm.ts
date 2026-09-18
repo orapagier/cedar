@@ -69,6 +69,7 @@ export interface DormSettings {
   worshipMorning: string;    // e.g. "05:30"
   worshipEvening: string;    // e.g. "18:30"
   worshipMidweek: string;    // e.g. "18:00"
+  worshipVespers: string;    // Friday evening vespers, e.g. "19:00"
   sabbathMorning: string;    // e.g. "09:00"
   sabbathAfternoon: string;  // e.g. "14:00"
   studyStart: string;        // evening study period start, e.g. "19:30"
@@ -99,6 +100,7 @@ export type WorshipType =
   | 'morning_worship'
   | 'evening_worship'
   | 'midweek_worship'
+  | 'vesper_worship'
   | 'sabbath_morning'
   | 'sabbath_afternoon';
 

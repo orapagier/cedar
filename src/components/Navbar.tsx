@@ -126,7 +126,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           </button>
 
           <button onClick={() => goTo('overview')} className="flex items-center space-x-2 min-h-touch ml-1 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
               <TreePine className="w-4 h-4" />
             </div>
             <span className="font-bold text-base tracking-tight text-white truncate">Cedar Hall</span>
@@ -197,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           >
             <div className="flex items-center justify-between px-4 h-14 border-b border-slate-800 pt-safe">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                   <TreePine className="w-5 h-5" />
                 </div>
                 <span className="font-bold text-base tracking-tight text-white">Cedar Hall</span>
