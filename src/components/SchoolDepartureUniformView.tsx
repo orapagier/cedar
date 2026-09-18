@@ -358,7 +358,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                           title={`${item.label} — ${item.desc}`}
                           aria-pressed={ok}
                           onClick={() => setFlag(student.id, item.key, !ok)}
-                          className={`h-9 w-9 sm:w-auto sm:h-auto sm:min-h-touch sm:px-2.5 rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-semibold border transition-all active:scale-95 ${
+                          className={`min-w-touch min-h-touch flex-1 sm:flex-none sm:px-2.5 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-semibold border transition-all active:scale-95 ${
                             ok
                               ? 'bg-emerald-950/70 text-emerald-300 border-emerald-700/50'
                               : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
@@ -375,7 +375,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                       title={`Clear ${student.name} on his own`}
                       aria-label={`Save ${student.name}`}
                       onClick={() => submitStudent(student)}
-                      className={`h-9 sm:h-auto sm:min-h-touch px-2.5 rounded-lg sm:rounded-xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                      className={`min-w-touch min-h-touch flex-1 sm:flex-none sm:px-2.5 rounded-xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
                         logged
                           ? 'bg-slate-800 text-emerald-300 border border-emerald-800/60 hover:bg-slate-700'
                           : 'bg-emerald-600 text-white hover:bg-emerald-500'

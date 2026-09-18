@@ -591,12 +591,12 @@ export const CellphoneCustodyView: React.FC = () => {
                             title={meta.label}
                             aria-label={`${student.name}: ${meta.label}`}
                             aria-pressed={selected}
-                            onClick={() => setStatus(student.id, s)}
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
-                              selected ? meta.active : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
-                            }`}
-                          >
-                            <Icon className="w-4 h-4" />
+                          onClick={() => setStatus(student.id, s)}
+                          className={`min-w-touch min-h-touch flex-1 sm:flex-none rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                            selected ? meta.active : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
                           </button>
                         );
                       })}
@@ -605,11 +605,11 @@ export const CellphoneCustodyView: React.FC = () => {
                         title={`Save ${student.name} on his own`}
                         aria-label={`Save ${student.name}`}
                         onClick={() => submitStudent(student)}
-                        className={`h-10 px-2.5 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                        className={`min-w-touch min-h-touch flex-1 sm:flex-none sm:px-2.5 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${(
                           logged
                             ? 'bg-slate-800 text-rose-300 border border-rose-800/60 hover:bg-slate-700'
                             : 'bg-rose-600 text-white hover:bg-rose-500'
-                        }`}
+                        )}`}
                       >
                         <Save className="w-4 h-4" />
                         <span>{logged ? 'Update' : 'Save'}</span>
