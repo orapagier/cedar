@@ -318,42 +318,61 @@ export const RoomInspectionsView: React.FC = () => {
           ))}
         </div>
 
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        {/* The logbook holds its own width: the five checks share one column of
+            chips (the same ones the phone cards use) and every cell wraps, so
+            nothing is pushed off the right edge. */}
+        <div className="hidden lg:block">
+          <table className="w-full table-fixed text-left text-xs text-slate-300">
+            <colgroup>
+              <col className="w-[19%]" />
+              <col className="w-[9%]" />
+              <col className="w-[24%]" />
+              <col className="w-[8%]" />
+              <col />
+              <col className="w-[14%]" />
+              {isSuperAdmin && <col className="w-[9%]" />}
+            </colgroup>
             <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>
-                <th className="p-3.5">Date & Time</th>
-                <th className="p-3.5">Room</th>
-                <th className="p-3.5">Beds</th>
-                <th className="p-3.5">Lockers</th>
-                <th className="p-3.5">Personal Items</th>
-                <th className="p-3.5">CR & Toilet</th>
-                <th className="p-3.5">Score</th>
-                <th className="p-3.5">Remarks</th>
-                <th className="p-3.5">Inspector</th>
-                {isSuperAdmin && <th className="p-3.5 text-right">Override</th>}
+                <th className="px-3 py-3">Date & Time</th>
+                <th className="px-3 py-3">Room</th>
+                <th className="px-3 py-3">Checks</th>
+                <th className="px-3 py-3">Score</th>
+                <th className="px-3 py-3">Remarks</th>
+                <th className="px-3 py-3">Inspector</th>
+                {isSuperAdmin && <th className="px-3 py-3 text-right">Override</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
               {inspections.map(insp => (
-                <tr key={insp.id} className="hover:bg-slate-800/40">
-                  <td className="p-3.5 whitespace-nowrap font-mono text-slate-400">
-                    {formatFullDate(insp.date)} · {insp.timestamp}
+                <tr key={insp.id} className="hover:bg-slate-800/40 align-top">
+                  <td className="px-3 py-3 text-slate-400">
+                    {formatFullDate(insp.date)}
+                    <span className="block font-mono text-[11px] text-slate-500">{insp.timestamp}</span>
                   </td>
-                  <td className="p-3.5 font-bold text-white">Room {insp.roomNumber}</td>
-                  <td className="p-3.5">
-                    {insp.bedsOk ? <span className="text-emerald-400">Pass</span> : <span className="text-rose-400 font-bold">Fail</span>}
+                  <td className="px-3 py-3 font-bold text-white">Room {insp.roomNumber}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { label: 'Beds', ok: insp.bedsOk },
+                        { label: 'Lockers', ok: insp.lockersOk },
+                        { label: 'Items', ok: insp.personalThingsOk },
+                        { label: 'CR', ok: insp.crCleanlinessOk },
+                        { label: 'Floor', ok: insp.overallFloorOk },
+                      ].map(c => (
+                        <span
+                          key={c.label}
+                          title={`${c.label}: ${c.ok ? 'Pass' : 'Fail'}`}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            c.ok ? 'bg-emerald-950/70 text-emerald-300' : 'bg-rose-950/70 text-rose-300'
+                          }`}
+                        >
+                          {c.label}
+                        </span>
+                      ))}
+                    </div>
                   </td>
-                  <td className="p-3.5">
-                    {insp.lockersOk ? <span className="text-emerald-400">Pass</span> : <span className="text-rose-400 font-bold">Fail</span>}
-                  </td>
-                  <td className="p-3.5">
-                    {insp.personalThingsOk ? <span className="text-emerald-400">Pass</span> : <span className="text-rose-400 font-bold">Fail</span>}
-                  </td>
-                  <td className="p-3.5">
-                    {insp.crCleanlinessOk ? <span className="text-emerald-400">Pass</span> : <span className="text-rose-400 font-bold">Fail</span>}
-                  </td>
-                  <td className="p-3.5">
+                  <td className="px-3 py-3">
                     <span className={`font-bold px-2 py-0.5 rounded text-xs ${
                       insp.status === 'pass' ? 'bg-emerald-950 text-emerald-300' :
                       insp.status === 'warning' ? 'bg-amber-950 text-amber-300' :
@@ -362,15 +381,17 @@ export const RoomInspectionsView: React.FC = () => {
                       {insp.score}%
                     </span>
                   </td>
-                  <td className="p-3.5 text-slate-400 max-w-xs truncate">{insp.remarks || '-'}</td>
-                  <td className="p-3.5 text-slate-400 whitespace-nowrap">
+                  <td className="px-3 py-3 text-slate-400 truncate" title={insp.remarks || undefined}>
+                    {insp.remarks || '-'}
+                  </td>
+                  <td className="px-3 py-3 text-slate-400 break-words">
                     {insp.inspectorName}
                     {insp.overriddenBy && (
                       <span className="block text-[10px] text-amber-300/90">overridden by {insp.overriddenBy}</span>
                     )}
                   </td>
                   {isSuperAdmin && (
-                    <td className="p-3.5">
+                    <td className="px-3 py-3">
                       <div className="flex justify-end">
                         <RecordOverrideControls kind="inspection" record={insp} />
                       </div>
