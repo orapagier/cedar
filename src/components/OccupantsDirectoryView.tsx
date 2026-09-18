@@ -62,8 +62,8 @@ export const OccupantsDirectoryView: React.FC = () => {
     parentName: '',
     parentPhone: '',
     parentEmail: '',
-    deviceModel: 'Samsung Galaxy A14',
-    lockerVaultNumber: 'Vault-01',
+    hasPhone: true,
+    deviceModel: 'Smartphone',
   });
 
   // Room Form State
@@ -104,8 +104,9 @@ export const OccupantsDirectoryView: React.FC = () => {
       parentName: occupant.parentName || '',
       parentPhone: occupant.parentPhone || '',
       parentEmail: occupant.parentEmail || '',
-      deviceModel: phoneRecord?.deviceModel || 'Smartphone',
-      lockerVaultNumber: phoneRecord?.lockerVaultNumber || 'Vault-01',
+      hasPhone: phoneRecord ? phoneRecord.custodyStatus !== 'exempted' : true,
+      deviceModel:
+        phoneRecord && phoneRecord.custodyStatus !== 'exempted' ? phoneRecord.deviceModel : 'Smartphone',
     });
     setShowEditStudentModal(true);
   };
@@ -123,8 +124,8 @@ export const OccupantsDirectoryView: React.FC = () => {
       parentName: formData.parentName.trim(),
       parentPhone: formData.parentPhone.trim(),
       parentEmail: formData.parentEmail.trim(),
-      deviceModel: formData.deviceModel.trim(),
-      lockerVaultNumber: formData.lockerVaultNumber.trim(),
+      hasPhone: formData.hasPhone,
+      deviceModel: formData.deviceModel.trim() || 'Smartphone',
     });
 
     setShowAddStudentModal(false);
@@ -144,8 +145,8 @@ export const OccupantsDirectoryView: React.FC = () => {
       parentName: formData.parentName.trim(),
       parentPhone: formData.parentPhone.trim(),
       parentEmail: formData.parentEmail.trim(),
-      deviceModel: formData.deviceModel.trim(),
-      lockerVaultNumber: formData.lockerVaultNumber.trim(),
+      hasPhone: formData.hasPhone,
+      deviceModel: formData.deviceModel.trim() || 'Smartphone',
     });
 
     setShowEditStudentModal(false);
@@ -162,8 +163,8 @@ export const OccupantsDirectoryView: React.FC = () => {
       parentName: '',
       parentPhone: '',
       parentEmail: '',
-      deviceModel: 'Samsung Galaxy A14',
-      lockerVaultNumber: `Vault-${Math.floor(Math.random() * 60 + 1).toString().padStart(2, '0')}`,
+      hasPhone: true,
+      deviceModel: 'Smartphone',
     });
   };
 
@@ -217,9 +218,11 @@ export const OccupantsDirectoryView: React.FC = () => {
           const phone = parts[3]?.trim() || '';
           const parentName = parts[4]?.trim() || '';
           const parentPhone = parts[5]?.trim() || '';
-          const deviceModel = parts[6]?.trim() || 'Smartphone';
-          const lockerVaultNumber = parts[7]?.trim() || `Vault-${(index + 1).toString().padStart(2, '0')}`;
-          const parentEmail = parts[8]?.trim() || '';
+          // Phone column: a model, or "none" for a resident who keeps no phone.
+          const phoneCell = parts[6]?.trim() || '';
+          const hasPhone = !/^(none|no|no phone|n\/a|-)$/i.test(phoneCell);
+          const deviceModel = hasPhone ? phoneCell || 'Smartphone' : 'None declared';
+          const parentEmail = parts[7]?.trim() || '';
 
           if (name && roomNumber) {
             parsed.push({
@@ -230,8 +233,8 @@ export const OccupantsDirectoryView: React.FC = () => {
               parentName,
               parentPhone,
               parentEmail,
+              hasPhone,
               deviceModel,
-              lockerVaultNumber,
             });
           }
         }
@@ -239,7 +242,7 @@ export const OccupantsDirectoryView: React.FC = () => {
 
       setBulkPreview(parsed);
     } catch (err) {
-      setBulkError('Failed to parse text. Please ensure format: Name, Room, Email, Phone, Parent Name, Parent Phone, Device, Vault, Parent Email');
+      setBulkError('Failed to parse text. Please ensure format: Name, Room, Email, Phone, Parent Name, Parent Phone, Phone Model, Parent Email');
     }
   };
 
@@ -258,7 +261,7 @@ export const OccupantsDirectoryView: React.FC = () => {
 
   // Load sample bulk template
   const handleLoadSampleBulk = () => {
-    const sample = `Gabriel Hernandez, 101, gabriel.h@dorm.edu, 09171112233, Antonio Hernandez, 09181112233, iPhone 12, Vault-07\nDaniel Kim, 102, daniel.kim@dorm.edu, 09172223344, Robert Kim, 09182223344, Samsung A32, Vault-08\nLucas Alcantara, 201, lucas.a@dorm.edu, 09173334455, Maria Alcantara, 09183334455, Xiaomi Redmi, Vault-09`;
+    const sample = `Gabriel Hernandez, 101, gabriel.h@dorm.edu, 09171112233, Antonio Hernandez, 09181112233, Smartphone\nDaniel Kim, 102, daniel.kim@dorm.edu, 09172223344, Robert Kim, 09182223344, Smartphone\nLucas Alcantara, 201, lucas.a@dorm.edu, 09173334455, Maria Alcantara, 09183334455, none`;
     handleParseBulk(sample);
   };
 
@@ -274,7 +277,7 @@ export const OccupantsDirectoryView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-            This is where you register your <strong>actual dormers</strong>, assign them to rooms, record parent emergency phones, and manage cellphone lockers.
+            This is where you register your <strong>actual dormers</strong>, assign them to rooms, record parent emergency phones, and note who keeps a phone in the vault.
           </p>
         </div>
 
@@ -464,9 +467,11 @@ export const OccupantsDirectoryView: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex items-center justify-between border-t border-slate-800/80 pt-1.5">
-                          <span className="text-slate-400">Phone & Vault Slot:</span>
-                          <span className="font-mono text-xs text-purple-300">
-                            {phoneRecord?.lockerVaultNumber || 'Vault-TBD'} ({phoneRecord?.deviceModel || 'Phone'})
+                          <span className="text-slate-400">Phone Vault:</span>
+                          <span className="text-xs text-purple-300">
+                            {phoneRecord?.custodyStatus === 'exempted'
+                              ? 'No phone — exempt'
+                              : phoneRecord?.deviceModel || 'Smartphone'}
                           </span>
                         </div>
                       </div>
@@ -699,26 +704,29 @@ export const OccupantsDirectoryView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Smartphone Model</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. iPhone 13 / Samsung Galaxy"
-                    value={formData.deviceModel}
-                    onChange={e => setFormData({ ...formData, deviceModel: e.target.value })}
+                  <label className="block font-semibold text-slate-300 mb-1">Has a phone in the dorm?</label>
+                  <select
+                    value={formData.hasPhone ? 'yes' : 'no'}
+                    onChange={e => setFormData({ ...formData, hasPhone: e.target.value === 'yes' })}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                  />
+                  >
+                    <option value="yes">Yes — deposits a phone each cycle</option>
+                    <option value="no">No phone — exempt from the vault run</option>
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Vault Locker # (Custody)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Vault-12"
-                    value={formData.lockerVaultNumber}
-                    onChange={e => setFormData({ ...formData, lockerVaultNumber: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
+                {formData.hasPhone && (
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Phone Model</label>
+                    <input
+                      type="text"
+                      placeholder="Smartphone"
+                      value={formData.deviceModel}
+                      onChange={e => setFormData({ ...formData, deviceModel: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
@@ -748,7 +756,7 @@ export const OccupantsDirectoryView: React.FC = () => {
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white">Edit Resident Information</h3>
-                <p className="text-xs text-slate-400">Update contact, room, or locker details</p>
+                <p className="text-xs text-slate-400">Update contact, room, or phone details</p>
               </div>
               <button onClick={() => setShowEditStudentModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
                 <X className="w-5 h-5" />
@@ -830,24 +838,29 @@ export const OccupantsDirectoryView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Smartphone Model</label>
-                  <input
-                    type="text"
-                    value={formData.deviceModel}
-                    onChange={e => setFormData({ ...formData, deviceModel: e.target.value })}
+                  <label className="block font-semibold text-slate-300 mb-1">Has a phone in the dorm?</label>
+                  <select
+                    value={formData.hasPhone ? 'yes' : 'no'}
+                    onChange={e => setFormData({ ...formData, hasPhone: e.target.value === 'yes' })}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                  />
+                  >
+                    <option value="yes">Yes — deposits a phone each cycle</option>
+                    <option value="no">No phone — exempt from the vault run</option>
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Vault Locker #</label>
-                  <input
-                    type="text"
-                    value={formData.lockerVaultNumber}
-                    onChange={e => setFormData({ ...formData, lockerVaultNumber: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
+                {formData.hasPhone && (
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Phone Model</label>
+                    <input
+                      type="text"
+                      placeholder="Smartphone"
+                      value={formData.deviceModel}
+                      onChange={e => setFormData({ ...formData, deviceModel: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
@@ -896,7 +909,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                   </button>
                 </div>
                 <code className="text-[11px] text-slate-400 font-mono block">
-                  Name, Room, Email, Phone, Parent Name, Parent Phone, Phone Model, Locker #
+                  Name, Room, Email, Phone, Parent Name, Parent Phone, Phone Model (or "none"), Parent Email
                 </code>
               </div>
 
@@ -906,7 +919,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                   rows={5}
                   value={bulkText}
                   onChange={e => handleParseBulk(e.target.value)}
-                  placeholder="Juan Dela Cruz, 101, juan@school.edu, 09171112222, Pedro Dela Cruz, 09183334444, iPhone 11, Vault-01..."
+                  placeholder="Juan Dela Cruz, 101, juan@school.edu, 09171112222, Pedro Dela Cruz, 09183334444, Smartphone, parent@gmail.com..."
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
                 />
               </div>
@@ -938,7 +951,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                           <th className="p-2">Room</th>
                           <th className="p-2">Email</th>
                           <th className="p-2">Emergency Parent</th>
-                          <th className="p-2">Locker</th>
+                          <th className="p-2">Phone</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
@@ -948,7 +961,7 @@ export const OccupantsDirectoryView: React.FC = () => {
                             <td className="p-2 text-amber-300 font-mono">Room {item.roomNumber}</td>
                             <td className="p-2 text-slate-400 font-mono">{item.email}</td>
                             <td className="p-2 text-slate-300">{item.parentPhone || item.parentName || '-'}</td>
-                            <td className="p-2 text-purple-300 font-mono">{item.lockerVaultNumber}</td>
+                            <td className="p-2 text-purple-300">{item.hasPhone ? item.deviceModel : 'No phone'}</td>
                           </tr>
                         ))}
                       </tbody>

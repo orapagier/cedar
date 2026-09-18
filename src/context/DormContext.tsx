@@ -111,9 +111,9 @@ interface DormContextType {
     parentPhone?: string;
     parentEmail?: string;
     deviceModel?: string;
-    lockerVaultNumber?: string;
+    hasPhone?: boolean;
   }) => User;
-  updateOccupant: (id: string, updates: Partial<User> & { deviceModel?: string; lockerVaultNumber?: string }) => void;
+  updateOccupant: (id: string, updates: Partial<User> & { deviceModel?: string; hasPhone?: boolean }) => void;
   deleteOccupant: (id: string) => void;
   bulkImportOccupants: (list: Array<{
     name: string;
@@ -124,7 +124,7 @@ interface DormContextType {
     parentPhone?: string;
     parentEmail?: string;
     deviceModel?: string;
-    lockerVaultNumber?: string;
+    hasPhone?: boolean;
   }>) => { count: number };
   addRoom: (room: {
     roomNumber: string;
@@ -182,6 +182,9 @@ const STORAGE_KEY_PREFIX = 'dorm_dean_v1_';
 // Every infraction is worth the same single point, whatever its severity, so a
 // resident's total reads as "how many rules were broken" and nothing else.
 const VIOLATION_POINTS = 1;
+
+// What the vault records against a resident who keeps no phone in the dorm.
+const NO_PHONE_REMARK = 'No phone in the dorm — exempt from the vault run.';
 
 // Shared sync server (see server/index.mjs). Reports are pushed here so every
 // device — laptop, phone, tablet — reads and writes the same records.
@@ -1016,8 +1019,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           studentId: r.studentId,
           studentName: r.studentName,
           roomNumber: r.roomNumber,
-          deviceModel: 'Not specified',
-          lockerVaultNumber: '—',
+          deviceModel: 'Smartphone',
           turnedOverSunday: r.status !== 'not_deposited',
           turnOverTime: r.status !== 'not_deposited' ? r.depositTime : undefined,
           returnedFriday: false,
@@ -1148,7 +1150,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ? {
               ...c,
               custodyStatus: exempt ? 'exempted' : 'with_student',
-              remarks: exempt ? 'No phone in the dorm — exempt from the vault run.' : undefined,
+              remarks: exempt ? NO_PHONE_REMARK : undefined,
             }
           : c));
       }
@@ -1159,11 +1161,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         studentName: student.name,
         roomNumber: student.roomNumber || '—',
         deviceModel: 'None declared',
-        lockerVaultNumber: '—',
         turnedOverSunday: false,
         returnedFriday: false,
         custodyStatus: 'exempted',
-        remarks: 'No phone in the dorm — exempt from the vault run.',
+        remarks: NO_PHONE_REMARK,
       }, ...prev];
     });
   };
@@ -1177,11 +1178,28 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: 'out',
     };
     setPhoneBorrows(prev => [record, ...prev]);
-    setCellphones(prev =>
-      prev.map(c => (c.studentId === entry.studentId && c.custodyStatus === 'in_vault'
+    setCellphones(prev => {
+      const existing = prev.find(c => c.studentId === entry.studentId);
+      // A resident whose device was never registered: the borrow slip itself
+      // puts them on the vault roster, the way the roll call does.
+      if (!existing) {
+        return [{
+          id: `phone-${entry.studentId}`,
+          studentId: entry.studentId,
+          studentName: entry.studentName,
+          roomNumber: entry.roomNumber,
+          deviceModel: 'Smartphone',
+          turnedOverSunday: false,
+          returnedFriday: false,
+          custodyStatus: 'borrowed',
+        }, ...prev];
+      }
+      return prev.map(c => (c.studentId === entry.studentId
+        && c.custodyStatus !== 'confiscated'
+        && c.custodyStatus !== 'exempted'
         ? { ...c, custodyStatus: 'borrowed' }
-        : c))
-    );
+        : c));
+    });
   };
 
   /** Take a borrowed phone back into the vault. */
@@ -1262,7 +1280,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     parentPhone?: string;
     parentEmail?: string;
     deviceModel?: string;
-    lockerVaultNumber?: string;
+    hasPhone?: boolean;
   }): User => {
     const newId = 'occ-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
     const email = data.email && data.email.trim().length > 0 
@@ -1298,26 +1316,27 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
     );
 
-    // Create cellphone custody entry
-    const newLocker = data.lockerVaultNumber || `Vault-${Math.floor(Math.random() * 80 + 1).toString().padStart(2, '0')}`;
+    // Vault roster entry: a resident either keeps a phone the vault expects
+    // every cycle, or keeps none at all and sits out the vault run. A new
+    // resident's phone is still with them until the first deposit check.
+    const hasPhone = data.hasPhone !== false;
     const newPhoneEntry: CellphoneCustody = {
-      id: 'phone-' + Date.now(),
+      id: `phone-${newId}`,
       studentId: newId,
       studentName: data.name,
       roomNumber: data.roomNumber,
-      deviceModel: data.deviceModel || 'Smartphone',
-      lockerVaultNumber: newLocker,
-      turnedOverSunday: true,
-      turnOverTime: 'Sun 18:30',
+      deviceModel: hasPhone ? (data.deviceModel?.trim() || 'Smartphone') : 'None declared',
+      turnedOverSunday: false,
       returnedFriday: false,
-      custodyStatus: 'in_vault',
+      custodyStatus: hasPhone ? 'with_student' : 'exempted',
+      remarks: hasPhone ? undefined : NO_PHONE_REMARK,
     };
     setCellphones(prev => [newPhoneEntry, ...prev]);
 
     return newStudent;
   };
 
-  const updateOccupant = (id: string, updates: Partial<User> & { deviceModel?: string; lockerVaultNumber?: string }) => {
+  const updateOccupant = (id: string, updates: Partial<User> & { deviceModel?: string; hasPhone?: boolean }) => {
     setUsers(prev =>
       prev.map(u => {
         if (u.id === id) {
@@ -1327,21 +1346,56 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
     );
 
-    if (updates.name || updates.roomNumber || updates.deviceModel || updates.lockerVaultNumber) {
-      setCellphones(prev =>
-        prev.map(c => {
-          if (c.studentId === id) {
-            return {
-              ...c,
-              studentName: updates.name || c.studentName,
-              roomNumber: updates.roomNumber || c.roomNumber,
-              deviceModel: updates.deviceModel || c.deviceModel,
-              lockerVaultNumber: updates.lockerVaultNumber || c.lockerVaultNumber,
-            };
-          }
-          return c;
-        })
-      );
+    const phoneEdited = updates.deviceModel !== undefined || updates.hasPhone !== undefined;
+    if (updates.name || updates.roomNumber || phoneEdited) {
+      const student = users.find(u => u.id === id);
+      const name = updates.name || student?.name || '';
+      const room = updates.roomNumber || student?.roomNumber || '—';
+      setCellphones(prev => {
+        const existing = prev.find(c => c.studentId === id);
+        // What the edit says about the resident's phone, falling back to what
+        // the vault already has on record.
+        const hasPhone = updates.hasPhone ?? (existing ? existing.custodyStatus !== 'exempted' : true);
+        const model = !hasPhone
+          ? 'None declared'
+          : updates.deviceModel?.trim()
+            || (existing && existing.custodyStatus !== 'exempted' ? existing.deviceModel : '')
+            || 'Smartphone';
+
+        if (!existing) {
+          // A resident the vault never registered: only a phone edit is reason
+          // enough to open a record for them.
+          if (!phoneEdited) return prev;
+          return [{
+            id: `phone-${id}`,
+            studentId: id,
+            studentName: name,
+            roomNumber: room,
+            deviceModel: model,
+            turnedOverSunday: false,
+            returnedFriday: false,
+            custodyStatus: hasPhone ? 'with_student' : 'exempted',
+            remarks: hasPhone ? undefined : NO_PHONE_REMARK,
+          }, ...prev];
+        }
+
+        return prev.map(c => {
+          if (c.studentId !== id) return c;
+          return {
+            ...c,
+            studentName: name,
+            roomNumber: room,
+            deviceModel: model,
+            // Declaring "no phone" pulls the resident out of the vault run;
+            // declaring one puts them back, without disturbing a phone the
+            // vault is already holding.
+            custodyStatus: !hasPhone
+              ? 'exempted'
+              : c.custodyStatus === 'exempted' ? 'with_student' : c.custodyStatus,
+            remarks: !hasPhone ? NO_PHONE_REMARK : c.custodyStatus === 'exempted' ? undefined : c.remarks,
+          };
+        });
+      });
     }
 
     if (updates.roomNumber) {
@@ -1381,7 +1435,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     parentPhone?: string;
     parentEmail?: string;
     deviceModel?: string;
-    lockerVaultNumber?: string;
+    hasPhone?: boolean;
   }>) => {
     let count = 0;
     list.forEach(item => {

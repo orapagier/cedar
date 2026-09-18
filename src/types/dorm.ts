@@ -241,8 +241,8 @@ export interface CellphoneCustody {
   studentId: string;
   studentName: string;
   roomNumber: string;
+  /** The phone the vault expects from this resident, e.g. "Smartphone". */
   deviceModel: string;
-  lockerVaultNumber: string;
   turnedOverSunday: boolean;
   turnOverTime?: string;
   returnedFriday: boolean;

@@ -245,10 +245,26 @@ export const CellphoneCustodyView: React.FC = () => {
 
   // ---- Borrowing ----
   const openBorrows = phoneBorrows.filter(b => b.status === 'out');
+
+  /**
+   * Residents whose phone can be signed out: everyone the vault holds a phone
+   * for, plus those whose device was never registered — the borrow slip
+   * registers it, the way the roll call does. Exempt, confiscated and
+   * already-borrowed devices are out.
+   */
   const borrowable = occupants.filter(o => {
     const phone = cellphones.find(c => c.studentId === o.id);
-    return phone && phone.custodyStatus === 'in_vault';
+    if (phone && (phone.custodyStatus === 'exempted' || phone.custodyStatus === 'confiscated')) return false;
+    return !openBorrows.some(b => b.studentId === o.id);
   });
+
+  /** Where a resident's phone sits right now, for the borrow list. */
+  const custodyNote = (studentId: string) => {
+    const phone = cellphones.find(c => c.studentId === studentId);
+    if (!phone) return 'not yet registered';
+    if (phone.custodyStatus === 'in_vault') return 'in vault';
+    return phone.custodyStatus.replace(/_/g, ' ');
+  };
 
   const isOverdue = (borrowedDate: string, expectedReturnTime: string) =>
     borrowedDate < today || (borrowedDate === today && manilaTimeValue() > expectedReturnTime);
@@ -484,7 +500,7 @@ export const CellphoneCustodyView: React.FC = () => {
                     <div className="min-w-0">
                       <p className="font-semibold text-white text-sm truncate" title={student.name}>{student.name}</p>
                       <p className="text-[11px] text-slate-400 truncate">
-                        {item ? `${item.deviceModel} · Locker ${item.lockerVaultNumber}` : 'Device not yet registered'}
+                        {item ? item.deviceModel : 'Smartphone (not yet registered)'}
                         {logged ? ` · ${DEPOSIT_META[logged.status].short} ${formatTime12h(logged.depositTime)}` : ''}
                       </p>
                     </div>
@@ -536,22 +552,20 @@ export const CellphoneCustodyView: React.FC = () => {
                     {item?.remarks && <p className="text-[10px] text-amber-300/80 italic">"{item.remarks}"</p>}
                     {canEdit && (
                       <div className="flex flex-wrap gap-1.5">
+                        <button
+                          onClick={() => { setBorrowStudentId(student.id); setOpenRow(null); }}
+                          disabled={!borrowable.some(o => o.id === student.id)}
+                          className="min-h-touch bg-violet-950 hover:bg-violet-900 text-violet-300 border border-violet-700/50 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1 disabled:opacity-40"
+                        >
+                          <PhoneOutgoing className="w-3.5 h-3.5" /> Lend phone
+                        </button>
                         {item && (
-                          <>
-                            <button
-                              onClick={() => { setBorrowStudentId(student.id); setOpenRow(null); }}
-                              disabled={item.custodyStatus !== 'in_vault'}
-                              className="min-h-touch bg-violet-950 hover:bg-violet-900 text-violet-300 border border-violet-700/50 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1 disabled:opacity-40"
-                            >
-                              <PhoneOutgoing className="w-3.5 h-3.5" /> Lend phone
-                            </button>
-                            <button
-                              onClick={() => handleRelease(item.id)}
-                              className="min-h-touch bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-700/50 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1"
-                            >
-                              <Unlock className="w-3.5 h-3.5" /> Release
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handleRelease(item.id)}
+                            className="min-h-touch bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-700/50 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1"
+                          >
+                            <Unlock className="w-3.5 h-3.5" /> Release
+                          </button>
                         )}
                         <button
                           onClick={() => toggleExempt(student.id)}
@@ -639,9 +653,11 @@ export const CellphoneCustodyView: React.FC = () => {
             <div className="sm:col-span-2">
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Resident</label>
               <select value={borrowStudentId} onChange={e => setBorrowStudentId(e.target.value)} className={FIELD}>
-                <option value="">Select a resident with a phone in the vault</option>
+                <option value="">Select a resident</option>
                 {borrowable.map(o => (
-                  <option key={o.id} value={o.id}>{o.name} · Room {o.roomNumber}</option>
+                  <option key={o.id} value={o.id}>
+                    {o.name} · Room {o.roomNumber} · {custodyNote(o.id)}
+                  </option>
                 ))}
               </select>
             </div>

@@ -201,7 +201,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
           <div className="px-4 py-2.5 flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white">{phoneEntry.deviceModel}</p>
-              <p className="text-[11px] text-slate-400">Locker {phoneEntry.lockerVaultNumber}</p>
+              <p className="text-[11px] text-slate-400">Phone vault</p>
             </div>
             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
               phoneEntry.custodyStatus === 'in_vault' ? 'bg-amber-950 text-amber-300' : 'bg-emerald-950 text-emerald-300'
