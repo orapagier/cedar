@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Shield,
+  TreePine,
   LogOut,
   Users,
   ChevronDown,
@@ -126,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
           <button onClick={() => goTo('overview')} className="flex items-center space-x-2 min-h-touch ml-1 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-              <Shield className="w-4 h-4" />
+              <TreePine className="w-4 h-4" />
             </div>
             <span className="font-bold text-base tracking-tight text-white truncate">Cedar Hall</span>
             <span className="hidden sm:inline text-[11px] px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -197,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             <div className="flex items-center justify-between px-4 h-14 border-b border-slate-800 pt-safe">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Shield className="w-5 h-5" />
+                  <TreePine className="w-5 h-5" />
                 </div>
                 <span className="font-bold text-base tracking-tight text-white">Cedar Hall</span>
               </div>

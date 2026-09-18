@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Shield, Lock } from 'lucide-react';
+import { TreePine, Lock } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { useGoogleIdentity, GoogleSession } from '../hooks/useGoogleIdentity';
 
@@ -45,7 +45,7 @@ export const LoginScreen: React.FC = () => {
         {/* Crest & Dorm Identity Header */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-400 shadow-xl shadow-amber-950/20">
-            <Shield className="w-11 h-11" />
+            <TreePine className="w-11 h-11" />
           </div>
           <div>
             <div className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider mb-2">
