@@ -21,6 +21,8 @@ import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { PhoneDepositLog } from '../types/dorm';
 import { manilaToday, manilaTime, manilaTimeValue, formatFullDate, formatTime12h } from '../utils/date';
+import { ResidentSearch } from './ui/ResidentSearch';
+import { listedResidents } from '../utils/residentSearch';
 import { useManilaToday } from '../hooks/useManilaToday';
 import { vaultCycle, describeCyclePoint, vaultCustodyExemption, cycleExcuseReason } from '../utils/phoneVault';
 
@@ -95,6 +97,7 @@ export const CellphoneCustodyView: React.FC = () => {
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
   const [selectedRoom, setSelectedRoom] = useState(roomNumbers[0] || '');
+  const [search, setSearch] = useState('');
   const [depositTime, setDepositTime] = useState(() => manilaTimeValue());
   const [remarks, setRemarks] = useState('');
   const [statuses, setStatuses] = useState<Record<string, DepositStatus>>({});
@@ -108,6 +111,13 @@ export const CellphoneCustodyView: React.FC = () => {
   const [borrowBack, setBorrowBack] = useState('');
 
   const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
+
+  // Phones come to the vault in whatever order the queue forms, so a name is
+  // the quickest way to the right row. The search covers the whole dormitory
+  // and the vault run below works on what it turns up.
+  const searching = search.trim().length > 0;
+  const listed = listedResidents(search, occupants, roomOccupants);
+  const scopeLabel = searching ? `Matching "${search.trim()}"` : `Room ${selectedRoom || '—'}`;
 
   useEffect(() => {
     if (!selectedRoom && roomNumbers.length) setSelectedRoom(roomNumbers[0]);
@@ -153,7 +163,7 @@ export const CellphoneCustodyView: React.FC = () => {
     setStatuses(prev => ({ ...prev, [studentId]: status }));
 
   // Residents to roll call: anyone in the room the vault still expects a phone from.
-  const checkable = roomOccupants.filter(o => !rollCallExcuse(o.id));
+  const checkable = listed.filter(o => !rollCallExcuse(o.id));
   const checkedThisCycle = checkable.filter(o => depositFor(o.id)).length;
   // A record the deadline logged on its own is a guess at a silent resident, so
   // a phone turning up late is still worth taking; a person's check is not.
@@ -182,8 +192,8 @@ export const CellphoneCustodyView: React.FC = () => {
     setRemarks('');
     flash(
       filed === 0
-        ? `Room ${selectedRoom} is already checked for this cycle — nothing changed.`
-        : `Logged ${filed} phone ${filed === 1 ? 'deposit' : 'deposits'} for Room ${selectedRoom}` +
+        ? `${scopeLabel} is already checked for this cycle — nothing changed.`
+        : `Logged ${filed} phone ${filed === 1 ? 'deposit' : 'deposits'} · ${scopeLabel}` +
             (cycle.deadlinePassed ? ' — past the deadline, so deposits saved as late.' : '.')
     );
   };
@@ -496,9 +506,13 @@ export const CellphoneCustodyView: React.FC = () => {
           </p>
         )}
 
+        <div className="px-4 py-3 border-b border-slate-800/70">
+          <ResidentSearch value={search} onChange={setSearch} matches={listed.length} />
+        </div>
+
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
           <p className="text-xs text-slate-400 min-w-0 truncate">
-            <span className="font-semibold text-white">Room {selectedRoom || '—'}</span> · {checkedThisCycle}/{checkable.length} checked
+            <span className="font-semibold text-white">{scopeLabel}</span> · {checkedThisCycle}/{checkable.length} checked
           </p>
           {canEdit && checkable.length > 0 && (
             <button
@@ -512,10 +526,12 @@ export const CellphoneCustodyView: React.FC = () => {
         </div>
 
         <div className="divide-y divide-slate-800/70">
-          {roomOccupants.length === 0 && (
-            <p className="p-6 text-center text-xs text-slate-500">No residents assigned to this room.</p>
+          {listed.length === 0 && (
+            <p className="p-6 text-center text-xs text-slate-500">
+              {searching ? 'Nobody in the dormitory by that name.' : 'No residents assigned to this room.'}
+            </p>
           )}
-          {roomOccupants.map(student => {
+          {listed.map(student => {
             const item = cellphones.find(c => c.studentId === student.id);
             const logged = depositFor(student.id);
             const status = statusFor(student.id);
@@ -658,8 +674,8 @@ export const CellphoneCustodyView: React.FC = () => {
               <Save className="w-4 h-4" />
               <span>
                 {remaining === 0
-                  ? `Room ${selectedRoom} Checked This Cycle`
-                  : `Log the Remaining ${remaining} · Room ${selectedRoom}`}
+                  ? `${scopeLabel} — Checked This Cycle`
+                  : `Log the Remaining ${remaining} · ${scopeLabel}`}
               </span>
             </button>
             <p className="text-[11px] text-slate-500 text-center mt-2">

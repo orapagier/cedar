@@ -20,6 +20,8 @@ import { RecordOverrideControls } from './RecordOverrideControls';
 import { WorshipType, AttendanceRecord } from '../types/dorm';
 import { WORSHIP_SESSIONS } from '../data/dormSeed';
 import { Segmented } from './ui/Segmented';
+import { ResidentSearch } from './ui/ResidentSearch';
+import { listedResidents } from '../utils/residentSearch';
 import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
 
 type AttendanceStatus = AttendanceRecord['status'];
@@ -67,6 +69,7 @@ export const WorshipAttendanceView: React.FC = () => {
 
   const [roster, setRoster] = useState<Record<string, { status: AttendanceStatus; broughtBible: boolean; properAttire: boolean; notes: string }>>({});
   const [selectedRoom, setSelectedRoom] = useState('');
+  const [search, setSearch] = useState('');
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -79,6 +82,15 @@ export const WorshipAttendanceView: React.FC = () => {
         (a, b) => (a.roomNumber || '').localeCompare(b.roomNumber || '') || a.name.localeCompare(b.name)
       )
     : occupants.filter(o => o.roomNumber === selectedRoom);
+
+  // A name in hand beats a room number: while the search has something in it,
+  // the roll call lists whoever answers to it from anywhere in the dormitory,
+  // and everything below — the count, the sweep, the save — works on that list.
+  const searching = search.trim().length > 0;
+  const listed = listedResidents(search, occupants, roomOccupants);
+  const scopeLabel = searching
+    ? `Matching "${search.trim()}"`
+    : allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`;
 
   useEffect(() => {
     if ((!selectedRoom || !(selectedRoom === ALL_ROOMS || roomNumbers.includes(selectedRoom))) && roomNumbers.length) {
@@ -115,7 +127,7 @@ export const WorshipAttendanceView: React.FC = () => {
   };
 
   /** Residents this service has no record for yet — all that a sweep can file. */
-  const stillToTake = () => roomOccupants.filter(o => !filedFor(o.id));
+  const stillToTake = () => listed.filter(o => !filedFor(o.id));
 
   const markRoomAllPresent = () => {
     setRoster(prev => {
@@ -167,8 +179,8 @@ export const WorshipAttendanceView: React.FC = () => {
     setTimeout(() => setSavedMessage(null), 5000);
   };
 
-  const loggedCount = roomOccupants.filter(o => filedFor(o.id)).length;
-  const remaining = roomOccupants.length - loggedCount;
+  const loggedCount = listed.filter(o => filedFor(o.id)).length;
+  const remaining = listed.length - loggedCount;
 
   const historyForSession = attendance.filter(a => a.type === sessionType);
   const selectedWing = rooms.find(r => r.roomNumber === selectedRoom)?.wing;
@@ -249,17 +261,21 @@ export const WorshipAttendanceView: React.FC = () => {
             </select>
           </div>
 
+          <div className="p-3 sm:p-4 border-b border-slate-800/70">
+            <ResidentSearch value={search} onChange={setSearch} matches={listed.length} />
+          </div>
+
           <div className="p-3 sm:p-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-b border-slate-800/70">
             <div className="text-xs text-slate-400">
-              <span className="font-semibold text-white">{allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`}</span>
-              {!allRooms && selectedWing ? ` · ${selectedWing}` : ''} · {roomOccupants.length} residents
-              {roomOccupants.length > 0 && (
-                <span className={loggedCount === roomOccupants.length ? ' text-emerald-400' : ''}>
-                  {' '}· {loggedCount}/{roomOccupants.length} logged
+              <span className="font-semibold text-white">{scopeLabel}</span>
+              {!searching && !allRooms && selectedWing ? ` · ${selectedWing}` : ''} · {listed.length} residents
+              {listed.length > 0 && (
+                <span className={loggedCount === listed.length ? ' text-emerald-400' : ''}>
+                  {' '}· {loggedCount}/{listed.length} logged
                 </span>
               )}
             </div>
-            {canEdit && roomOccupants.length > 0 && (
+            {canEdit && listed.length > 0 && (
               <button
                 onClick={markRoomAllPresent}
                 className="shrink-0 min-h-touch px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 text-xs font-semibold whitespace-nowrap flex items-center gap-1.5"
@@ -271,12 +287,14 @@ export const WorshipAttendanceView: React.FC = () => {
           </div>
 
           <div className="divide-y divide-slate-800/70">
-            {roomOccupants.length === 0 && (
+            {listed.length === 0 && (
               <p className="p-6 text-center text-xs text-slate-500">
-                {allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
+                {searching
+                  ? 'Nobody in the dormitory by that name.'
+                  : allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
               </p>
             )}
-            {roomOccupants.map(occ => {
+            {listed.map(occ => {
               const entry = getEntry(occ.id);
               const filed = filedFor(occ.id);
               return (
@@ -284,7 +302,7 @@ export const WorshipAttendanceView: React.FC = () => {
                   <div className="min-w-0">
                     <p className="font-semibold text-white text-sm truncate">{occ.name}</p>
                     <p className="text-[11px] text-slate-400 truncate">
-                      {allRooms ? `Room ${occ.roomNumber || '—'}` : occ.email}
+                      {searching || allRooms ? `Room ${occ.roomNumber || '—'}` : occ.email}
                     </p>
                     {filed && (
                       <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_META[filed.status].chip}`}>
@@ -393,7 +411,7 @@ export const WorshipAttendanceView: React.FC = () => {
             })}
           </div>
 
-          {canEdit && roomOccupants.length > 0 && (
+          {canEdit && listed.length > 0 && (
             <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
               <button
                 onClick={() => saveAttendance(stillToTake().map(o => o.id))}
@@ -403,8 +421,8 @@ export const WorshipAttendanceView: React.FC = () => {
                 <Save className="w-4 h-4" />
                 <span>
                   {remaining === 0
-                    ? `${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`} Roll Call Complete`
-                    : `Save the Remaining ${remaining} · ${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`}`}
+                    ? `${scopeLabel} — Roll Call Complete`
+                    : `Save the Remaining ${remaining} · ${scopeLabel}`}
                 </span>
               </button>
               <p className="text-[11px] text-slate-500 text-center mt-2">

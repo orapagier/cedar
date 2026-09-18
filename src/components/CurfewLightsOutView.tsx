@@ -21,6 +21,8 @@ import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { Segmented } from './ui/Segmented';
 import { formatFullDate, formatTime12h } from '../utils/date';
+import { ResidentSearch } from './ui/ResidentSearch';
+import { listedResidents } from '../utils/residentSearch';
 import { useManilaToday } from '../hooks/useManilaToday';
 
 type CurfewStatus = 'in_dorm' | 'late' | 'missing' | 'official_pass';
@@ -61,6 +63,7 @@ export const CurfewLightsOutView: React.FC = () => {
 
   // Curfew
   const [selectedRoom, setSelectedRoom] = useState(curfewRoomOptions[0]?.roomNumber || '');
+  const [search, setSearch] = useState('');
   const [checkInTime, setCheckInTime] = useState(settings.curfewTime || '20:50');
   const [curfewRemarks, setCurfewRemarks] = useState('');
   const [roomStatuses, setRoomStatuses] = useState<Record<string, CurfewStatus>>({});
@@ -77,6 +80,13 @@ export const CurfewLightsOutView: React.FC = () => {
 
   const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
   const selectedRoomMeta = rooms.find(r => r.roomNumber === selectedRoom);
+
+  // Residents drift back in ones and twos from every room at once, so a name
+  // finds the right row faster than working out which room he sleeps in. The
+  // search covers the whole dormitory; the roll call below follows it.
+  const searching = search.trim().length > 0;
+  const listed = listedResidents(search, occupants, roomOccupants);
+  const scopeLabel = searching ? `Matching "${search.trim()}"` : `Room ${selectedRoom || '—'}`;
 
   useEffect(() => {
     if ((!selectedRoom || !curfewRoomOptions.some(r => r.roomNumber === selectedRoom)) && curfewRoomOptions.length) {
@@ -100,7 +110,7 @@ export const CurfewLightsOutView: React.FC = () => {
   };
 
   /** Residents tonight has no check-in for yet. */
-  const stillToTake = () => roomOccupants.filter(o => !filedFor(o.id));
+  const stillToTake = () => listed.filter(o => !filedFor(o.id));
 
   const markRoomInDorm = () => {
     setRoomStatuses(prev => {
@@ -125,7 +135,7 @@ export const CurfewLightsOutView: React.FC = () => {
   });
 
   const handleRoomSubmit = () => {
-    if (!canEdit || !roomOccupants.length) return;
+    if (!canEdit || !listed.length) return;
     const total = stillToTake().reduce(
       (acc, student) => {
         const r = saveCurfewRecord(buildRecord(student, statusFor(student.id)));
@@ -136,8 +146,8 @@ export const CurfewLightsOutView: React.FC = () => {
     setCurfewRemarks('');
     flash(
       total.filed === 0
-        ? `Room ${selectedRoom} is already checked in for tonight — nothing changed.`
-        : `Checked in ${total.filed} ${total.filed === 1 ? 'resident' : 'residents'} in Room ${selectedRoom}.`
+        ? `${scopeLabel} is already checked in for tonight — nothing changed.`
+        : `Checked in ${total.filed} ${total.filed === 1 ? 'resident' : 'residents'} · ${scopeLabel}.`
     );
   };
 
@@ -154,8 +164,8 @@ export const CurfewLightsOutView: React.FC = () => {
     );
   };
 
-  const checkedInCount = roomOccupants.filter(o => filedFor(o.id)).length;
-  const remaining = roomOccupants.length - checkedInCount;
+  const checkedInCount = listed.filter(o => filedFor(o.id)).length;
+  const remaining = listed.length - checkedInCount;
 
   /** Tonight's round for this room, if it has been walked. */
   const lightsOutOnFile = lightsOutLogs.find(l => l.roomNumber === lightsOutRoom && l.date === today);
@@ -290,17 +300,19 @@ export const CurfewLightsOutView: React.FC = () => {
                   </div>
                 </div>
 
+                <ResidentSearch value={search} onChange={setSearch} matches={listed.length} />
+
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs text-slate-400">
-                    <span className="font-semibold text-white">Room {selectedRoom || '—'}</span>
-                    {selectedRoomMeta ? ` · ${selectedRoomMeta.wing}` : ''} · {roomOccupants.length} residents
-                    {roomOccupants.length > 0 && (
-                      <span className={checkedInCount === roomOccupants.length ? ' text-emerald-400' : ''}>
-                        {' '}· {checkedInCount}/{roomOccupants.length} checked in
+                    <span className="font-semibold text-white">{scopeLabel}</span>
+                    {!searching && selectedRoomMeta ? ` · ${selectedRoomMeta.wing}` : ''} · {listed.length} residents
+                    {listed.length > 0 && (
+                      <span className={checkedInCount === listed.length ? ' text-emerald-400' : ''}>
+                        {' '}· {checkedInCount}/{listed.length} checked in
                       </span>
                     )}
                   </p>
-                  {canEdit && roomOccupants.length > 0 && (
+                  {canEdit && listed.length > 0 && (
                     <button
                       onClick={markRoomInDorm}
                       className="min-h-touch px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 text-xs font-semibold flex items-center gap-1.5"
@@ -313,17 +325,21 @@ export const CurfewLightsOutView: React.FC = () => {
               </div>
 
               <div className="divide-y divide-slate-800/70">
-                {roomOccupants.length === 0 && (
-                  <p className="p-6 text-center text-xs text-slate-500">No residents assigned to this room.</p>
+                {listed.length === 0 && (
+                  <p className="p-6 text-center text-xs text-slate-500">
+                    {searching ? 'Nobody in the dormitory by that name.' : 'No residents assigned to this room.'}
+                  </p>
                 )}
-                {roomOccupants.map(student => {
+                {listed.map(student => {
                   const status = statusFor(student.id);
                   const filed = filedFor(student.id);
                   return (
                     <div key={student.id} className="p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <p className="font-semibold text-white text-sm truncate">{student.name}</p>
-                        <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
+                        <p className="text-[11px] text-slate-400 truncate">
+                          {searching ? `Room ${student.roomNumber || '—'}` : student.email}
+                        </p>
                         {filed && (
                           <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
                             CURFEW_STATUS_META[filed.status as CurfewStatus]?.chip ?? CURFEW_STATUS_META.in_dorm.chip
@@ -392,7 +408,7 @@ export const CurfewLightsOutView: React.FC = () => {
                 })}
               </div>
 
-              {canEdit && roomOccupants.length > 0 && (
+              {canEdit && listed.length > 0 && (
                 <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
                   <button
                     onClick={handleRoomSubmit}
@@ -402,8 +418,8 @@ export const CurfewLightsOutView: React.FC = () => {
                     <Save className="w-4 h-4" />
                     <span>
                       {remaining === 0
-                        ? `Room ${selectedRoom} Checked In`
-                        : `Check In the Remaining ${remaining} · Room ${selectedRoom}`}
+                        ? `${scopeLabel} — Checked In`
+                        : `Check In the Remaining ${remaining} · ${scopeLabel}`}
                     </span>
                   </button>
                   <p className="text-[11px] text-slate-500 text-center mt-2">

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { manilaToday, manilaTimeValue, formatFullDate, formatTime12h, nextWeekdayOnOrAfter } from '../utils/date';
+import { ResidentSearch } from './ui/ResidentSearch';
+import { listedResidents } from '../utils/residentSearch';
 import { useManilaToday } from '../hooks/useManilaToday';
 import {
   Luggage,
@@ -58,6 +60,7 @@ export const GatePassView: React.FC = () => {
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
   const [selectedRoom, setSelectedRoom] = useState(roomNumbers[0] || '');
+  const [search, setSearch] = useState('');
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [showIssueModal, setShowIssueModal] = useState(false);
 
@@ -73,6 +76,11 @@ export const GatePassView: React.FC = () => {
   const [remarks, setRemarks] = useState('');
 
   const roomOccupants = occupants.filter(o => o.roomNumber === selectedRoom);
+
+  // A pass is asked for by name at the office door, so a search across the
+  // whole dormitory finds the boy without knowing where he sleeps.
+  const searching = search.trim().length > 0;
+  const listed = listedResidents(search, occupants, roomOccupants);
 
   useEffect(() => {
     if (!selectedRoom && roomNumbers.length) setSelectedRoom(roomNumbers[0]);
@@ -220,17 +228,25 @@ export const GatePassView: React.FC = () => {
           </select>
         </div>
 
+        <div className="px-4 py-3 border-b border-slate-800/70">
+          <ResidentSearch value={search} onChange={setSearch} matches={listed.length} />
+        </div>
+
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
           <p className="text-xs text-slate-400">
-            <span className="font-semibold text-white">Room {selectedRoom || '—'}</span> · {roomOccupants.length} residents
+            <span className="font-semibold text-white">
+              {searching ? `Matching "${search.trim()}"` : `Room ${selectedRoom || '—'}`}
+            </span> · {listed.length} residents
           </p>
         </div>
 
         <div className="divide-y divide-slate-800/70">
-          {roomOccupants.length === 0 && (
-            <p className="p-6 text-center text-xs text-slate-500">No residents assigned to this room.</p>
+          {listed.length === 0 && (
+            <p className="p-6 text-center text-xs text-slate-500">
+              {searching ? 'Nobody in the dormitory by that name.' : 'No residents assigned to this room.'}
+            </p>
           )}
-          {roomOccupants.map(student => {
+          {listed.map(student => {
             const pass = latestPassFor(student.id);
             return (
               <div key={student.id} className="p-3 sm:p-4 space-y-2.5">
@@ -238,7 +254,9 @@ export const GatePassView: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-white text-sm truncate">{student.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{student.email}</p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {searching ? `Room ${student.roomNumber || '—'}` : student.email}
+                    </p>
                     {pass ? (
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-300">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_META[pass.status].classes}`}>

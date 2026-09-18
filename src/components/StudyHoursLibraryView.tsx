@@ -13,6 +13,8 @@ import {
 import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { formatFullDate, formatTime12h } from '../utils/date';
+import { ResidentSearch } from './ui/ResidentSearch';
+import { listedResidents } from '../utils/residentSearch';
 import { useManilaToday } from '../hooks/useManilaToday';
 
 type StudyStatus = 'present' | 'absent';
@@ -46,6 +48,7 @@ export const StudyHoursLibraryView: React.FC = () => {
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
   const [selectedRoom, setSelectedRoom] = useState(roomNumbers[0] || '');
+  const [search, setSearch] = useState('');
   const [checkTime, setCheckTime] = useState(settings.studyStart || '19:30');
   const [location, setLocation] = useState<'study_hall' | 'library' | 'approved_room'>('library');
   const [remarks, setRemarks] = useState('');
@@ -61,6 +64,14 @@ export const StudyHoursLibraryView: React.FC = () => {
         (a, b) => (a.roomNumber || '').localeCompare(b.roomNumber || '') || a.name.localeCompare(b.name)
       )
     : occupants.filter(o => o.roomNumber === selectedRoom);
+
+  // A name is what a dean has in hand at the hall door, so a search looks
+  // across every room and the roll call below works on what it turns up.
+  const searching = search.trim().length > 0;
+  const listed = listedResidents(search, occupants, roomOccupants);
+  const scopeLabel = searching
+    ? `Matching "${search.trim()}"`
+    : allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`;
 
   useEffect(() => {
     if (!selectedRoom && roomNumbers.length) setSelectedRoom(roomNumbers[0]);
@@ -94,10 +105,10 @@ export const StudyHoursLibraryView: React.FC = () => {
   });
 
   /** Residents this evening has no study check for yet. */
-  const stillToTake = () => roomOccupants.filter(o => !filedFor(o.id));
+  const stillToTake = () => listed.filter(o => !filedFor(o.id));
 
   const submitRoom = () => {
-    if (!canEdit || !roomOccupants.length) return;
+    if (!canEdit || !listed.length) return;
     const total = stillToTake().reduce(
       (acc, student) => {
         const r = saveStudyLog(buildLog(student));
@@ -108,8 +119,8 @@ export const StudyHoursLibraryView: React.FC = () => {
     setRemarks('');
     flash(
       total.filed === 0
-        ? `Room ${selectedRoom} is already logged for tonight's study — nothing changed.`
-        : `Saved study hours for ${total.filed} ${total.filed === 1 ? 'resident' : 'residents'} in Room ${selectedRoom}.`
+        ? `${scopeLabel} is already logged for tonight's study — nothing changed.`
+        : `Saved study hours for ${total.filed} ${total.filed === 1 ? 'resident' : 'residents'} · ${scopeLabel}.`
     );
   };
 
@@ -126,8 +137,8 @@ export const StudyHoursLibraryView: React.FC = () => {
     );
   };
 
-  const loggedCount = roomOccupants.filter(o => filedFor(o.id)).length;
-  const remaining = roomOccupants.length - loggedCount;
+  const loggedCount = listed.filter(o => filedFor(o.id)).length;
+  const remaining = listed.length - loggedCount;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -223,12 +234,16 @@ export const StudyHoursLibraryView: React.FC = () => {
           </div>
         </div>
 
+        <div className="px-4 py-3 border-b border-slate-800/70">
+          <ResidentSearch value={search} onChange={setSearch} matches={listed.length} />
+        </div>
+
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
           <p className="text-xs text-slate-400">
-            <span className="font-semibold text-white">{allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`}</span> · {roomOccupants.length} residents
-            {roomOccupants.length > 0 && (
-              <span className={loggedCount === roomOccupants.length ? ' text-emerald-400' : ''}>
-                {' '}· {loggedCount}/{roomOccupants.length} logged
+            <span className="font-semibold text-white">{scopeLabel}</span> · {listed.length} residents
+            {listed.length > 0 && (
+              <span className={loggedCount === listed.length ? ' text-emerald-400' : ''}>
+                {' '}· {loggedCount}/{listed.length} logged
               </span>
             )}
           </p>
@@ -236,12 +251,14 @@ export const StudyHoursLibraryView: React.FC = () => {
         </div>
 
         <div className="divide-y divide-slate-800/70">
-          {roomOccupants.length === 0 && (
+          {listed.length === 0 && (
             <p className="p-6 text-center text-xs text-slate-500">
-              {allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
+              {searching
+                ? 'Nobody in the dormitory by that name.'
+                : allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
             </p>
           )}
-          {roomOccupants.map(student => {
+          {listed.map(student => {
             const status = statusFor(student.id);
             const quiet = quietFor(student.id);
             const filed = filedFor(student.id);
@@ -250,7 +267,7 @@ export const StudyHoursLibraryView: React.FC = () => {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white text-sm truncate">{student.name}</p>
                   <p className="text-[11px] text-slate-400 truncate">
-                    {allRooms ? `Room ${student.roomNumber || '—'}` : student.email}
+                    {searching || allRooms ? `Room ${student.roomNumber || '—'}` : student.email}
                   </p>
                   {filed && (
                     <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_META[filed.status].chip}`}>
@@ -346,7 +363,7 @@ export const StudyHoursLibraryView: React.FC = () => {
           })}
         </div>
 
-        {canEdit && roomOccupants.length > 0 && (
+        {canEdit && listed.length > 0 && (
           <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
             <button
               onClick={submitRoom}
@@ -356,8 +373,8 @@ export const StudyHoursLibraryView: React.FC = () => {
               <Save className="w-4 h-4" />
               <span>
                 {remaining === 0
-                  ? `${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`} Study Hours Complete`
-                  : `Save the Remaining ${remaining} · ${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`}`}
+                  ? `${scopeLabel} — Study Hours Complete`
+                  : `Save the Remaining ${remaining} · ${scopeLabel}`}
               </span>
             </button>
             <p className="text-[11px] text-slate-500 text-center mt-2">

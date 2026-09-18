@@ -18,6 +18,8 @@ import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { DepartureSession } from '../types/dorm';
 import { manilaHour, formatFullDate, formatTime12h } from '../utils/date';
+import { ResidentSearch } from './ui/ResidentSearch';
+import { listedResidents } from '../utils/residentSearch';
 import { useManilaToday } from '../hooks/useManilaToday';
 import { Segmented } from './ui/Segmented';
 
@@ -39,6 +41,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
   const today = useManilaToday();
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
   const [selectedRoom, setSelectedRoom] = useState(roomNumbers[0] || '');
+  const [search, setSearch] = useState('');
   // Opens on whichever run is current: the afternoon one from noon onwards.
   const [session, setSession] = useState<DepartureSession>(() => (manilaHour() < 12 ? 'morning' : 'afternoon'));
   const [departureTime, setDepartureTime] = useState(
@@ -56,6 +59,15 @@ export const SchoolDepartureUniformView: React.FC = () => {
         (a, b) => (a.roomNumber || '').localeCompare(b.roomNumber || '') || a.name.localeCompare(b.name)
       )
     : occupants.filter(o => o.roomNumber === selectedRoom);
+
+  // Boys go through the gate in whatever order they are ready, so a name is
+  // the quickest way to the right row. A search runs across every room and the
+  // run below clears whoever it turns up.
+  const searching = search.trim().length > 0;
+  const listed = listedResidents(search, occupants, roomOccupants);
+  const scopeLabel = searching
+    ? `Matching "${search.trim()}"`
+    : allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`;
 
   useEffect(() => {
     if (!selectedRoom && roomNumbers.length) setSelectedRoom(roomNumbers[0]);
@@ -133,10 +145,10 @@ export const SchoolDepartureUniformView: React.FC = () => {
   };
 
   /** Residents this run has no gate clearance for yet. */
-  const stillToTake = () => roomOccupants.filter(o => !loggedFor(o.id));
+  const stillToTake = () => listed.filter(o => !loggedFor(o.id));
 
   const submitRoom = () => {
-    if (!canEdit || !roomOccupants.length) return;
+    if (!canEdit || !listed.length) return;
     const total = stillToTake().reduce(
       (acc, student) => {
         const r = saveUniformLog(buildLog(student));
@@ -147,8 +159,8 @@ export const SchoolDepartureUniformView: React.FC = () => {
     setRemarks('');
     flash(
       total.filed === 0
-        ? `Room ${selectedRoom} is already cleared for the ${session} run — nothing changed.`
-        : `Saved ${session} gate clearance for ${total.filed} ${total.filed === 1 ? 'resident' : 'residents'} in Room ${selectedRoom}.`
+        ? `${scopeLabel} is already cleared for the ${session} run — nothing changed.`
+        : `Saved ${session} gate clearance for ${total.filed} ${total.filed === 1 ? 'resident' : 'residents'} · ${scopeLabel}.`
     );
   };
 
@@ -165,8 +177,8 @@ export const SchoolDepartureUniformView: React.FC = () => {
     );
   };
 
-  const clearedCount = roomOccupants.filter(o => loggedFor(o.id)).length;
-  const remaining = roomOccupants.length - clearedCount;
+  const clearedCount = listed.filter(o => loggedFor(o.id)).length;
+  const remaining = listed.length - clearedCount;
 
   const checklist = [
     { key: 'uniform' as const, label: 'Uniform', desc: 'Ironed & tucked in', icon: Shirt },
@@ -275,22 +287,28 @@ export const SchoolDepartureUniformView: React.FC = () => {
           </div>
         )}
 
+        <div className="px-4 py-3 border-b border-slate-800/70">
+          <ResidentSearch value={search} onChange={setSearch} matches={listed.length} />
+        </div>
+
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800/70">
           <p className="text-xs text-slate-400">
-            <span className="font-semibold text-white">{allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`}</span> · {roomOccupants.length} residents
+            <span className="font-semibold text-white">{scopeLabel}</span> · {listed.length} residents
           </p>
           <p className="text-xs text-slate-400">
-            {roomOccupants.filter(o => loggedFor(o.id)).length}/{roomOccupants.length} logged this run
+            {clearedCount}/{listed.length} logged this run
           </p>
         </div>
 
         <div className="divide-y divide-slate-800/70">
-          {roomOccupants.length === 0 && (
+          {listed.length === 0 && (
             <p className="p-6 text-center text-xs text-slate-500">
-              {allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
+              {searching
+                ? 'Nobody in the dormitory by that name.'
+                : allRooms ? 'No residents on file.' : 'No residents assigned to this room.'}
             </p>
           )}
-          {roomOccupants.map(student => {
+          {listed.map(student => {
             const flags = flagsFor(student.id);
             const logged = loggedFor(student.id);
             return (
@@ -298,7 +316,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white text-sm truncate">{student.name}</p>
                   <p className="text-[11px] text-slate-400 truncate">
-                    {allRooms ? `Room ${student.roomNumber || '—'}` : student.email}
+                    {searching || allRooms ? `Room ${student.roomNumber || '—'}` : student.email}
                   </p>
                   {logged && (
                     <span className={`mt-1 inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -383,7 +401,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
           })}
         </div>
 
-        {canEdit && roomOccupants.length > 0 && (
+        {canEdit && listed.length > 0 && (
           <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
             <button
               onClick={submitRoom}
@@ -393,8 +411,8 @@ export const SchoolDepartureUniformView: React.FC = () => {
               <Save className="w-4 h-4" />
               <span>
                 {remaining === 0
-                  ? `${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`} ${session === 'morning' ? 'Morning' : 'Afternoon'} Run Cleared`
-                  : `Clear the Remaining ${remaining} · ${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`}`}
+                  ? `${scopeLabel} — ${session === 'morning' ? 'Morning' : 'Afternoon'} Run Cleared`
+                  : `Clear the Remaining ${remaining} · ${scopeLabel}`}
               </span>
             </button>
             <p className="text-[11px] text-slate-500 text-center mt-2">

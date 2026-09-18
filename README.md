@@ -206,6 +206,26 @@ which lists the whole dormitory as one queue sorted by room. That is the roll
 call taken standing at the church door or the gate, marking boys off as they
 arrive, rather than walking the building room by room.
 
+### Finding a resident by name
+
+A dean standing at the church door has a name in his hand, not a room number.
+Every check that lists residents carries a **search box above the roster**:
+worship, study hours, curfew, school departures, the phone vault, gate passes,
+foul language reports and off-campus reports.
+
+Typing searches the **whole dormitory**, not the room on screen, and the room
+picker steps aside while it runs — the roster, the counts and the footer's sweep
+button all follow the search, and each row shows the resident's room so there is
+no doubt who was found. Clearing the box hands the room picker back.
+
+It matches on name, room or email, in any order and without the punctuation:
+`erlou`, `budiongan erlou`, `Budiongan, Erlou` and `310` all find the same boy,
+and `acuna` finds Acuña without the ñ.
+
+Room inspections and cleaning duty have no search, because neither is a check on
+a boy who could be anywhere: an inspection grades one room's beds, CR and floor,
+and the cleaning crew is whichever room the rotation rostered that day.
+
 ## One record per point in the schedule
 
 A check belongs to a point in the schedule: **5 AM worship on a given morning**,
