@@ -26,7 +26,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { OccupantRecordsPanel, RecordGroup } from './OccupantRecordsPanel';
-import { buildOccupantTimeline, EventKind, EventTone } from '../utils/occupantTimeline';
+import { buildOccupantTimeline, EventKind, EventMark, EventTone } from '../utils/occupantTimeline';
 import { formatFullDate, formatTime12h } from '../utils/date';
 import { demeritLabel } from '../utils/checkViolations';
 
@@ -313,6 +313,13 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
                             {event.detail && (
                               <p className="text-[11px] text-slate-400 line-clamp-2">{event.detail}</p>
                             )}
+                            {event.marks && event.marks.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {event.marks.map((mark, i) => (
+                                  <Mark key={i} mark={mark} />
+                                ))}
+                              </div>
+                            )}
                             <p className="text-[10px] text-slate-500 mt-0.5">
                               {formatFullDate(event.date)}
                               {event.time ? ` · ${formatTime12h(event.time)}` : ''}
@@ -338,6 +345,28 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
     </Modal>
   );
 };
+
+/**
+ * What one entry cost the resident, shown on the entry that cost it. A check
+ * and the demerit it raised are one thing that happened, so they read as one
+ * line rather than two.
+ */
+function Mark({ mark }: { mark: EventMark }) {
+  const owed = `+${demeritLabel(mark.demerits)}`;
+  return (
+    <span
+      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+        mark.redeemed
+          ? 'bg-emerald-950 text-emerald-300 border-emerald-800/60'
+          : 'bg-rose-950 text-rose-300 border-rose-800/60'
+      }`}
+    >
+      {mark.label ? `${mark.label} · ` : ''}
+      {owed}
+      {mark.redeemed ? ' · redeemed' : ''}
+    </span>
+  );
+}
 
 function Fact({
   icon: Icon,

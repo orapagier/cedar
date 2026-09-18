@@ -323,7 +323,13 @@ export interface Violation {
   demerits: number;
   reportedBy: string;
   status: 'pending_settlement' | 'appealed' | 'cleared_service' | 'confirmed';
-  actionRequired?: string;
+  /**
+   * What the Dean has decided this resident must do to redeem this one
+   * violation — a work detail or a written reflection. It is his to set and
+   * nobody else's: a check that raises a violation never prescribes its own
+   * redemption. Blank until he says.
+   */
+  assignedRedemption?: string;
   /** Id of the record that auto-logged this violation, so re-saving that
    *  record can replace its own violations instead of stacking new ones. */
   sourceId?: string;

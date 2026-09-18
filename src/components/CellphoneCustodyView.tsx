@@ -275,7 +275,6 @@ export const CellphoneCustodyView: React.FC = () => {
       demerits: 1,
       reportedBy: currentUser.name,
       status: 'confirmed',
-      actionRequired: 'Confiscated until end of term + Dean interview with parent.',
     });
   };
 

@@ -11,7 +11,7 @@ import {
   UnauthorizedExitLog,
   Violation,
 } from '../types/dorm';
-import { worshipLabel } from '../data/dormSeed';
+import { WORSHIP_SESSIONS, worshipLabel } from '../data/dormSeed';
 import { formatTime12h } from './date';
 
 // Every infraction is worth the same single demerit, whatever its severity, so
@@ -72,8 +72,60 @@ export const violationSourceId = (kind: CheckKind, record: { id: string; student
     : record.id;
 
 // ---------------------------------------------------------------------------
+// Reading in what is already on file. The store holds violations written under
+// older rules, and they have to read as today's do before anything totals them
+// or puts them on screen.
+// ---------------------------------------------------------------------------
+
+/** How a violation read before the field names and the wording settled. */
+export type LegacyViolation = Violation & { demeritPoints?: number; actionRequired?: string };
+
+/**
+ * The earliest roll calls named the worship session straight off the record
+ * type, so their violations read "to morning worship" where today's read "to
+ * Morning Worship". Same infraction, two spellings in one list, which is how
+ * the Conduct tab came to look like two different rules.
+ */
+export const canonicalWorshipCase = (description: string) =>
+  WORSHIP_SESSIONS.reduce(
+    (text, session) => text.replace(new RegExp(session.label, 'gi'), session.label),
+    description ?? ''
+  );
+
+/**
+ * Every violation coming off a device or off the server is re-read through
+ * this, because the store still holds records filed under older rules:
+ *
+ *  - Demerits were once called `demeritPoints`; reading one straight totals to
+ *    NaN.
+ *  - Checks used to prescribe their own redemption ("Ensure Bible is in hand
+ *    for next worship"), which was never the check's to say. Those belonged to
+ *    a source record, so anything a record raised has its prescription dropped;
+ *    a violation the Dean wrote by hand has no source, and his own words are
+ *    kept as the redemption he assigned.
+ *  - Worship sessions were spelled in lower case.
+ */
+export const normalizeViolations = (rows: Violation[]): Violation[] =>
+  rows.map(row => {
+    const v = row as LegacyViolation;
+    const { actionRequired, demeritPoints, ...rest } = v;
+    return {
+      ...rest,
+      demerits: typeof v.demerits === 'number'
+        ? v.demerits
+        : typeof demeritPoints === 'number' ? demeritPoints : VIOLATION_DEMERITS,
+      description: canonicalWorshipCase(v.description),
+      assignedRedemption: v.assignedRedemption ?? (v.sourceId ? undefined : actionRequired),
+    };
+  });
+
+// ---------------------------------------------------------------------------
 // Per-kind derivation. Each is a pure function of the record, so correcting a
 // record and re-deriving gives exactly what filing it afresh would have.
+//
+// A draft says what was broken and what it cost — never what the resident must
+// do about it. Redemption is the Dean's to hand out, boy by boy, as work or as
+// a written reflection, so `assignedRedemption` is left for him to fill in.
 // ---------------------------------------------------------------------------
 
 export const inspectionDrafts = (insp: RoomInspection, occupants: RoomMember[]): ViolationDraft[] => {
@@ -92,7 +144,6 @@ export const inspectionDrafts = (insp: RoomInspection, occupants: RoomMember[]):
     demerits: VIOLATION_DEMERITS,
     reportedBy: insp.inspectorName,
     status: 'pending_settlement',
-    actionRequired: 'Re-inspection by 5:00 PM required.',
   }));
 };
 
@@ -114,7 +165,6 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
       category: 'worship_absence',
       severity: 'moderate',
       description: `Unexcused absence from ${session}.`,
-      actionRequired: 'Submit dean excuse slip or make-up devotional session.',
     }];
   }
   if (rec.status !== 'present' && rec.status !== 'late') return [];
@@ -126,7 +176,6 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
       category: 'no_bible',
       severity: 'minor',
       description: `Failed to bring personal physical Bible to ${session}.`,
-      actionRequired: 'Ensure Bible is in hand for next worship.',
     });
   }
   if (rec.properAttire === false) {
@@ -135,7 +184,6 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
       category: 'improper_worship_attire',
       severity: 'minor',
       description: `Improper worship attire at ${session}.`,
-      actionRequired: 'Come in proper worship attire for the next service.',
     });
   }
   return drafts;
@@ -156,7 +204,6 @@ export const curfewDrafts = (rec: CurfewRecord): ViolationDraft[] => {
     demerits: VIOLATION_DEMERITS,
     reportedBy: rec.loggedBy,
     status: 'pending_settlement',
-    actionRequired: 'Dean inquiry interview.',
   }];
 };
 
@@ -173,7 +220,6 @@ export const uniformDrafts = (log: SchoolUniformLog): ViolationDraft[] => {
     demerits: VIOLATION_DEMERITS,
     reportedBy: log.inspectedBy,
     status: 'pending_settlement',
-    actionRequired: 'Correction before school gate pass clearance.',
   }];
 };
 
@@ -190,7 +236,6 @@ export const studyDrafts = (log: StudyHoursLog): ViolationDraft[] => {
     demerits: VIOLATION_DEMERITS,
     reportedBy: log.recordedBy,
     status: 'pending_settlement',
-    actionRequired: 'Silent study monitoring assigned.',
   }];
 };
 
@@ -229,7 +274,6 @@ export const cleaningDrafts = (duty: CleaningDutyRecord): ViolationDraft[] => {
       demerits: VIOLATION_DEMERITS,
       reportedBy: reporter,
       status: 'pending_settlement',
-      actionRequired: 'Serve the next cleaning rotation under monitor sign-off.',
     }));
 
   // Poor work falls on the crew that actually showed up; the residents who
@@ -249,7 +293,6 @@ export const cleaningDrafts = (duty: CleaningDutyRecord): ViolationDraft[] => {
       demerits: VIOLATION_DEMERITS,
       reportedBy: reporter,
       status: 'pending_settlement',
-      actionRequired: 'Redo the assigned area before the next inspection.',
     }));
   return [...skipped, ...poor];
 };
@@ -285,7 +328,6 @@ export const unauthorizedExitDrafts = (log: UnauthorizedExitLog): ViolationDraft
     demerits: VIOLATION_DEMERITS,
     reportedBy: log.loggedBy,
     status: 'pending_settlement',
-    actionRequired: 'Dean inquiry with the parents before any further gate pass is issued.',
   }];
 };
 
@@ -352,9 +394,6 @@ export const badLanguageDrafts = (log: BadLanguageLog): ViolationDraft[] => {
     demerits: VIOLATION_DEMERITS,
     reportedBy: log.loggedBy,
     status: 'pending_settlement',
-    actionRequired: log.directedAt
-      ? 'Apology to the resident it was said to, and a reflection on speech.'
-      : 'Reflection on clean speech with the dean.',
   }];
 };
 
@@ -374,9 +413,6 @@ export const phoneDepositDrafts = (rec: PhoneDepositLog, dueLabel: string): Viol
     demerits: VIOLATION_DEMERITS,
     reportedBy: rec.recordedBy,
     status: 'pending_settlement',
-    actionRequired: rec.status === 'late'
-      ? 'Deposit on time at the next vault run.'
-      : 'Surrender the device to the Dean immediately.',
   }];
 };
 

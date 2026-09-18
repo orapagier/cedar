@@ -8,6 +8,7 @@ import {
   Smartphone,
   Lock,
   PlusCircle,
+  ClipboardList,
   HandHeart,
   PenLine,
   Undo2,
@@ -38,7 +39,7 @@ const standingFor = (demerits: number) =>
 export const ResidentPerformanceView: React.FC = () => {
   const {
     users, rooms, violations, attendance, cleaningDuties, cellphones,
-    saveViolation, redeemViolation, undoViolationRedemption, canEdit, currentUser,
+    saveViolation, redeemViolation, undoViolationRedemption, assignRedemption, canEdit, currentUser,
   } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -48,7 +49,12 @@ export const ResidentPerformanceView: React.FC = () => {
   const [category, setCategory] = useState<ViolationCategory>('curfew_breach');
   const [severity, setSeverity] = useState<'minor' | 'moderate' | 'major'>('minor');
   const [description, setDescription] = useState('');
-  const [actionRequired, setActionRequired] = useState('');
+  const [newRedemption, setNewRedemption] = useState('');
+
+  // Setting what a resident must do, ahead of him doing it. Redemption is the
+  // Dean's to hand out, so nothing else in the app ever fills this in.
+  const [assigning, setAssigning] = useState<Violation | null>(null);
+  const [assignment, setAssignment] = useState('');
 
   // Redemption form — one violation at a time, never a whole resident at once.
   const [redeeming, setRedeeming] = useState<Violation | null>(null);
@@ -60,6 +66,18 @@ export const ResidentPerformanceView: React.FC = () => {
   const [supervisorName, setSupervisorName] = useState('');
   const [completedDate, setCompletedDate] = useState(() => manilaToday());
   const [redeemRemarks, setRedeemRemarks] = useState('');
+
+  const openAssign = (violation: Violation) => {
+    setAssigning(violation);
+    setAssignment(violation.assignedRedemption ?? '');
+  };
+
+  const submitAssignment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canEdit || !assigning) return;
+    assignRedemption(assigning.id, assignment);
+    setAssigning(null);
+  };
 
   const openRedeem = (violation: Violation) => {
     setRedeeming(violation);
@@ -126,11 +144,11 @@ export const ResidentPerformanceView: React.FC = () => {
       demerits: VIOLATION_DEMERITS,
       reportedBy: currentUser.name,
       status: 'pending_settlement',
-      actionRequired: actionRequired || undefined,
+      assignedRedemption: newRedemption.trim() || undefined,
     });
     setShowAddModal(false);
     setDescription('');
-    setActionRequired('');
+    setNewRedemption('');
   };
 
   const openLog = () => {
@@ -283,8 +301,10 @@ export const ResidentPerformanceView: React.FC = () => {
                                       <span className="text-[11px] text-slate-400 capitalize">{v.category.replace(/_/g, ' ')}</span>
                                     </div>
                                     <p className="text-[11px] text-slate-300 mt-1 line-clamp-2">{v.description}</p>
-                                    {v.actionRequired && (
-                                      <p className="text-[10px] text-amber-300/90 mt-0.5">Action: {v.actionRequired}</p>
+                                    {v.assignedRedemption ? (
+                                      <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.assignedRedemption}</p>
+                                    ) : (
+                                      <p className="text-[10px] text-slate-500 mt-0.5">Redemption not set yet.</p>
                                     )}
                                   </div>
                                   <span className={`shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
@@ -295,13 +315,22 @@ export const ResidentPerformanceView: React.FC = () => {
                                   </span>
                                 </div>
                                 {canEdit && (
-                                  <button
-                                    onClick={() => openRedeem(v)}
-                                    className="mt-1.5 w-full min-h-touch bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5"
-                                  >
-                                    <HandHeart className="w-3.5 h-3.5" />
-                                    Redeem this violation
-                                  </button>
+                                  <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                                    <button
+                                      onClick={() => openAssign(v)}
+                                      className="min-h-touch bg-slate-800/80 hover:bg-slate-700 border border-slate-600/50 text-slate-200 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5"
+                                    >
+                                      <ClipboardList className="w-3.5 h-3.5" />
+                                      {v.assignedRedemption ? 'Change redemption' : 'Set redemption'}
+                                    </button>
+                                    <button
+                                      onClick={() => openRedeem(v)}
+                                      className="min-h-touch bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5"
+                                    >
+                                      <HandHeart className="w-3.5 h-3.5" />
+                                      Mark redeemed
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             ))}
@@ -431,12 +460,56 @@ export const ResidentPerformanceView: React.FC = () => {
                 <textarea rows={3} required placeholder="Specific details of the infraction..." value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
               </div>
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Prescribed Action</label>
-                <input type="text" placeholder="e.g. 2 hours grounds cleaning..." value={actionRequired} onChange={e => setActionRequired(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+                <label className="block font-medium text-slate-300 mb-1">
+                  To Redeem It <span className="text-slate-500">· optional, yours to set later</span>
+                </label>
+                <input type="text" placeholder="e.g. 2 hours grounds cleaning, or a reflection on curfew..." value={newRedemption} onChange={e => setNewRedemption(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
               </div>
               <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-3 py-2 min-h-touch rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">Cancel</button>
                 <button type="submit" className="px-4 py-2 min-h-touch rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-500">Record Violation</button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
+
+      {canEdit && assigning && (
+        <Modal onClose={() => setAssigning(null)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-md w-full shadow-2xl text-slate-100">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-white truncate">Set redemption — {assigning.studentName}</h3>
+                <p className="text-xs text-slate-400 capitalize">
+                  {assigning.category.replace(/_/g, ' ')} · {formatFullDate(assigning.date)} · {demeritLabel(assigning.demerits)}
+                </p>
+              </div>
+              <button onClick={() => setAssigning(null)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2 shrink-0">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitAssignment} className="p-4 sm:p-6 space-y-4 text-xs">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2">
+                <p className="text-[11px] text-slate-300">{assigning.description}</p>
+              </div>
+              <div>
+                <label className="block font-medium text-slate-300 mb-1">What must he do to work this off?</label>
+                <textarea
+                  rows={3}
+                  autoFocus
+                  placeholder="e.g. 2 hours grounds beautification, or a one-page reflection on reverence in worship..."
+                  value={assignment}
+                  onChange={e => setAssignment(e.target.value)}
+                  className={FIELD}
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Work or a written reflection — your call, boy by boy. Leave it empty to take the assignment back off.
+                </p>
+              </div>
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">
+                <button type="button" onClick={() => setAssigning(null)} className="px-3 py-2 min-h-touch rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">Cancel</button>
+                <button type="submit" className="px-4 py-2 min-h-touch rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400">Save</button>
               </div>
             </form>
           </div>
@@ -461,8 +534,8 @@ export const ResidentPerformanceView: React.FC = () => {
             <form onSubmit={submitRedemption} className="p-4 sm:p-6 space-y-4 text-xs">
               <div className="bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2">
                 <p className="text-[11px] text-slate-300">{redeeming.description}</p>
-                {redeeming.actionRequired && (
-                  <p className="text-[10px] text-amber-300/90 mt-1">Prescribed action: {redeeming.actionRequired}</p>
+                {redeeming.assignedRedemption && (
+                  <p className="text-[10px] text-amber-300/90 mt-1">You set: {redeeming.assignedRedemption}</p>
                 )}
               </div>
 

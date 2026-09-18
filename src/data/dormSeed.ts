@@ -145,6 +145,15 @@ export const INITIAL_ROOMS: Room[] = [
 export const INITIAL_INSPECTIONS: RoomInspection[] = [];
 
 /**
+ * The settings that hold a "HH:MM" time. `keyof DormSettings` also covers the
+ * vault's weekday numbers, so a session pointed at one of those would read
+ * "Morning Worship (0)" rather than fail to compile.
+ */
+export type TimeSettingKey = {
+  [K in keyof DormSettings]: DormSettings[K] extends string ? K : never;
+}[keyof DormSettings];
+
+/**
  * The five worship services rolled every week. `timeKey` points at the
  * schedule setting the Dean can retime, so labels and times never drift apart.
  */
@@ -152,7 +161,7 @@ export const WORSHIP_SESSIONS: {
   id: WorshipType;
   label: string;
   short: string;
-  timeKey: keyof DormSettings;
+  timeKey: TimeSettingKey;
 }[] = [
   { id: 'morning_worship', label: 'Morning Worship', short: 'Morning', timeKey: 'worshipMorning' },
   { id: 'evening_worship', label: 'Evening Worship', short: 'Evening', timeKey: 'worshipEvening' },

@@ -70,6 +70,7 @@ import {
   curfewDrafts,
   inspectionDrafts,
   lightsOutDrafts,
+  normalizeViolations,
   phoneDepositDrafts,
   recomputeInspection,
   recomputeLightsOut,
@@ -210,7 +211,8 @@ interface DormContextType {
   /** Hand every vaulted phone back at the end of the cycle. */
   releaseAllPhones: () => void;
   saveViolation: (viol: Omit<Violation, 'id' | 'createdAt'>) => void;
-  updateViolationStatus: (id: string, status: Violation['status'], actionRequired?: string) => void;
+  updateViolationStatus: (id: string, status: Violation['status'], assignedRedemption?: string) => void;
+  assignRedemption: (violationId: string, assignment: string) => void;
   /** Settle one violation on its own — work rendered, or a reflection written. */
   redeemViolation: (violationId: string, redemption: Omit<ViolationRedemption, 'clearedBy' | 'clearedAt'>) => void;
   /** Put a redeemed violation back on a resident's record. */
@@ -314,18 +316,6 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 
-/**
- * Records filed before demerits were called demerits carry `demeritPoints`.
- * Reading one straight would total to NaN, so every violation coming off a
- * device or off the server is re-read through this on the way in.
- */
-const withDemerits = (rows: Violation[]): Violation[] =>
-  rows.map(v => {
-    const legacy = (v as Violation & { demeritPoints?: number }).demeritPoints;
-    if (typeof v.demerits === 'number') return v;
-    return { ...v, demerits: typeof legacy === 'number' ? legacy : VIOLATION_DEMERITS };
-  });
-
 function saveToStorage<T>(key: string, value: T) {
   try {
     localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(value));
@@ -424,7 +414,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [violations, setViolations] = useState<Violation[]>(() => {
-    const loaded = withDemerits(loadFromStorage<Violation[]>('violations', INITIAL_VIOLATIONS));
+    const loaded = normalizeViolations(loadFromStorage<Violation[]>('violations', INITIAL_VIOLATIONS));
     return loaded.filter(v => !TEST_LOG_IDS.has(v.id) && !TEST_USER_IDS.has(v.studentId) && !TEST_NAMES.has(v.studentName));
   });
 
@@ -627,7 +617,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.cellphones) setCellphones(d.cellphones as CellphoneCustody[]);
           if (d.phoneDeposits) setPhoneDeposits(d.phoneDeposits as PhoneDepositLog[]);
           if (d.phoneBorrows) setPhoneBorrows(d.phoneBorrows as PhoneBorrowLog[]);
-          if (d.violations) setViolations(withDemerits(d.violations as Violation[]));
+          if (d.violations) setViolations(normalizeViolations(d.violations as Violation[]));
           if (d.medicalSlips) setMedicalSlips(d.medicalSlips as MedicalExcuseSlip[]);
           if (d.gatePasses) setGatePasses(d.gatePasses as GatePassRecord[]);
           if (d.unauthorizedExits) setUnauthorizedExits(d.unauthorizedExits as UnauthorizedExitLog[]);
@@ -660,7 +650,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Recalculate the demerits each resident still owes from their unredeemed violations
+  // What a resident owes is never stored twice: it is the sum of the violations
+  // he has not yet redeemed, re-totalled whenever that list moves. Probation
+  // follows from the total — but a boy signed out on excused leave is away, and
+  // his demerits do not change that, so that standing is left alone.
   useEffect(() => {
     setUsers(prevUsers =>
       prevUsers.map(user => {
@@ -668,11 +661,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           v => v.studentId === user.id && v.status !== 'cleared_service'
         );
         const totalDemerits = userViolations.reduce((sum, v) => sum + v.demerits, 0);
-        const status = totalDemerits >= 8 ? 'probation' : 'active';
+        const onRoll = user.role === 'occupant' && user.status !== 'excused_leave';
         return {
           ...user,
           demerits: totalDemerits,
-          status: user.role === 'occupant' ? status : user.status,
+          status: onRoll ? (totalDemerits >= 8 ? 'probation' : 'active') : user.status,
         };
       })
     );
@@ -779,7 +772,8 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * rather than two. A violation already redeemed keeps its id, its cleared
    * status and the redemption — correcting the check behind it never asks a
    * resident to work the same demerit off twice — and one the correction removes
-   * takes its clearance log with it.
+   * takes its clearance log with it. The redemption the Dean assigned is his
+   * word, not the record's, so a correction leaves it standing too.
    */
   const syncViolationsFor = (sourceId: string, drafts: ViolationDraft[]) => {
     const stamp = manilaTime();
@@ -800,6 +794,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: prior?.id ?? `viol-${sourceId}-${draft.studentId}-${draft.category}`,
           status: redeemed ? 'cleared_service' : draft.status,
           redemption: redeemed?.redemption,
+          assignedRedemption: prior?.assignedRedemption,
           createdAt: prior?.createdAt ?? stamp,
         };
       });
@@ -1133,7 +1128,6 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         demerits: VIOLATION_DEMERITS,
         reportedBy: 'Vault deadline',
         status: 'pending_settlement',
-        actionRequired: 'Surrender the device to the Dean, or have the absence excused.',
       }])
     );
     setCellphones(prev =>
@@ -1276,10 +1270,23 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setViolations(prev => [newRecord, ...prev]);
   };
 
-  const updateViolationStatus = (id: string, status: Violation['status'], actionRequired?: string) => {
+  const updateViolationStatus = (id: string, status: Violation['status'], assignedRedemption?: string) => {
     if (!canEdit) return;
     setViolations(prev =>
-      prev.map(v => (v.id === id ? { ...v, status, actionRequired: actionRequired || v.actionRequired } : v))
+      prev.map(v => (v.id === id ? { ...v, status, assignedRedemption: assignedRedemption || v.assignedRedemption } : v))
+    );
+  };
+
+  /**
+   * Set what one resident must do to work off one violation. No check decides
+   * this for him: the Dean reads the violation and says whether it is work or a
+   * reflection, and clearing the box takes the assignment back off.
+   */
+  const assignRedemption = (violationId: string, assignment: string) => {
+    if (!canEdit) return;
+    const text = assignment.trim();
+    setViolations(prev =>
+      prev.map(v => (v.id === violationId ? { ...v, assignedRedemption: text || undefined } : v))
     );
   };
 
@@ -1986,6 +1993,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         releaseAllPhones,
         saveViolation,
         updateViolationStatus,
+        assignRedemption,
         redeemViolation,
         undoViolationRedemption,
         sharedStateSnapshot,

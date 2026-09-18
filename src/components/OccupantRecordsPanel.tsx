@@ -367,8 +367,10 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-white capitalize">{v.category.replace(/_/g, ' ')}</p>
                 <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
-                {v.actionRequired && (
-                  <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.actionRequired}</p>
+                {v.assignedRedemption ? (
+                  <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.assignedRedemption}</p>
+                ) : (
+                  <p className="text-[10px] text-slate-500 mt-0.5">Redemption not set — the Dean decides the work or the reflection.</p>
                 )}
               </div>
               <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300">

@@ -96,9 +96,17 @@ sends one changed row instead of the whole year.
 
 A demerit is not a score a resident holds — it is **work owed**. Every violation
 is worth a flat **1 demerit**, and each one is redeemed on its own; there is no
-clearing a resident's record in a lump. Under **Resident
-Performance**, each pending violation carries its own **Redeem** button, which
-asks how that single violation was paid off:
+clearing a resident's record in a lump.
+
+**What a resident must do to work a violation off is the Dean's to say.** A
+check records what was broken and what it cost — never what to do about it. Each
+pending violation shows *Redemption not set* until he sets it, and **Set
+redemption** on the Resident Performance page is where he writes it: usually a
+work detail or a written reflection, decided boy by boy. Correcting the check
+behind a violation leaves his assignment standing.
+
+When the work is done, **Mark redeemed** asks how that single violation was paid
+off:
 
 - **Work Service** — a work detail (grounds, library, dorm maintenance, kitchen)
   and the hours rendered.
@@ -258,7 +266,11 @@ The record itself is five tabs rather than one long column:
 - **Overview** — the numbers that decide a standing (demerits, open violations,
   worship kept, room cleanliness), who to call, who he rooms with, and a
   **recent activity feed**: every module's entries — worship, curfew, study,
-  passes, violations — merged into one dated list, newest first.
+  passes, violations — merged into one dated list, newest first. One thing that
+  happened is one entry: a roll call that cost a resident a demerit shows the
+  demerit on the roll call, rather than filing it again underneath, and only a
+  violation whose record is not in the feed — a room inspection, a lights-out
+  round, one the Dean wrote by hand — gets a line of its own.
 - **Attendance** — worship roll calls, study hours, curfew.
 - **Conduct** — off-campus without a pass, foul language, violations, redemptions.
 - **Daily** — school departures, cleaning duty, the phone vault.
