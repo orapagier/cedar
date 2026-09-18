@@ -3,6 +3,7 @@ import React from 'react';
 export interface SegmentedOption<T extends string> {
   value: T;
   label: string;
+  sub?: string;
   icon?: React.ComponentType<{ className?: string }>;
   activeClass?: string;
 }
@@ -43,7 +44,10 @@ export function Segmented<T extends string>({
             }`}
           >
             {Icon && <Icon className="w-4 h-4 shrink-0" />}
-            <span className="whitespace-nowrap">{option.label}</span>
+            <span className="whitespace-nowrap flex flex-col items-center leading-tight min-w-0">
+              <span className="truncate max-w-full">{option.label}</span>
+              {option.sub && <span className="text-[10px] font-normal opacity-75">{option.sub}</span>}
+            </span>
           </button>
         );
       })}

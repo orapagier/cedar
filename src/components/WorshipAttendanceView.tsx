@@ -56,10 +56,13 @@ export const WorshipAttendanceView: React.FC = () => {
 
   const SESSIONS = WORSHIP_SESSIONS.map(session => {
     const time = settings[session.timeKey];
+    const formatted = time ? formatTime12h(time) : '';
     return {
       id: session.id,
-      label: `${session.label}${time ? ` (${formatTime12h(time)})` : ''}`,
-      short: `${session.short}${time ? ` · ${formatTime12h(time)}` : ''}`,
+      label: session.label,
+      short: session.short,
+      time: formatted,
+      full: `${session.short}${formatted ? ` · ${formatted}` : ''}`,
       icon: SESSION_ICONS[session.id],
     };
   });
@@ -163,7 +166,7 @@ export const WorshipAttendanceView: React.FC = () => {
       .filter(Boolean) as Parameters<typeof saveAttendanceBatch>[0];
 
     const { filed, kept } = saveAttendanceBatch(records);
-    const service = SESSIONS.find(s => s.id === sessionType)?.short;
+    const service = SESSIONS.find(s => s.id === sessionType)?.full;
     const already = kept
       ? ` ${kept} ${kept === 1 ? 'was' : 'were'} already on file for this service and ${kept === 1 ? 'was' : 'were'} left as taken.`
       : '';
@@ -224,7 +227,7 @@ export const WorshipAttendanceView: React.FC = () => {
           ariaLabel="Worship session"
           value={sessionType}
           onChange={setSessionType}
-          options={SESSIONS.map(s => ({ value: s.id, label: s.short, icon: s.icon, activeClass: 'bg-blue-600 text-white shadow-sm' }))}
+          options={SESSIONS.map(s => ({ value: s.id, label: s.short, sub: s.time || undefined, icon: s.icon, activeClass: 'bg-blue-600 text-white shadow-sm' }))}
         />
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -344,7 +347,7 @@ export const WorshipAttendanceView: React.FC = () => {
                                 aria-label={`${occ.name}: ${meta.label}`}
                                 aria-pressed={selected}
                                 onClick={() => updateStudent(occ.id, 'status', status)}
-                                className={`min-w-touch min-h-touch flex-1 sm:flex-none rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                                className={`w-9 h-9 sm:w-auto sm:h-auto sm:min-w-touch sm:min-h-touch flex-1 sm:flex-none rounded-xl flex items-center justify-center transition-all active:scale-95 ${
                                   selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                                 }`}
                               >
@@ -359,7 +362,7 @@ export const WorshipAttendanceView: React.FC = () => {
                           aria-label={`${occ.name}: Bible in hand`}
                           aria-pressed={entry.broughtBible}
                           onClick={() => updateStudent(occ.id, 'broughtBible', !entry.broughtBible)}
-                          className={`min-w-touch min-h-touch rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                          className={`w-9 h-9 sm:w-auto sm:h-auto sm:min-w-touch sm:min-h-touch rounded-xl flex items-center justify-center transition-all active:scale-95 ${
                             entry.broughtBible ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
                           }`}
                         >
@@ -371,7 +374,7 @@ export const WorshipAttendanceView: React.FC = () => {
                           aria-label={`${occ.name}: Proper worship attire`}
                           aria-pressed={entry.properAttire}
                           onClick={() => updateStudent(occ.id, 'properAttire', !entry.properAttire)}
-                          className={`min-w-touch min-h-touch rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                          className={`w-9 h-9 sm:w-auto sm:h-auto sm:min-w-touch sm:min-h-touch rounded-xl flex items-center justify-center transition-all active:scale-95 ${
                             entry.properAttire ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
                           }`}
                         >
@@ -382,7 +385,7 @@ export const WorshipAttendanceView: React.FC = () => {
                           title={`Save ${occ.name} on their own`}
                           aria-label={`Save ${occ.name}`}
                           onClick={() => saveAttendance([occ.id])}
-                          className={`min-w-touch min-h-touch px-2.5 rounded-xl flex flex-1 sm:flex-none items-center justify-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                          className={`h-9 sm:h-auto sm:min-h-touch px-2.5 sm:px-3 rounded-xl flex flex-1 sm:flex-none items-center justify-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
                             filed
                               ? 'bg-slate-800 text-blue-300 border border-blue-800/60 hover:bg-slate-700'
                               : 'bg-blue-600 text-white hover:bg-blue-500'
@@ -439,7 +442,7 @@ export const WorshipAttendanceView: React.FC = () => {
           onClick={() => setShowHistory(v => !v)}
           className="w-full min-h-touch p-4 flex items-center justify-between"
         >
-          <h3 className="font-bold text-white text-sm">Past {SESSIONS.find(s => s.id === sessionType)?.short} Logs</h3>
+          <h3 className="font-bold text-white text-sm">Past {SESSIONS.find(s => s.id === sessionType)?.full} Logs</h3>
           <span className="flex items-center gap-2 text-xs text-slate-400">
             {historyForSession.length} entries
             <ChevronDown className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-180' : ''}`} />

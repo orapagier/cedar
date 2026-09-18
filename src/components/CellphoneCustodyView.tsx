@@ -551,7 +551,7 @@ export const CellphoneCustodyView: React.FC = () => {
                       className="min-w-0 flex-1 flex items-center gap-1.5 text-left"
                     >
                       <div className="min-w-0">
-                        <p className="font-semibold text-white text-sm truncate" title={student.name}>{student.name}</p>
+                        <p className="font-semibold text-white text-sm" title={student.name}>{student.name}</p>
                         <p className="text-[11px] text-slate-400 truncate">
                           {item ? item.deviceModel : 'Smartphone (not yet registered)'}
                           {logged ? ` · ${DEPOSIT_META[logged.status].short} ${formatTime12h(logged.depositTime)}` : ''}

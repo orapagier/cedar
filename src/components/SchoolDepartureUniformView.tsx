@@ -253,7 +253,8 @@ export const SchoolDepartureUniformView: React.FC = () => {
             onChange={switchSession}
             options={SESSIONS.map(o => ({
               value: o.id,
-              label: `${o.label} · ${formatTime12h(o.id === 'morning' ? settings.departureStart : settings.departureAfternoonStart)}`,
+              label: o.label,
+              sub: formatTime12h(o.id === 'morning' ? settings.departureStart : settings.departureAfternoonStart),
               icon: o.icon,
               activeClass: 'bg-emerald-600 text-white shadow-sm',
             }))}
@@ -346,7 +347,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                     <RecordOverrideControls kind="uniform" record={logged} />
                   </div>
                 ) : canEdit ? (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex items-center gap-1.5">
                     {checklist.map(item => {
                       const Icon = item.icon;
                       const ok = flags[item.key];
@@ -357,15 +358,15 @@ export const SchoolDepartureUniformView: React.FC = () => {
                           title={`${item.label} — ${item.desc}`}
                           aria-pressed={ok}
                           onClick={() => setFlag(student.id, item.key, !ok)}
-                          className={`min-h-touch rounded-xl px-2.5 flex items-center gap-1.5 text-[11px] font-semibold border transition-all active:scale-95 ${
+                          className={`h-9 w-9 sm:w-auto sm:h-auto sm:min-h-touch sm:px-2.5 rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-semibold border transition-all active:scale-95 ${
                             ok
                               ? 'bg-emerald-950/70 text-emerald-300 border-emerald-700/50'
                               : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
                           }`}
                         >
                           <Icon className="w-3.5 h-3.5" />
-                          {item.label}
-                          {ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                          <span className="hidden sm:inline">{item.label}</span>
+                          {ok ? <CheckCircle2 className="hidden sm:block w-3.5 h-3.5" /> : <XCircle className="hidden sm:block w-3.5 h-3.5" />}
                         </button>
                       );
                     })}
@@ -374,7 +375,7 @@ export const SchoolDepartureUniformView: React.FC = () => {
                       title={`Clear ${student.name} on his own`}
                       aria-label={`Save ${student.name}`}
                       onClick={() => submitStudent(student)}
-                      className={`min-h-touch rounded-xl px-2.5 flex items-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                      className={`h-9 sm:h-auto sm:min-h-touch px-2.5 rounded-lg sm:rounded-xl flex items-center gap-1.5 text-[11px] font-bold transition-all active:scale-95 ${
                         logged
                           ? 'bg-slate-800 text-emerald-300 border border-emerald-800/60 hover:bg-slate-700'
                           : 'bg-emerald-600 text-white hover:bg-emerald-500'
