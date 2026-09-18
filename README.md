@@ -110,13 +110,38 @@ point. Redeemed violations stay visible with what was done to settle them, on
 both the Resident Performance page and the resident's Occupant Records, and a
 redemption can be undone if it was logged by mistake.
 
+## Leaving campus without a gate pass
+
+A pass is how a resident leaves Cedar Hall. **Off-Campus Without Pass** is the
+register for the times that did not happen — a resident found in town, missing
+from a roll call, or spotted coming back through the fence line.
+
+Records are filed room by room from the resident's own row, the way a pass is
+issued. Each row says up front whether a pass already covers today, so an exit
+is never logged over leave that was on file. The record keeps when the exit was
+noticed, where the resident went (blank if nobody knows), how it came to light —
+gate guard, roll call, staff sighting, a report, or the resident's own admission
+— whether they are back in the dormitory, and whether the parents have been
+told.
+
+A confirmed exit is **1 pt** and calls for a dean inquiry with the parents
+before any further pass is issued, and it shows on the resident's Occupant
+Records and on their parent's view. Residents still off campus are counted
+separately from those already back, so a glance at the register says who is
+unaccounted for right now.
+
+If leave turns out to have been on file after all, **Excuse** the record with a
+reason: it stays in the register with what settled it, and the point is
+withdrawn. **Reinstate** puts it back. Either way the resident is never asked to
+work off a point the dormitory has taken back.
+
 ## Correcting a check after it is filed
 
 Administrators file checks; the Dean is the one who can go back and change one
 afterwards — **whoever took it**. Every register (room inspections, worship roll
 calls, curfew, departures, study hours, cleaning, lights-out rounds, phone
 deposits) carries a pencil and a bin beside each record, visible to the Super
-Admin only.
+Admin only — off-campus-without-pass records included.
 
 - **Override** reopens that record's checks. Saving re-scores it — an inspection
   score, a gate clearance, a lights-out verdict all recompute — and the record

@@ -7,6 +7,7 @@ import {
   RoomInspection,
   SchoolUniformLog,
   StudyHoursLog,
+  UnauthorizedExitLog,
   Violation,
 } from '../types/dorm';
 import { worshipLabel } from '../data/dormSeed';
@@ -37,7 +38,8 @@ export type CheckKind =
   | 'study'
   | 'cleaning'
   | 'lightsOut'
-  | 'phoneDeposit';
+  | 'phoneDeposit'
+  | 'unauthorizedExit';
 
 export const CHECK_LABELS: Record<CheckKind, string> = {
   inspection: 'Room inspection',
@@ -48,6 +50,7 @@ export const CHECK_LABELS: Record<CheckKind, string> = {
   cleaning: 'Cleaning duty',
   lightsOut: 'Lights-out round',
   phoneDeposit: 'Phone deposit',
+  unauthorizedExit: 'Off-campus without pass',
 };
 
 /**
@@ -241,6 +244,41 @@ export const cleaningDrafts = (duty: CleaningDutyRecord): ViolationDraft[] => {
       actionRequired: 'Redo the assigned area before the next inspection.',
     }));
   return [...skipped, ...poor];
+};
+
+/** How the exit came to light, as the record and the register both word it. */
+export const EXIT_DISCOVERY_LABELS: Record<UnauthorizedExitLog['discoveredVia'], string> = {
+  gate_guard: 'Reported by the gate guard',
+  roll_call: 'Found missing at a roll call',
+  staff_sighting: 'Seen off campus by staff',
+  reported: 'Reported by someone else',
+  self_admitted: 'Admitted by the resident',
+};
+
+/**
+ * Walking off campus with no pass is the dormitory's most serious departure
+ * infraction, so a confirmed record carries a major point. An exit the Dean
+ * later excuses — the pass existed on paper after all — carries none.
+ */
+export const unauthorizedExitDrafts = (log: UnauthorizedExitLog): ViolationDraft[] => {
+  if (log.status !== 'confirmed') return [];
+  const where = log.destination ? ` to ${log.destination}` : '';
+  const note = log.remarks ? ` ${log.remarks}` : '';
+  return [{
+    date: log.date,
+    studentId: log.studentId,
+    studentName: log.studentName,
+    roomNumber: log.roomNumber,
+    category: 'unauthorized_campus_exit',
+    severity: 'major',
+    description:
+      `Left campus${where} without a gate pass, noticed at ${formatTime12h(log.noticedTime, log.noticedTime)} ` +
+      `(${EXIT_DISCOVERY_LABELS[log.discoveredVia].toLowerCase()}).${note}`,
+    demeritPoints: VIOLATION_POINTS,
+    reportedBy: log.loggedBy,
+    status: 'pending_settlement',
+    actionRequired: 'Dean inquiry with the parents before any further gate pass is issued.',
+  }];
 };
 
 export const phoneDepositDrafts = (rec: PhoneDepositLog, dueLabel: string): ViolationDraft[] => {

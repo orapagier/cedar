@@ -270,6 +270,7 @@ export type ViolationCategory =
   | 'uniform_violation'
   | 'church_absence'
   | 'irregular_school_departure'
+  | 'unauthorized_campus_exit'
   | 'study_hour_skipping'
   | 'chore_neglect'
   | 'lights_out_violation'
@@ -372,6 +373,35 @@ export interface GatePassRecord {
   status: 'approved' | 'departed' | 'returned_on_time' | 'overdue';
   remarks?: string;
   issuedAt: string;
+}
+
+/**
+ * A resident found off campus with no gate pass covering the day — the record
+ * the dormitory keeps when someone simply walked out. It is filed against the
+ * resident, not the gate, and carries a point unless a pass or leave turns up
+ * afterwards and the Dean excuses it.
+ */
+export interface UnauthorizedExitLog extends OverrideStamp {
+  id: string;
+  date: string; // YYYY-MM-DD — the day the resident was off campus
+  studentId: string;
+  studentName: string;
+  roomNumber: string;
+  /** When the exit was noticed, e.g. "14:20". */
+  noticedTime: string;
+  /** Where the resident went, as far as anyone knows. */
+  destination?: string;
+  /** How the exit came to light. */
+  discoveredVia: 'gate_guard' | 'roll_call' | 'staff_sighting' | 'reported' | 'self_admitted';
+  /** Filled in once the resident is back in the dormitory. */
+  returnedTime?: string;
+  /** 'confirmed' — left with no pass; 'excused' — a pass or leave accounted for it. */
+  status: 'confirmed' | 'excused';
+  /** Why an excused exit was cleared, e.g. "Pass was issued on paper". */
+  excuseReason?: string;
+  parentNotified: boolean;
+  remarks?: string;
+  loggedBy: string;
 }
 
 export interface DemeritClearanceLog {

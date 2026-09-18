@@ -394,6 +394,7 @@ export const ResidentPerformanceView: React.FC = () => {
                     <option value="curfew_breach">Curfew Breach</option>
                     <option value="uniform_violation">Uniform / Grooming</option>
                     <option value="irregular_school_departure">Departure Off-Schedule</option>
+                    <option value="unauthorized_campus_exit">Off-Campus Without Pass</option>
                     <option value="church_absence">Church Absence</option>
                     <option value="study_hour_skipping">Study Hours Skipping</option>
                     <option value="chore_neglect">Chore Neglect</option>

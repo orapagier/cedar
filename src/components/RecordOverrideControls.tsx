@@ -99,6 +99,33 @@ const FIELDS: Record<CheckKind, Field[]> = {
     { key: 'noUnauthorizedGadgets', label: 'No hidden devices', kind: 'toggle' },
     { key: 'violatorRemarks', label: 'Violation notes', kind: 'text', placeholder: 'What was found' },
   ],
+  unauthorizedExit: [
+    { key: 'date', label: 'Date off campus', kind: 'date' },
+    {
+      key: 'status',
+      label: 'Verdict',
+      kind: 'select',
+      options: [['confirmed', 'Left without a pass'], ['excused', 'Excused — leave was on file']],
+    },
+    { key: 'noticedTime', label: 'Noticed at', kind: 'time' },
+    { key: 'destination', label: 'Where they went', kind: 'text', placeholder: 'e.g. Town market' },
+    {
+      key: 'discoveredVia',
+      label: 'How it came to light',
+      kind: 'select',
+      options: [
+        ['gate_guard', 'Gate guard'],
+        ['roll_call', 'Roll call'],
+        ['staff_sighting', 'Staff sighting'],
+        ['reported', 'Reported'],
+        ['self_admitted', 'Resident admitted it'],
+      ],
+    },
+    { key: 'returnedTime', label: 'Back in the dorm at', kind: 'time', fallback: '' },
+    { key: 'parentNotified', label: 'Parents notified', kind: 'toggle' },
+    { key: 'excuseReason', label: 'Reason it was excused', kind: 'text', placeholder: 'e.g. Pass was issued on paper' },
+    { key: 'remarks', label: 'Remarks', kind: 'text', placeholder: 'What happened' },
+  ],
   phoneDeposit: [
     {
       key: 'status',
@@ -112,7 +139,9 @@ const FIELDS: Record<CheckKind, Field[]> = {
 };
 
 /** Optional text left blank clears the field rather than storing an empty one. */
-const OPTIONAL_TEXT = new Set(['remarks', 'notes', 'violatorRemarks', 'actualCheckInTime']);
+const OPTIONAL_TEXT = new Set([
+  'remarks', 'notes', 'violatorRemarks', 'actualCheckInTime', 'destination', 'excuseReason', 'returnedTime',
+]);
 
 /** Whoever filed the check, under whichever name its kind gives the signer. */
 const filedBy = (record: CheckRow) =>

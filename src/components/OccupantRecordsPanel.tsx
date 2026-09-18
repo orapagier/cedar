@@ -7,6 +7,7 @@ import {
   Brush,
   Smartphone,
   Luggage,
+  Siren,
   HeartPulse,
   AlertTriangle,
   HandHeart,
@@ -65,6 +66,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
     cellphones,
     violations,
     gatePasses,
+    unauthorizedExits,
     medicalSlips,
   } = useDorm();
 
@@ -238,6 +240,31 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
           </div>
         ))}
         {gatePasses.filter(p => p.studentId === studentId).length === 0 && <Empty text="No gate passes on file." />}
+      </Section>
+
+      <Section icon={Siren} title="Off-Campus Without Pass">
+        {unauthorizedExits.filter(e => e.studentId === studentId).slice(0, limit).map(e => (
+          <div key={e.id} className="px-4 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-white">{formatFullDate(e.date)}</p>
+              <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                e.status === 'excused' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
+              }`}>
+                {e.status === 'excused' ? 'excused' : 'no pass'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {e.destination || 'Destination unknown'} · noticed {formatTime12h(e.noticedTime)} ·{' '}
+              {e.returnedTime ? `back at ${formatTime12h(e.returnedTime)}` : 'not yet logged back in'}
+            </p>
+            {e.status === 'excused' && e.excuseReason && (
+              <p className="text-[11px] text-emerald-400/90 mt-0.5">Excused: {e.excuseReason}</p>
+            )}
+          </div>
+        ))}
+        {unauthorizedExits.filter(e => e.studentId === studentId).length === 0 && (
+          <Empty text="No unauthorized exits on file." />
+        )}
       </Section>
 
       <Section icon={HeartPulse} title="Medical Notes">

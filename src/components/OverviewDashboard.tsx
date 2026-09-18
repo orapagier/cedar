@@ -11,6 +11,7 @@ import {
   Brush,
   Smartphone,
   Luggage,
+  Siren,
   ChevronRight,
   Users,
   Shield,
@@ -30,6 +31,7 @@ const CHECKS: { id: string; label: string; sub: string; icon: React.ComponentTyp
   { id: 'cleaning', label: 'Daily Cleaning', sub: 'Room rotation & garbage', icon: Brush },
   { id: 'cellphones', label: 'Phone Vault', sub: 'Per-resident deposit check', icon: Smartphone },
   { id: 'gatepass', label: 'Gate Pass & Home Leave', sub: 'Campus exits & weekend leave', icon: Luggage },
+  { id: 'offcampus', label: 'Off-Campus Without Pass', sub: 'Exits with no pass on file', icon: Siren },
 ];
 
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate }) => {
@@ -48,6 +50,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     phoneDeposits,
     cellphones,
     gatePasses,
+    unauthorizedExits,
     violations,
     settings,
   } = useDorm();
@@ -80,6 +83,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
       : 'No crew set',
     cellphones: `${phoneDeposits.filter(d => d.date === today).length} checked`,
     gatepass: `${gatePasses.filter(p => p.status === 'approved' || p.status === 'departed').length} active`,
+    offcampus: `${unauthorizedExits.filter(e => e.date === today).length} logged`,
   };
 
   // Subtitles that quote a configurable hour are built from settings, so the

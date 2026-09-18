@@ -18,6 +18,7 @@ import {
   ViolationRedemption,
   MedicalExcuseSlip,
   GatePassRecord,
+  UnauthorizedExitLog,
   DemeritClearanceLog,
   ConfiscatedItemRecord,
   StudentMedicalRecord,
@@ -40,6 +41,7 @@ import {
   INITIAL_VIOLATIONS,
   INITIAL_MEDICAL_SLIPS,
   INITIAL_GATE_PASSES,
+  INITIAL_UNAUTHORIZED_EXITS,
   INITIAL_DEMERIT_CLEARANCES,
   INITIAL_CONFISCATED_ITEMS,
   INITIAL_STUDENT_MEDICALS,
@@ -69,6 +71,7 @@ import {
   recomputeLightsOut,
   recomputeUniform,
   studyDrafts,
+  unauthorizedExitDrafts,
   uniformDrafts,
   violationSourceId,
 } from '../utils/checkViolations';
@@ -103,6 +106,12 @@ interface DormContextType {
   gatePasses: GatePassRecord[];
   saveGatePass: (pass: Omit<GatePassRecord, 'id' | 'issuedAt'>) => void;
   updateGatePassStatus: (id: string, status: GatePassRecord['status'], actualReturnDate?: string) => void;
+
+  /** Residents caught off campus with no gate pass covering the day. */
+  unauthorizedExits: UnauthorizedExitLog[];
+  saveUnauthorizedExit: (log: Omit<UnauthorizedExitLog, 'id'>) => void;
+  /** Log a return, excuse the exit, or put a note on it after the fact. */
+  updateUnauthorizedExit: (id: string, updates: Partial<Omit<UnauthorizedExitLog, 'id'>>) => void;
 
   /** The paper trail of redemptions, one entry per violation settled. */
   demeritClearances: DemeritClearanceLog[];
@@ -399,6 +408,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return loaded.filter(g => !TEST_LOG_IDS.has(g.id) && !TEST_USER_IDS.has(g.studentId) && !TEST_NAMES.has(g.studentName));
   });
 
+  const [unauthorizedExits, setUnauthorizedExits] = useState<UnauthorizedExitLog[]>(() => {
+    const loaded = loadFromStorage<UnauthorizedExitLog[]>('unauthorized_exits', INITIAL_UNAUTHORIZED_EXITS);
+    return loaded.filter(e => !TEST_LOG_IDS.has(e.id) && !TEST_USER_IDS.has(e.studentId) && !TEST_NAMES.has(e.studentName));
+  });
+
   const [demeritClearances, setDemeritClearances] = useState<DemeritClearanceLog[]>(() => {
     const loaded = loadFromStorage<DemeritClearanceLog[]>('demerit_clearances', INITIAL_DEMERIT_CLEARANCES);
     return loaded.filter(d => !TEST_LOG_IDS.has(d.id) && !TEST_USER_IDS.has(d.studentId) && !TEST_NAMES.has(d.studentName));
@@ -435,6 +449,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => saveToStorage('violations', violations), [violations]);
   useEffect(() => saveToStorage('medical_slips', medicalSlips), [medicalSlips]);
   useEffect(() => saveToStorage('gate_passes', gatePasses), [gatePasses]);
+  useEffect(() => saveToStorage('unauthorized_exits', unauthorizedExits), [unauthorizedExits]);
   useEffect(() => saveToStorage('demerit_clearances', demeritClearances), [demeritClearances]);
   useEffect(() => saveToStorage('confiscated_items', confiscatedItems), [confiscatedItems]);
   useEffect(() => saveToStorage('student_medicals', studentMedicals), [studentMedicals]);
@@ -467,6 +482,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     violations,
     medicalSlips,
     gatePasses,
+    unauthorizedExits,
     demeritClearances,
     confiscatedItems,
     studentMedicals,
@@ -507,7 +523,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, cleaningDuties, lightsOutLogs,
         cellphones, phoneDeposits, phoneBorrows, violations, settings,
-        medicalSlips, gatePasses, demeritClearances, confiscatedItems, studentMedicals]);
+        medicalSlips, gatePasses, unauthorizedExits, demeritClearances, confiscatedItems, studentMedicals]);
 
   // Pull the shared state on load, then poll for updates from other devices.
   // The poll itself only asks for the last-saved timestamp; the records are
@@ -569,6 +585,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.violations) setViolations(d.violations as Violation[]);
           if (d.medicalSlips) setMedicalSlips(d.medicalSlips as MedicalExcuseSlip[]);
           if (d.gatePasses) setGatePasses(d.gatePasses as GatePassRecord[]);
+          if (d.unauthorizedExits) setUnauthorizedExits(d.unauthorizedExits as UnauthorizedExitLog[]);
           if (d.demeritClearances) setDemeritClearances(d.demeritClearances as DemeritClearanceLog[]);
           if (d.confiscatedItems) setConfiscatedItems(d.confiscatedItems as ConfiscatedItemRecord[]);
           if (d.studentMedicals) setStudentMedicals(d.studentMedicals as StudentMedicalRecord[]);
@@ -1280,6 +1297,14 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         syncViolationsFor(next.id, lightsOutDrafts(next, roomMembers(next.roomNumber)));
         return;
       }
+      case 'unauthorizedExit': {
+        const current = unauthorizedExits.find(r => r.id === id);
+        if (!current) return;
+        const next = { ...current, ...updates, ...stamp } as UnauthorizedExitLog;
+        setUnauthorizedExits(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, unauthorizedExitDrafts(next));
+        return;
+      }
       case 'phoneDeposit': {
         const current = phoneDeposits.find(r => r.id === id);
         if (!current) return;
@@ -1307,6 +1332,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       case 'study': setStudyLogs(drop); break;
       case 'cleaning': setCleaningDuties(drop); break;
       case 'lightsOut': setLightsOutLogs(drop); break;
+      case 'unauthorizedExit': setUnauthorizedExits(drop); break;
       case 'phoneDeposit': {
         const current = phoneDeposits.find(r => r.id === id);
         setPhoneDeposits(drop);
@@ -1340,6 +1366,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setViolations(kept.violations as Violation[]);
     setMedicalSlips(kept.medicalSlips as MedicalExcuseSlip[]);
     setGatePasses(kept.gatePasses as GatePassRecord[]);
+    setUnauthorizedExits(kept.unauthorizedExits as UnauthorizedExitLog[]);
     setDemeritClearances(kept.demeritClearances as DemeritClearanceLog[]);
     setConfiscatedItems(kept.confiscatedItems as ConfiscatedItemRecord[]);
 
@@ -1605,6 +1632,32 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  /**
+   * File a resident who went off campus with no gate pass. The record is the
+   * dormitory's own account of the exit, so it carries its point the moment it
+   * is filed — and withdraws it again if the Dean later excuses it.
+   */
+  const saveUnauthorizedExit = (log: Omit<UnauthorizedExitLog, 'id'>) => {
+    if (!canEdit) return;
+    const record: UnauthorizedExitLog = { ...log, id: `exit-${Date.now()}-${log.studentId}` };
+    setUnauthorizedExits(prev => [record, ...prev]);
+    syncViolationsFor(record.id, unauthorizedExitDrafts(record));
+  };
+
+  /**
+   * The follow-up on an exit already on file: the resident walked back in, or a
+   * pass turned up and the exit is excused. Either way the point the record
+   * carries is re-derived from what it now says.
+   */
+  const updateUnauthorizedExit = (id: string, updates: Partial<Omit<UnauthorizedExitLog, 'id'>>) => {
+    if (!canEdit) return;
+    const current = unauthorizedExits.find(e => e.id === id);
+    if (!current) return;
+    const next: UnauthorizedExitLog = { ...current, ...updates };
+    setUnauthorizedExits(prev => prev.map(e => (e.id === id ? next : e)));
+    syncViolationsFor(next.id, unauthorizedExitDrafts(next));
+  };
+
   const saveConfiscatedItem = (item: Omit<ConfiscatedItemRecord, 'id'>) => {
     const newItem: ConfiscatedItemRecord = {
       ...item,
@@ -1683,6 +1736,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setViolations([]);
     setMedicalSlips([]);
     setGatePasses([]);
+    setUnauthorizedExits([]);
     setDemeritClearances([]);
     setConfiscatedItems([]);
     setRooms(prev => prev.map(r => ({ ...r, occupantIds: [] })));
@@ -1706,6 +1760,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setViolations(INITIAL_VIOLATIONS);
     setMedicalSlips(INITIAL_MEDICAL_SLIPS);
     setGatePasses(INITIAL_GATE_PASSES);
+    setUnauthorizedExits(INITIAL_UNAUTHORIZED_EXITS);
     setDemeritClearances(INITIAL_DEMERIT_CLEARANCES);
     setConfiscatedItems(INITIAL_CONFISCATED_ITEMS);
     setStudentMedicals(INITIAL_STUDENT_MEDICALS);
@@ -1740,6 +1795,9 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         gatePasses,
         saveGatePass,
         updateGatePassStatus,
+        unauthorizedExits,
+        saveUnauthorizedExit,
+        updateUnauthorizedExit,
         demeritClearances,
         confiscatedItems,
         saveConfiscatedItem,

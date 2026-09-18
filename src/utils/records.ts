@@ -32,6 +32,7 @@ export const LOG_COLLECTIONS: LogCollection[] = [
   { key: 'violations', label: 'Violations', dateField: 'date' },
   { key: 'medicalSlips', label: 'Medical excuse slips', dateField: 'startDate' },
   { key: 'gatePasses', label: 'Gate passes', dateField: 'departureDate' },
+  { key: 'unauthorizedExits', label: 'Off-campus without pass', dateField: 'date' },
   { key: 'demeritClearances', label: 'Redemption records', dateField: 'completionDate' },
   { key: 'confiscatedItems', label: 'Confiscated items', dateField: 'confiscatedDate' },
 ];
