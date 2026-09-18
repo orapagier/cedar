@@ -142,9 +142,9 @@ export const RoomInspectionsView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <h2 className="text-base sm:text-lg font-bold text-white">Room Check & Cleanliness</h2>
-            <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap">
               Daily Inspection
             </span>
           </div>
@@ -559,7 +559,7 @@ export const RoomInspectionsView: React.FC = () => {
               {currentStatus === 'fail' && (
                 <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px] flex items-center space-x-2">
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>Warning: Submitting a Fail score will automatically log a 1 pt violation for each room occupant.</span>
+                  <span>Warning: Submitting a Fail score will automatically log a 1-demerit violation for each room occupant.</span>
                 </div>
               )}
 

@@ -20,7 +20,7 @@ import {
   UnauthorizedExitLog,
   Violation,
 } from '../types/dorm';
-import { LANGUAGE_KIND_LABELS } from './checkViolations';
+import { LANGUAGE_KIND_LABELS, demeritLabel } from './checkViolations';
 
 /** How an entry reads at a glance: kept, slipped, broken, or just noted. */
 export type EventTone = 'good' | 'warn' | 'bad' | 'info';
@@ -220,7 +220,7 @@ export function buildOccupantTimeline(studentId: string, src: TimelineSource): R
       id: `violation-${v.id}`,
       kind: 'violation',
       date: v.date,
-      title: `${titleCase(v.category)} — +${v.demeritPoints} pt${v.demeritPoints === 1 ? '' : 's'}`,
+      title: `${titleCase(v.category)} — +${demeritLabel(v.demerits)}`,
       detail: v.description,
       tone: 'bad',
     });

@@ -94,8 +94,9 @@ sends one changed row instead of the whole year.
 
 ## Violations and redemption
 
-Every violation is worth a flat **1 point**, and each one is redeemed on its
-own — there is no clearing a resident's record in a lump. Under **Resident
+A demerit is not a score a resident holds — it is **work owed**. Every violation
+is worth a flat **1 demerit**, and each one is redeemed on its own; there is no
+clearing a resident's record in a lump. Under **Resident
 Performance**, each pending violation carries its own **Redeem** button, which
 asks how that single violation was paid off:
 
@@ -105,8 +106,8 @@ asks how that single violation was paid off:
   verbatim on the record.
 
 Either way the redemption is signed off by a staff member with a completion
-date, only that violation clears, and the resident's points drop by that one
-point. Redeemed violations stay visible with what was done to settle them, on
+date, only that violation clears, and the demerits the resident owes drop by
+that one. Redeemed violations stay visible with what was done to settle them, on
 both the Resident Performance page and the resident's Occupant Records, and a
 redemption can be undone if it was logged by mistake.
 
@@ -131,9 +132,9 @@ separately from those already back, so a glance at the register says who is
 unaccounted for right now.
 
 If leave turns out to have been on file after all, **Excuse** the record with a
-reason: it stays in the register with what settled it, and the point is
+reason: it stays in the register with what settled it, and the demerit is
 withdrawn. **Reinstate** puts it back. Either way the resident is never asked to
-work off a point the dormitory has taken back.
+work off a demerit the dormitory has taken back.
 
 ## Cursing, swearing and foul language
 
@@ -163,7 +164,7 @@ is moderate, and language meant to threaten or degrade is major.
 
 If the words turn out not to have been his — misheard, or another resident —
 **Excuse** the record with a reason: it stays in the register with what settled
-it, and the point is withdrawn. **Reinstate** puts it back.
+it, and the demerit is withdrawn. **Reinstate** puts it back.
 
 ## Saving a check one resident at a time
 
@@ -232,9 +233,9 @@ things that happened.
 **The edit is how a filed check changes** — never a second save. The Dean's
 pencil sits beside the record in every register, and now on the roll-call row
 itself, so a correction can be made where the mistake is noticed. Saving
-re-scores the record, and what it put on a resident's standing follows: a point
-it raised is withdrawn when the verdict is reversed, and a point the resident
-has already redeemed keeps its redemption. Administrators file checks; only the
+re-scores the record, and what it put on a resident's standing follows: a
+demerit it raised is withdrawn when the verdict is reversed, and a demerit the
+resident has already redeemed keeps its redemption. Administrators file checks; only the
 Dean corrects one afterwards. Deleting a record frees the schedule point, and
 the check can then be taken afresh.
 
@@ -247,14 +248,14 @@ way.
 ## Occupant Records
 
 Every resident's file, filed the way the dormitory is walked: **by room**. Each
-room is a card carrying its wing, its captain and the points its residents have
+room is a card carrying its wing, its captain and the demerits its residents owe
 between them, with the names inside it. Tap a name and their whole record opens
 as a popup over the roster — full screen on a phone, and the roster is still
 there when it closes.
 
 The record itself is five tabs rather than one long column:
 
-- **Overview** — the numbers that decide a standing (points, open violations,
+- **Overview** — the numbers that decide a standing (demerits, open violations,
   worship kept, room cleanliness), who to call, who he rooms with, and a
   **recent activity feed**: every module's entries — worship, curfew, study,
   passes, violations — merged into one dated list, newest first.
@@ -266,7 +267,7 @@ The record itself is five tabs rather than one long column:
 The arrows in the header (or the left/right keys) step to the next resident
 without going back to the list, so a room can be read boy after boy. Above the
 rooms: a search across name, room, email and parent name, filters for
-**With points** and **On notice**, and a switch to a flat A–Z list when the room
+**With demerits** and **On notice**, and a switch to a flat A–Z list when the room
 is not what you are looking for.
 
 ## Installing it on a phone
@@ -307,11 +308,11 @@ Admin only — off-campus-without-pass and foul language records included.
   keeps a note of who corrected it and when, while still crediting the
   administrator who originally filed it.
 - Whatever the record put on a resident's standing follows the correction: a
-  point it raised is withdrawn when the verdict is reversed, and a point a
-  corrected record still implies stays exactly where it was. **A point the
+  demerit it raised is withdrawn when the verdict is reversed, and a demerit a
+  corrected record still implies stays exactly where it was. **A demerit the
   resident has already redeemed keeps its redemption** — correcting the check
   behind it never asks them to work it off twice.
-- **Delete** strikes the record off the register and takes its points with it.
+- **Delete** strikes the record off the register and takes its demerits with it.
 
 ## Deploying to Vercel
 

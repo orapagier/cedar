@@ -120,9 +120,9 @@ export const CleaningDutyView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <h2 className="text-base sm:text-lg font-bold text-white">Daily Cleaning Duty</h2>
-            <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap">
               Room Rotation
             </span>
           </div>
@@ -350,7 +350,7 @@ export const CleaningDutyView: React.FC = () => {
             {(rating <= 2 || !garbageDisposed) && (
               <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px] flex items-center gap-2">
                 <XCircle className="w-4 h-4 shrink-0" />
-                <span>Saving will log a 1 pt violation for each resident who did the cleaning at this standard.</span>
+                <span>Saving will log a 1-demerit violation for each resident who did the cleaning at this standard.</span>
               </div>
             )}
 

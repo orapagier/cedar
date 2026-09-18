@@ -14,9 +14,14 @@ import {
 import { worshipLabel } from '../data/dormSeed';
 import { formatTime12h } from './date';
 
-// Every infraction is worth the same single point, whatever its severity, so a
-// resident's total reads as "how many rules were broken" and nothing else.
-export const VIOLATION_POINTS = 1;
+// Every infraction is worth the same single demerit, whatever its severity, so
+// a resident's total reads as "how many rules were broken" and nothing else. A
+// demerit is not a score a resident holds; it is work owed until it is redeemed.
+
+export const VIOLATION_DEMERITS = 1;
+
+/** "1 demerit" / "3 demerits" — never "pts": these are owed, not scored. */
+export const demeritLabel = (n: number) => `${n} demerit${n === 1 ? '' : 's'}`;
 
 /** A violation a check record implies, before it is given an id and filed. */
 export type ViolationDraft = Omit<Violation, 'id' | 'createdAt' | 'sourceId'>;
@@ -84,7 +89,7 @@ export const inspectionDrafts = (insp: RoomInspection, occupants: RoomMember[]):
     category: 'cleanliness',
     severity: 'moderate',
     description: `Room ${insp.roomNumber} failed daily inspection score (${insp.score}/100): ${insp.remarks || 'Sanitation issues'}`,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: insp.inspectorName,
     status: 'pending_settlement',
     actionRequired: 'Re-inspection by 5:00 PM required.',
@@ -98,7 +103,7 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
     studentId: rec.studentId,
     studentName: rec.studentName,
     roomNumber: rec.roomNumber,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: rec.recordedBy,
     status: 'pending_settlement' as const,
   };
@@ -148,7 +153,7 @@ export const curfewDrafts = (rec: CurfewRecord): ViolationDraft[] => {
     description: rec.status === 'missing'
       ? 'Missing from dormitory past curfew without authorization.'
       : `Late curfew arrival (${rec.actualCheckInTime || 'unrecorded'}). ${rec.remarks || ''}`,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: rec.loggedBy,
     status: 'pending_settlement',
     actionRequired: 'Dean inquiry interview.',
@@ -165,7 +170,7 @@ export const uniformDrafts = (log: SchoolUniformLog): ViolationDraft[] => {
     category: !log.isDepartureOnSchedule ? 'irregular_school_departure' : 'uniform_violation',
     severity: 'minor',
     description: `School departure gate inspection issue: ${log.remarks || 'Uniform/Grooming non-compliant or departed off-schedule'}.`,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: log.inspectedBy,
     status: 'pending_settlement',
     actionRequired: 'Correction before school gate pass clearance.',
@@ -182,7 +187,7 @@ export const studyDrafts = (log: StudyHoursLog): ViolationDraft[] => {
     category: 'study_hour_skipping',
     severity: 'minor',
     description: `Study hours infraction: ${log.status === 'absent' ? 'Absent from study period' : 'Noise during quiet study'}.`,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: log.recordedBy,
     status: 'pending_settlement',
     actionRequired: 'Silent study monitoring assigned.',
@@ -199,7 +204,7 @@ export const lightsOutDrafts = (log: LightsOutLog, occupants: RoomMember[]): Vio
     category: 'lights_out_violation',
     severity: 'moderate',
     description: `Room ${log.roomNumber} lights-out violation at ${formatTime12h(log.checkTime, log.checkTime)}: ${log.violatorRemarks || 'Lights on or noise disturbance'}`,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: log.inspectedBy,
     status: 'pending_settlement',
   }));
@@ -221,7 +226,7 @@ export const cleaningDrafts = (duty: CleaningDutyRecord): ViolationDraft[] => {
       category: 'chore_neglect',
       severity: 'minor',
       description: `Did not help with Room ${duty.roomNumber}'s dorm cleaning duty.${note}`,
-      demeritPoints: VIOLATION_POINTS,
+      demerits: VIOLATION_DEMERITS,
       reportedBy: reporter,
       status: 'pending_settlement',
       actionRequired: 'Serve the next cleaning rotation under monitor sign-off.',
@@ -241,7 +246,7 @@ export const cleaningDrafts = (duty: CleaningDutyRecord): ViolationDraft[] => {
       category: 'cleanliness',
       severity: 'minor',
       description: `Dorm cleaning duty below standard (${reason}).${note}`,
-      demeritPoints: VIOLATION_POINTS,
+      demerits: VIOLATION_DEMERITS,
       reportedBy: reporter,
       status: 'pending_settlement',
       actionRequired: 'Redo the assigned area before the next inspection.',
@@ -260,7 +265,7 @@ export const EXIT_DISCOVERY_LABELS: Record<UnauthorizedExitLog['discoveredVia'],
 
 /**
  * Walking off campus with no pass is the dormitory's most serious departure
- * infraction, so a confirmed record carries a major point. An exit the Dean
+ * infraction, so a confirmed record carries a major demerit. An exit the Dean
  * later excuses — the pass existed on paper after all — carries none.
  */
 export const unauthorizedExitDrafts = (log: UnauthorizedExitLog): ViolationDraft[] => {
@@ -277,7 +282,7 @@ export const unauthorizedExitDrafts = (log: UnauthorizedExitLog): ViolationDraft
     description:
       `Left campus${where} without a gate pass, noticed at ${formatTime12h(log.noticedTime, log.noticedTime)} ` +
       `(${EXIT_DISCOVERY_LABELS[log.discoveredVia].toLowerCase()}).${note}`,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: log.loggedBy,
     status: 'pending_settlement',
     actionRequired: 'Dean inquiry with the parents before any further gate pass is issued.',
@@ -317,7 +322,7 @@ export const LANGUAGE_DISCOVERY_LABELS: Record<BadLanguageLog['discoveredVia'], 
  * Speech is graded by what the words did, not by how loud they were: a cuss
  * word said in temper is a minor slip, God's name taken in vain or mockery of
  * another resident is moderate, and language meant to threaten or degrade is
- * major. Every one of them is still the same single point; the grade only says
+ * major. Every one of them is still the same single demerit; the grade only says
  * how the dormitory reads it. An excused report carries nothing at all.
  */
 const LANGUAGE_SEVERITY: Record<BadLanguageLog['kind'], ViolationDraft['severity']> = {
@@ -344,7 +349,7 @@ export const badLanguageDrafts = (log: BadLanguageLog): ViolationDraft[] => {
       `${LANGUAGE_KIND_LABELS[log.kind]}${at} — ${LANGUAGE_SETTING_LABELS[log.setting].toLowerCase()}, ` +
       `${formatTime12h(log.heardTime, log.heardTime)} ` +
       `(${LANGUAGE_DISCOVERY_LABELS[log.discoveredVia].toLowerCase()}).${said}${note}`,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: log.loggedBy,
     status: 'pending_settlement',
     actionRequired: log.directedAt
@@ -366,7 +371,7 @@ export const phoneDepositDrafts = (rec: PhoneDepositLog, dueLabel: string): Viol
     description: rec.status === 'late'
       ? `Late phone deposit at ${formatTime12h(rec.depositTime, rec.depositTime)} — due ${dueLabel}.${note}`
       : `Did not deposit phone for the cycle due ${dueLabel}.${note}`,
-    demeritPoints: VIOLATION_POINTS,
+    demerits: VIOLATION_DEMERITS,
     reportedBy: rec.recordedBy,
     status: 'pending_settlement',
     actionRequired: rec.status === 'late'

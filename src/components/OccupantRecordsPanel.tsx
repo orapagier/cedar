@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Violation } from '../types/dorm';
-import { LANGUAGE_KIND_LABELS, LANGUAGE_SETTING_LABELS } from '../utils/checkViolations';
+import { LANGUAGE_KIND_LABELS, LANGUAGE_SETTING_LABELS, demeritLabel } from '../utils/checkViolations';
 import { formatFullDate, formatTime12h } from '../utils/date';
 
 const PASS_LABELS: Record<string, string> = {
@@ -99,7 +99,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
   const childInspections = inspections.filter(i => i.roomNumber === occupant?.roomNumber);
   const activeViolations = violations.filter(v => v.studentId === studentId && v.status !== 'cleared_service');
   const redeemedViolations = violations.filter(v => v.studentId === studentId && v.status === 'cleared_service');
-  const demerits = activeViolations.reduce((s, v) => s + v.demeritPoints, 0);
+  const demerits = activeViolations.reduce((s, v) => s + v.demerits, 0);
   const lastInspection = childInspections[0];
   const phoneEntry = cellphones.find(c => c.studentId === studentId);
   const myDeposits = phoneDeposits.filter(d => d.studentId === studentId);
@@ -123,7 +123,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
       {showStats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-3">
-            <p className="text-xs text-slate-400">Points (pts)</p>
+            <p className="text-xs text-slate-400">Demerits owed</p>
             <p className={`text-xl font-bold mt-0.5 ${demerits >= 8 ? 'text-rose-400' : demerits > 0 ? 'text-amber-300' : 'text-emerald-400'}`}>
               {demerits}
             </p>
@@ -372,7 +372,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
                 )}
               </div>
               <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300">
-                +{v.demeritPoints} pts
+                +{demeritLabel(v.demerits)}
               </span>
             </div>
           ))}
@@ -405,7 +405,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
                   )}
                 </div>
                 <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300">
-                  −{v.demeritPoints} pts
+                  −{demeritLabel(v.demerits)}
                 </span>
               </div>
             </div>

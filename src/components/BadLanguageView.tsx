@@ -72,7 +72,7 @@ const daysAgo = (days: number) => {
 /**
  * The register of residents heard cursing, swearing or otherwise speaking foul
  * language. It is filed room by room from the resident's own row, the way every
- * other check is taken, and each confirmed report puts a point on that
+ * other check is taken, and each confirmed report puts a demerit on that
  * resident's standing until the Dean excuses it.
  */
 export const BadLanguageView: React.FC = () => {
@@ -180,12 +180,12 @@ export const BadLanguageView: React.FC = () => {
 
   const excuse = (log: BadLanguageLog) => {
     const reason = window.prompt(
-      `Why is ${log.studentName}'s report excused?\n\nThe point it carries is withdrawn.`,
+      `Why is ${log.studentName}'s report excused?\n\nThe demerit it carries is withdrawn.`,
       log.excuseReason || 'Misheard — the words were not his',
     );
     if (reason === null) return;
     updateBadLanguageLog(log.id, { status: 'excused', excuseReason: reason || undefined });
-    flash(`${log.studentName}'s report excused — the point is withdrawn.`);
+    flash(`${log.studentName}'s report excused — the demerit is withdrawn.`);
   };
 
   const reconfirm = (log: BadLanguageLog) => {
@@ -198,15 +198,15 @@ export const BadLanguageView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <h2 className="text-base sm:text-lg font-bold text-white">Foul Language</h2>
-            <span className="text-xs bg-orange-500/20 text-orange-300 border border-orange-500/30 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-orange-500/20 text-orange-300 border border-orange-500/30 px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap">
               Speech Register
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
             Room by room, record a resident heard cursing, swearing or speaking foul language. Each confirmed
-            report is 1 pt and a reflection on clean speech; excuse it and the point is withdrawn.
+            report is 1 demerit and a reflection on clean speech; excuse it and the demerit is withdrawn.
           </p>
         </div>
 
@@ -623,7 +623,7 @@ export const BadLanguageView: React.FC = () => {
 
               <p className="text-[11px] text-slate-500 flex items-start gap-1.5">
                 <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                Filing this puts 1 pt on the resident's standing and calls for a reflection on clean speech.
+                Filing this puts 1 demerit on the resident's standing and calls for a reflection on clean speech.
                 Excuse the record later if the words turn out not to have been his.
               </p>
 

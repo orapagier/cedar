@@ -11,13 +11,14 @@ import {
 import { useDorm } from '../context/DormContext';
 import { OccupantRecordModal } from './OccupantRecordModal';
 import { User } from '../types/dorm';
+import { demeritLabel } from '../utils/checkViolations';
 
 type Grouping = 'room' | 'name';
 type Filter = 'all' | 'flagged' | 'notice';
 
 const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: 'all', label: 'Everyone' },
-  { id: 'flagged', label: 'With points' },
+  { id: 'flagged', label: 'With demerits' },
   { id: 'notice', label: 'On notice' },
 ];
 
@@ -31,10 +32,10 @@ const WING_CLASSES: Record<string, string> = {
 const initials = (name: string) =>
   name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
-const pointClasses = (points: number) =>
-  points >= 8
+const demeritClasses = (demerits: number) =>
+  demerits >= 8
     ? 'bg-rose-950 text-rose-300 border-rose-800/60'
-    : points > 0
+    : demerits > 0
       ? 'bg-amber-950 text-amber-300 border-amber-800/60'
       : 'bg-slate-800 text-slate-400 border-slate-700';
 
@@ -48,7 +49,7 @@ const byRoomThenName = (a: User, b: User) =>
  *
  * Grouping by room is the point. A dean walks the dormitory room by room, so
  * that is how the roster reads here — a card per room carrying its own wing,
- * captain and point total, with its residents inside it. Names open a popup
+ * captain and demerit total, with its residents inside it. Names open a popup
  * rather than a side panel, so the record gets the whole screen on a phone and
  * the roster is still there underneath when it closes.
  */
@@ -60,24 +61,24 @@ export const OccupantRecordsView: React.FC = () => {
   const [openId, setOpenId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const pointsById = useMemo(() => {
+  const demeritsById = useMemo(() => {
     const totals = new Map<string, number>();
     violations.forEach(v => {
       if (v.status === 'cleared_service') return;
-      totals.set(v.studentId, (totals.get(v.studentId) ?? 0) + v.demeritPoints);
+      totals.set(v.studentId, (totals.get(v.studentId) ?? 0) + v.demerits);
     });
     return totals;
   }, [violations]);
 
-  const pointsFor = (id: string) => pointsById.get(id) ?? 0;
+  const demeritsFor = (id: string) => demeritsById.get(id) ?? 0;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return users
       .filter(u => u.role === 'occupant')
       .filter(u => {
-        if (filter === 'flagged') return pointsFor(u.id) > 0;
-        if (filter === 'notice') return pointsFor(u.id) >= 8;
+        if (filter === 'flagged') return demeritsFor(u.id) > 0;
+        if (filter === 'notice') return demeritsFor(u.id) >= 8;
         return true;
       })
       .filter(u =>
@@ -88,7 +89,7 @@ export const OccupantRecordsView: React.FC = () => {
         (u.parentName || '').toLowerCase().includes(q)
       )
       .sort(byRoomThenName);
-  }, [users, query, filter, pointsById]);
+  }, [users, query, filter, demeritsById]);
 
   /** The flat order the popup's arrows walk, whichever way the page is grouped. */
   const walkOrder = useMemo(
@@ -114,8 +115,8 @@ export const OccupantRecordsView: React.FC = () => {
     if (next) setOpenId(next.id);
   };
 
-  const onNotice = visible.filter(u => pointsFor(u.id) >= 8).length;
-  const withPoints = visible.filter(u => pointsFor(u.id) > 0).length;
+  const onNotice = visible.filter(u => demeritsFor(u.id) >= 8).length;
+  const withDemerits = visible.filter(u => demeritsFor(u.id) > 0).length;
   // A search should not leave a matching name hidden inside a room the dean
   // happened to collapse earlier.
   const searching = query.trim().length > 0;
@@ -143,7 +144,7 @@ export const OccupantRecordsView: React.FC = () => {
           </div>
           <div className="hidden sm:flex shrink-0 gap-2 text-center">
             <Tally label="Residents" value={visible.length} />
-            <Tally label="With points" value={withPoints} tone={withPoints ? 'text-amber-300' : undefined} />
+            <Tally label="With demerits" value={withDemerits} tone={withDemerits ? 'text-amber-300' : undefined} />
             <Tally label="On notice" value={onNotice} tone={onNotice ? 'text-rose-400' : undefined} />
           </div>
         </div>
@@ -204,7 +205,7 @@ export const OccupantRecordsView: React.FC = () => {
       ) : grouping === 'name' ? (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/70 overflow-hidden">
           {walkOrder.map(o => (
-            <ResidentRow key={o.id} occupant={o} points={pointsFor(o.id)} onOpen={() => setOpenId(o.id)} showRoom />
+            <ResidentRow key={o.id} occupant={o} demerits={demeritsFor(o.id)} onOpen={() => setOpenId(o.id)} showRoom />
           ))}
         </div>
       ) : (
@@ -212,7 +213,7 @@ export const OccupantRecordsView: React.FC = () => {
           {grouped.map(([roomNumber, residents]) => {
             const room = rooms.find(r => r.roomNumber === roomNumber);
             const wingKey = room?.wing.split(' ')[0] ?? '';
-            const roomPoints = residents.reduce((sum, r) => sum + pointsFor(r.id), 0);
+            const roomDemerits = residents.reduce((sum, r) => sum + demeritsFor(r.id), 0);
             const isOpen = searching || !collapsed.has(roomNumber);
 
             return (
@@ -248,9 +249,9 @@ export const OccupantRecordsView: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  {roomPoints > 0 && (
-                    <span className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${pointClasses(roomPoints)}`}>
-                      <ShieldAlert className="w-3 h-3" /> {roomPoints}
+                  {roomDemerits > 0 && (
+                    <span className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${demeritClasses(roomDemerits)}`}>
+                      <ShieldAlert className="w-3 h-3" /> {roomDemerits}
                     </span>
                   )}
                   <ChevronDown
@@ -261,7 +262,7 @@ export const OccupantRecordsView: React.FC = () => {
                 {isOpen && (
                   <div className="border-t border-slate-800 divide-y divide-slate-800/70">
                     {residents.map(o => (
-                      <ResidentRow key={o.id} occupant={o} points={pointsFor(o.id)} onOpen={() => setOpenId(o.id)} />
+                      <ResidentRow key={o.id} occupant={o} demerits={demeritsFor(o.id)} onOpen={() => setOpenId(o.id)} />
                     ))}
                   </div>
                 )}
@@ -296,13 +297,13 @@ const Tally: React.FC<{ label: string; value: number; tone?: string }> = ({ labe
 
 interface ResidentRowProps {
   occupant: User;
-  points: number;
+  demerits: number;
   onOpen: () => void;
   /** The A–Z list has no room header above it, so each row carries its room. */
   showRoom?: boolean;
 }
 
-const ResidentRow: React.FC<ResidentRowProps> = ({ occupant, points, onOpen, showRoom = false }) => {
+const ResidentRow: React.FC<ResidentRowProps> = ({ occupant, demerits, onOpen, showRoom = false }) => {
   return (
     <button
       onClick={onOpen}
@@ -320,8 +321,8 @@ const ResidentRow: React.FC<ResidentRowProps> = ({ occupant, points, onOpen, sho
             : occupant.email || 'No email on file'}
         </span>
       </span>
-      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${pointClasses(points)}`}>
-        {points} pts
+      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${demeritClasses(demerits)}`}>
+        {demeritLabel(demerits)}
       </span>
     </button>
   );

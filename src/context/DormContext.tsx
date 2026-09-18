@@ -63,7 +63,7 @@ import {
   CheckKind,
   RoomMember,
   ViolationDraft,
-  VIOLATION_POINTS,
+  VIOLATION_DEMERITS,
   attendanceDrafts,
   badLanguageDrafts,
   cleaningDrafts,
@@ -295,7 +295,7 @@ const DEAN_USER: User = {
   role: 'superadmin',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   phone: '+63 917 555 0101',
-  demeritPoints: 0,
+  demerits: 0,
   status: 'active',
 };
 
@@ -313,6 +313,18 @@ function loadFromStorage<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
+
+/**
+ * Records filed before demerits were called demerits carry `demeritPoints`.
+ * Reading one straight would total to NaN, so every violation coming off a
+ * device or off the server is re-read through this on the way in.
+ */
+const withDemerits = (rows: Violation[]): Violation[] =>
+  rows.map(v => {
+    const legacy = (v as Violation & { demeritPoints?: number }).demeritPoints;
+    if (typeof v.demerits === 'number') return v;
+    return { ...v, demerits: typeof legacy === 'number' ? legacy : VIOLATION_DEMERITS };
+  });
 
 function saveToStorage<T>(key: string, value: T) {
   try {
@@ -412,7 +424,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [violations, setViolations] = useState<Violation[]>(() => {
-    const loaded = loadFromStorage<Violation[]>('violations', INITIAL_VIOLATIONS);
+    const loaded = withDemerits(loadFromStorage<Violation[]>('violations', INITIAL_VIOLATIONS));
     return loaded.filter(v => !TEST_LOG_IDS.has(v.id) && !TEST_USER_IDS.has(v.studentId) && !TEST_NAMES.has(v.studentName));
   });
 
@@ -615,7 +627,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.cellphones) setCellphones(d.cellphones as CellphoneCustody[]);
           if (d.phoneDeposits) setPhoneDeposits(d.phoneDeposits as PhoneDepositLog[]);
           if (d.phoneBorrows) setPhoneBorrows(d.phoneBorrows as PhoneBorrowLog[]);
-          if (d.violations) setViolations(d.violations as Violation[]);
+          if (d.violations) setViolations(withDemerits(d.violations as Violation[]));
           if (d.medicalSlips) setMedicalSlips(d.medicalSlips as MedicalExcuseSlip[]);
           if (d.gatePasses) setGatePasses(d.gatePasses as GatePassRecord[]);
           if (d.unauthorizedExits) setUnauthorizedExits(d.unauthorizedExits as UnauthorizedExitLog[]);
@@ -648,18 +660,18 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Recalculate user demerit points dynamically based on confirmed/active violations
+  // Recalculate the demerits each resident still owes from their unredeemed violations
   useEffect(() => {
     setUsers(prevUsers =>
       prevUsers.map(user => {
         const userViolations = violations.filter(
           v => v.studentId === user.id && v.status !== 'cleared_service'
         );
-        const totalDemerits = userViolations.reduce((sum, v) => sum + v.demeritPoints, 0);
+        const totalDemerits = userViolations.reduce((sum, v) => sum + v.demerits, 0);
         const status = totalDemerits >= 8 ? 'probation' : 'active';
         return {
           ...user,
-          demeritPoints: totalDemerits,
+          demerits: totalDemerits,
           status: user.role === 'occupant' ? status : user.status,
         };
       })
@@ -718,7 +730,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         relatedStudentId: linkedChild.id,
         avatar,
         phone: linkedChild.parentPhone,
-        demeritPoints: 0,
+        demerits: 0,
         status: 'active',
       });
       setIsAuthenticated(true);
@@ -731,7 +743,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email,
       role: 'guest',
       avatar,
-      demeritPoints: 0,
+      demerits: 0,
       status: 'active',
     });
     setIsAuthenticated(true);
@@ -766,7 +778,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * category, so the same check saved on two devices lands on one violation
    * rather than two. A violation already redeemed keeps its id, its cleared
    * status and the redemption — correcting the check behind it never asks a
-   * resident to work the same point off twice — and one the correction removes
+   * resident to work the same demerit off twice — and one the correction removes
    * takes its clearance log with it.
    */
   const syncViolationsFor = (sourceId: string, drafts: ViolationDraft[]) => {
@@ -842,7 +854,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (!formatted.length) return { filed: 0, kept };
     setAttendance(prev => [...formatted, ...prev]);
-    // Unexcused absences, missing Bibles and improper attire are each 1 pt.
+    // Unexcused absences, missing Bibles and improper attire are each 1 demerit.
     formatted.forEach(r => syncViolationsFor(r.id, attendanceDrafts(r)));
     return { filed: formatted.length, kept };
   };
@@ -1118,7 +1130,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         category: 'cellphone_policy_breach',
         severity: 'moderate',
         description: `No phone deposit recorded for the cycle due ${dueLabel}.`,
-        demeritPoints: VIOLATION_POINTS,
+        demerits: VIOLATION_DEMERITS,
         reportedBy: 'Vault deadline',
         status: 'pending_settlement',
         actionRequired: 'Surrender the device to the Dean, or have the absence excused.',
@@ -1302,7 +1314,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? 'Written Reflection'
         : record.serviceType ?? 'Dorm Maintenance & Sanitizing',
       hoursRendered: record.hoursRendered ?? 0,
-      demeritsDeducted: violation.demeritPoints,
+      demeritsDeducted: violation.demerits,
       supervisorName: record.supervisorName,
       completionDate: record.completedDate,
       remarks: record.remarks,
@@ -1530,7 +1542,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       parentName: data.parentName || '',
       parentPhone: data.parentPhone || '',
       parentEmail: data.parentEmail ? data.parentEmail.trim().toLowerCase() : undefined,
-      demeritPoints: 0,
+      demerits: 0,
       status: 'active',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`,
     };
@@ -1748,7 +1760,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * File a resident who went off campus with no gate pass. The record is the
-   * dormitory's own account of the exit, so it carries its point the moment it
+   * dormitory's own account of the exit, so it carries its demerit the moment it
    * is filed — and withdraws it again if the Dean later excuses it.
    */
   const saveUnauthorizedExit = (log: Omit<UnauthorizedExitLog, 'id'>) => {
@@ -1760,7 +1772,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * The follow-up on an exit already on file: the resident walked back in, or a
-   * pass turned up and the exit is excused. Either way the point the record
+   * pass turned up and the exit is excused. Either way the demerit the record
    * carries is re-derived from what it now says.
    */
   const updateUnauthorizedExit = (id: string, updates: Partial<Omit<UnauthorizedExitLog, 'id'>>) => {
@@ -1774,7 +1786,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * File a resident heard cursing, swearing or otherwise speaking foul
-   * language. Like every other check, the record carries its point the moment
+   * language. Like every other check, the record carries its demerit the moment
    * it is filed, and withdraws it again if the Dean later excuses it.
    */
   const saveBadLanguageLog = (log: Omit<BadLanguageLog, 'id'>) => {
@@ -1786,7 +1798,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * The follow-up on a report already on file: the resident apologized, the
-   * parents were told, or the words turn out not to have been theirs. The point
+   * parents were told, or the words turn out not to have been theirs. The demerit
    * the record carries is re-derived from what it now says.
    */
   const updateBadLanguageLog = (id: string, updates: Partial<Omit<BadLanguageLog, 'id'>>) => {
@@ -1840,7 +1852,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: cleanEmail,
       role: 'admin',
       phone: data.phone || '',
-      demeritPoints: 0,
+      demerits: 0,
       status: 'active',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`,
     };

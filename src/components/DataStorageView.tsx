@@ -66,7 +66,7 @@ export const DataStorageView: React.FC = () => {
     const ok = window.confirm(
       `Archive ${archivable} record${archivable === 1 ? '' : 's'} dated before ${formatFullDate(cutoff)}?\n\n` +
         'The archive file downloads first, then those records leave the live app. ' +
-        'Points from archived violations come off resident standings. This cannot be undone from inside the app.',
+        'Demerits from archived violations come off resident standings. This cannot be undone from inside the app.',
     );
     if (!ok) return;
 
@@ -209,7 +209,7 @@ export const DataStorageView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {KEEP_PRESETS.map(preset => {
             const presetCutoff = shiftDate(today, -preset.days);
             const active = presetCutoff === cutoff;
@@ -252,16 +252,16 @@ export const DataStorageView: React.FC = () => {
 
         <p className="text-[11px] text-rose-300/80 flex items-start gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          Archived violations stop counting toward a resident's points, and archived records disappear
+          Archived violations stop counting toward a resident's demerits, and archived records disappear
           from their Occupant Records page. Only archive terms that are settled and signed off.
         </p>
       </div>
 
       {/* Per-collection breakdown */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-slate-800 flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <h3 className="font-bold text-white text-sm">What is taking up the space</h3>
-          <span className="text-[11px] text-slate-400">roster & settings: {formatBytes(usage.rosterBytes)}</span>
+          <span className="text-[11px] text-slate-400 shrink-0">roster & settings: {formatBytes(usage.rosterBytes)}</span>
         </div>
         <div className="divide-y divide-slate-800/70">
           {[...usage.collections]

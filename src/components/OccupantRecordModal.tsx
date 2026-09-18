@@ -28,6 +28,7 @@ import { Modal } from './ui/Modal';
 import { OccupantRecordsPanel, RecordGroup } from './OccupantRecordsPanel';
 import { buildOccupantTimeline, EventKind, EventTone } from '../utils/occupantTimeline';
 import { formatFullDate, formatTime12h } from '../utils/date';
+import { demeritLabel } from '../utils/checkViolations';
 
 type Tab = 'overview' | RecordGroup;
 
@@ -122,7 +123,7 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
   if (!occupant) return null;
 
   const activeViolations = violations.filter(v => v.studentId === studentId && v.status !== 'cleared_service');
-  const points = activeViolations.reduce((s, v) => s + v.demeritPoints, 0);
+  const demerits = activeViolations.reduce((s, v) => s + v.demerits, 0);
   const roomInspections = inspections.filter(i => i.roomNumber === occupant.roomNumber);
   const cleanliness = roomInspections.length
     ? Math.round(roomInspections.reduce((s, i) => s + i.score, 0) / roomInspections.length)
@@ -137,17 +138,17 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
   );
 
   const standing =
-    points >= 8
+    demerits >= 8
       ? { label: 'Probation', classes: 'bg-rose-950 text-rose-300 border-rose-700/60' }
-      : points > 0
+      : demerits > 0
         ? { label: 'Under Notice', classes: 'bg-amber-950 text-amber-300 border-amber-700/60' }
         : { label: 'Good Standing', classes: 'bg-emerald-950 text-emerald-300 border-emerald-700/60' };
 
   const stats: Array<{ label: string; value: string; tone?: string }> = [
     {
-      label: 'Points',
-      value: String(points),
-      tone: points >= 8 ? 'text-rose-400' : points > 0 ? 'text-amber-300' : 'text-emerald-400',
+      label: 'Demerits',
+      value: String(demerits),
+      tone: demerits >= 8 ? 'text-rose-400' : demerits > 0 ? 'text-amber-300' : 'text-emerald-400',
     },
     { label: 'Open Violations', value: String(activeViolations.length) },
     { label: 'Worship Kept', value: worshipRate === null ? '—' : `${worshipRate}%` },
@@ -212,9 +213,9 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${standing.classes}`}>
               {standing.label}
             </span>
-            {points > 0 && (
+            {demerits > 0 && (
               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1">
-                <ShieldAlert className="w-3 h-3" /> {points} pts
+                <ShieldAlert className="w-3 h-3" /> {demeritLabel(demerits)}
               </span>
             )}
             {occupant.status === 'excused_leave' && (

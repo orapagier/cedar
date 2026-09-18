@@ -1,5 +1,6 @@
 import React from 'react';
 import { manilaHour, formatFullDate, formatTime12h } from '../utils/date';
+import { demeritLabel } from '../utils/checkViolations';
 import { useManilaToday } from '../hooks/useManilaToday';
 import {
   AlertTriangle,
@@ -223,7 +224,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                     v.severity === 'major' ? 'bg-rose-950 text-rose-300' :
                     v.severity === 'moderate' ? 'bg-amber-950 text-amber-300' : 'bg-blue-950 text-blue-300'
                   }`}>
-                    +{v.demeritPoints} pts
+                    +{demeritLabel(v.demerits)}
                   </span>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-white truncate">

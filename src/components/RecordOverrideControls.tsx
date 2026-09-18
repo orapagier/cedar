@@ -285,7 +285,7 @@ export const RecordOverrideControls: React.FC<{ kind: CheckKind; record: CheckRo
   const remove = () => {
     const ok = window.confirm(
       `Delete this ${CHECK_LABELS[kind].toLowerCase()} for ${headingFor(record)}?\n\n` +
-      'Any points it put on a resident are removed with it. This cannot be undone.'
+      'Any demerits it put on a resident are removed with it. This cannot be undone.'
     );
     if (ok) deleteCheckRecord(kind, record.id);
   };
@@ -476,8 +476,8 @@ export const RecordOverrideControls: React.FC<{ kind: CheckKind; record: CheckRo
               })}
 
               <p className="text-[11px] text-slate-500">
-                Saving re-scores the record and re-files the points it raised. A point the resident has already
-                redeemed keeps its redemption.
+                Saving re-scores the record and re-files the demerits it raised. A demerit the resident has
+                already redeemed keeps its redemption.
               </p>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">

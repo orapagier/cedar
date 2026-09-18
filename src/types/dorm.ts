@@ -14,7 +14,8 @@ export interface User {
   parentEmail?: string;
   /** For parent sessions: id of the linked student they may view. */
   relatedStudentId?: string;
-  demeritPoints: number;
+  /** Demerits still owed — one for every violation not yet redeemed. */
+  demerits: number;
   status: 'active' | 'probation' | 'excused_leave';
 }
 
@@ -318,7 +319,8 @@ export interface Violation {
   category: ViolationCategory;
   severity: 'minor' | 'moderate' | 'major';
   description: string;
-  demeritPoints: number;
+  /** Demerits this violation puts on the resident until it is redeemed. */
+  demerits: number;
   reportedBy: string;
   status: 'pending_settlement' | 'appealed' | 'cleared_service' | 'confirmed';
   actionRequired?: string;
@@ -381,7 +383,7 @@ export interface GatePassRecord {
 /**
  * A resident found off campus with no gate pass covering the day — the record
  * the dormitory keeps when someone simply walked out. It is filed against the
- * resident, not the gate, and carries a point unless a pass or leave turns up
+ * resident, not the gate, and carries a demerit unless a pass or leave turns up
  * afterwards and the Dean excuses it.
  */
 export interface UnauthorizedExitLog extends OverrideStamp {
@@ -433,7 +435,7 @@ export type BadLanguageSetting =
 /**
  * A resident heard cursing, swearing or otherwise speaking foul language — the
  * record the dormitory keeps of how residents speak to one another. It is filed
- * against the resident who spoke, carries a point unless the Dean later excuses
+ * against the resident who spoke, carries a demerit unless the Dean later excuses
  * it, and keeps room for the words themselves so a dean inquiry is not working
  * from memory.
  */

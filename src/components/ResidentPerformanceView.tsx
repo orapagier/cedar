@@ -17,6 +17,7 @@ import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { ServiceType, Violation, ViolationCategory } from '../types/dorm';
 import { formatFullDate, manilaToday } from '../utils/date';
+import { VIOLATION_DEMERITS, demeritLabel } from '../utils/checkViolations';
 
 const SERVICE_TYPES: ServiceType[] = [
   'Grounds Beautification',
@@ -27,10 +28,10 @@ const SERVICE_TYPES: ServiceType[] = [
 
 const FIELD = 'w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white';
 
-const standingFor = (points: number) =>
-  points === 0
+const standingFor = (demerits: number) =>
+  demerits === 0
     ? { label: 'Good Standing', classes: 'bg-emerald-950 text-emerald-300 border-emerald-700' }
-    : points < 8
+    : demerits < 8
       ? { label: 'Under Notice', classes: 'bg-amber-950 text-amber-300 border-amber-700' }
       : { label: 'Probation', classes: 'bg-rose-950 text-rose-300 border-rose-700' };
 
@@ -122,7 +123,7 @@ export const ResidentPerformanceView: React.FC = () => {
       category,
       severity,
       description,
-      demeritPoints: 1,
+      demerits: VIOLATION_DEMERITS,
       reportedBy: currentUser.name,
       status: 'pending_settlement',
       actionRequired: actionRequired || undefined,
@@ -144,7 +145,7 @@ export const ResidentPerformanceView: React.FC = () => {
           <div>
             <h2 className="text-base sm:text-lg font-bold text-white">Resident Performance & Standing</h2>
             <p className="text-xs text-slate-400 mt-1">
-              Points standing and compliance status for every occupant. Every violation is worth 1 pt.
+              Demerits owed and compliance status for every occupant. Every violation is worth 1 demerit.
             </p>
           </div>
           {canEdit && (
@@ -186,8 +187,8 @@ export const ResidentPerformanceView: React.FC = () => {
             <div className="divide-y divide-slate-800/70">
               {residents.map(occ => {
                 const isOpen = expanded.has(occ.id);
-                const pts = occ.demeritPoints || 0;
-                const standing = standingFor(pts);
+                const owed = occ.demerits || 0;
+                const standing = standingFor(owed);
                 const activeVs = violations.filter(v => v.studentId === occ.id && v.status !== 'cleared_service');
                 const redeemedVs = violations.filter(v => v.studentId === occ.id && v.status === 'cleared_service');
                 const totalVs = violations.filter(v => v.studentId === occ.id);
@@ -216,13 +217,15 @@ export const ResidentPerformanceView: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-white truncate">{occ.name}</p>
-                        <p className="text-[11px] text-slate-400">
-                          {pts} pts · {totalVs.length} violations
-                        </p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                          <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${standing.classes}`}>
+                            {standing.label}
+                          </span>
+                          <p className="text-[11px] text-slate-400">
+                            {demeritLabel(owed)} · {totalVs.length} violations
+                          </p>
+                        </div>
                       </div>
-                      <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full border ${standing.classes}`}>
-                        {standing.label}
-                      </span>
                       <ChevronDown className={`w-4 h-4 text-slate-500 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                     </button>
 
@@ -275,7 +278,7 @@ export const ResidentPerformanceView: React.FC = () => {
                                         v.severity === 'major' ? 'bg-rose-950 text-rose-300' :
                                         v.severity === 'moderate' ? 'bg-amber-950 text-amber-300' : 'bg-blue-950 text-blue-300'
                                       }`}>
-                                        +{v.demeritPoints} pts
+                                        +{demeritLabel(v.demerits)}
                                       </span>
                                       <span className="text-[11px] text-slate-400 capitalize">{v.category.replace(/_/g, ' ')}</span>
                                     </div>
@@ -365,7 +368,7 @@ export const ResidentPerformanceView: React.FC = () => {
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white">Log Rule Violation (1 pt)</h3>
+                <h3 className="text-base font-bold text-white">Log Rule Violation (1 demerit)</h3>
                 <p className="text-xs text-slate-400">Dean / Admin Incident Form</p>
               </div>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
@@ -417,9 +420,9 @@ export const ResidentPerformanceView: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Points</label>
+                  <label className="block font-medium text-slate-300 mb-1">Demerits</label>
                   <div className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-300">
-                    1 pt <span className="text-slate-500">· fixed for every violation</span>
+                    1 demerit <span className="text-slate-500">· fixed for every violation</span>
                   </div>
                 </div>
               </div>
@@ -447,7 +450,7 @@ export const ResidentPerformanceView: React.FC = () => {
               <div className="min-w-0">
                 <h3 className="text-base font-bold text-white truncate">Redeem — {redeeming.studentName}</h3>
                 <p className="text-xs text-slate-400 capitalize">
-                  {redeeming.category.replace(/_/g, ' ')} · {formatFullDate(redeeming.date)} · {redeeming.demeritPoints} pt
+                  {redeeming.category.replace(/_/g, ' ')} · {formatFullDate(redeeming.date)} · {demeritLabel(redeeming.demerits)}
                 </p>
               </div>
               <button onClick={() => setRedeeming(null)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2 shrink-0">

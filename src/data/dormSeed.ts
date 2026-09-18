@@ -36,7 +36,7 @@ function occupant(roomNumber: string, index: number, name: string, email: string
     email,
     role: 'occupant',
     roomNumber,
-    demeritPoints: 0,
+    demerits: 0,
     status: 'active',
     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
   };
@@ -50,7 +50,7 @@ export const INITIAL_USERS: User[] = [
     role: 'superadmin',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     phone: '+63 917 555 0101',
-    demeritPoints: 0,
+    demerits: 0,
     status: 'active',
   },
   occupant('305', 1, 'Acuña, Cris Jeiden C.', 'cris.acuna@dorm.edu'),

@@ -27,7 +27,7 @@ export function Segmented<T extends string>({
   const sizing = size === 'sm' ? 'px-2.5 py-1.5 text-[11px] rounded-lg' : 'px-3 py-2.5 text-xs rounded-xl';
 
   return (
-    <div role="tablist" aria-label={ariaLabel} className={`flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
+    <div role="tablist" aria-label={ariaLabel} className={`flex flex-wrap gap-1.5 ${className}`}>
       {options.map(option => {
         const Icon = option.icon;
         const active = option.value === value;
@@ -38,11 +38,11 @@ export function Segmented<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(option.value)}
-            className={`flex-1 min-w-fit min-h-touch flex items-center justify-center gap-1.5 font-semibold whitespace-nowrap transition-all active:scale-[0.98] ${sizing} ${
+            className={`flex-1 basis-32 min-h-touch flex items-center justify-center gap-1.5 text-center font-semibold transition-all active:scale-[0.98] ${sizing} ${
               active ? option.activeClass || 'bg-slate-100 text-slate-900' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
-            {Icon && <Icon className="w-4 h-4" />}
+            {Icon && <Icon className="w-4 h-4 shrink-0" />}
             <span>{option.label}</span>
           </button>
         );

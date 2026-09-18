@@ -44,7 +44,7 @@ const STATUS_META: Record<UnauthorizedExitLog['status'], { label: string; classe
  * The register of residents found off campus with no gate pass — the record
  * kept when someone simply walked out. It is filed room by room from the
  * resident's own row, the way a pass is issued, and every confirmed exit puts a
- * point on that resident's standing until the Dean excuses it.
+ * demerit on that resident's standing until the Dean excuses it.
  */
 export const UnauthorizedExitView: React.FC = () => {
   const {
@@ -147,12 +147,12 @@ export const UnauthorizedExitView: React.FC = () => {
 
   const excuse = (exit: UnauthorizedExitLog) => {
     const reason = window.prompt(
-      `Why is ${exit.studentName}'s exit excused?\n\nThe point it carries is withdrawn.`,
+      `Why is ${exit.studentName}'s exit excused?\n\nThe demerit it carries is withdrawn.`,
       exit.excuseReason || 'Leave was on file after all',
     );
     if (reason === null) return;
     updateUnauthorizedExit(exit.id, { status: 'excused', excuseReason: reason || undefined });
-    flash(`${exit.studentName}'s exit excused — the point is withdrawn.`);
+    flash(`${exit.studentName}'s exit excused — the demerit is withdrawn.`);
   };
 
   const reconfirm = (exit: UnauthorizedExitLog) => {
@@ -165,15 +165,15 @@ export const UnauthorizedExitView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <h2 className="text-base sm:text-lg font-bold text-white">Off-Campus Without Pass</h2>
-            <span className="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap">
               Unauthorized Exit
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
             Room by room, record a resident who left campus with no gate pass on file. Each confirmed exit is
-            1 pt and a dean inquiry; excuse it and the point is withdrawn.
+            1 demerit and a dean inquiry; excuse it and the demerit is withdrawn.
           </p>
         </div>
 
@@ -543,7 +543,7 @@ export const UnauthorizedExitView: React.FC = () => {
 
               <p className="text-[11px] text-slate-500 flex items-start gap-1.5">
                 <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                Filing this puts 1 pt on the resident's standing and calls for a dean inquiry with the parents.
+                Filing this puts 1 demerit on the resident's standing and calls for a dean inquiry with the parents.
                 Excuse the record later if leave turns out to have been on file.
               </p>
 

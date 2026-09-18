@@ -201,7 +201,7 @@ export const CurfewLightsOutView: React.FC = () => {
           <div>
             <div className="flex items-center flex-wrap gap-2">
               <h2 className="text-base sm:text-lg font-bold text-white">Curfew & Mandatory Lights-Out</h2>
-              <span className="text-[11px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-[11px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap">
                 Night Routine
               </span>
             </div>

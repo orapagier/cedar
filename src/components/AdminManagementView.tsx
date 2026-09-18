@@ -18,6 +18,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { UserRole } from '../types/dorm';
+import { demeritLabel } from '../utils/checkViolations';
 
 export const AdminManagementView: React.FC = () => {
   const { users, currentUser, updateUserRole, addAdminUser, removeAdminUser, isSuperAdmin } = useDorm();
@@ -85,9 +86,9 @@ export const AdminManagementView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <h2 className="text-lg font-bold text-white">Admin Staff & Role-Based Access Control (RBAC)</h2>
-            <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap">
               Dean Authority
             </span>
           </div>
@@ -234,8 +235,8 @@ export const AdminManagementView: React.FC = () => {
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
                   {user.roomNumber ? `Room ${user.roomNumber}` : 'Faculty / Staff'} ·{' '}
-                  <span className={`font-bold ${user.demeritPoints > 5 ? 'text-rose-400' : 'text-slate-300'}`}>
-                    {user.demeritPoints} pts
+                  <span className={`font-bold ${user.demerits > 5 ? 'text-rose-400' : 'text-slate-300'}`}>
+                    {demeritLabel(user.demerits)}
                   </span>
                 </p>
                 <div className="mt-2">
@@ -287,7 +288,7 @@ export const AdminManagementView: React.FC = () => {
                 <th className="p-3.5">User Details</th>
                 <th className="p-3.5">Room / Staff</th>
                 <th className="p-3.5">Current Role</th>
-                <th className="p-3.5">Points</th>
+                <th className="p-3.5">Demerits</th>
                 <th className="p-3.5">RBAC Action</th>
               </tr>
             </thead>
@@ -315,8 +316,8 @@ export const AdminManagementView: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-3.5">
-                      <span className={`font-bold ${user.demeritPoints > 5 ? 'text-rose-400' : 'text-slate-300'}`}>
-                        {user.demeritPoints} pts
+                      <span className={`font-bold ${user.demerits > 5 ? 'text-rose-400' : 'text-slate-300'}`}>
+                        {demeritLabel(user.demerits)}
                       </span>
                     </td>
                     <td className="p-3.5">

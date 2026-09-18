@@ -162,7 +162,7 @@ export const WorshipAttendanceView: React.FC = () => {
           }`
         : filed === 1 && records.length === 1
           ? `${records[0].studentName} logged for ${service}.`
-          : `Filed ${filed} ${filed === 1 ? 'record' : 'records'} for ${service}.${already} Missing Bibles, improper attire and unexcused absences were each logged as 1 pt.`
+          : `Filed ${filed} ${filed === 1 ? 'record' : 'records'} for ${service}.${already} Missing Bibles, improper attire and unexcused absences were each logged as 1 demerit.`
     );
     setTimeout(() => setSavedMessage(null), 5000);
   };
@@ -181,7 +181,7 @@ export const WorshipAttendanceView: React.FC = () => {
           <div>
             <div className="flex items-center flex-wrap gap-2">
               <h2 className="text-base sm:text-lg font-bold text-white">Worship, Bibles & Church</h2>
-              <span className="text-[11px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-[11px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap">
                 Devotional Policy
               </span>
             </div>
@@ -249,7 +249,7 @@ export const WorshipAttendanceView: React.FC = () => {
             </select>
           </div>
 
-          <div className="p-3 sm:p-4 flex items-center justify-between gap-3 border-b border-slate-800/70">
+          <div className="p-3 sm:p-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-b border-slate-800/70">
             <div className="text-xs text-slate-400">
               <span className="font-semibold text-white">{allRooms ? 'All rooms' : `Room ${selectedRoom || '—'}`}</span>
               {!allRooms && selectedWing ? ` · ${selectedWing}` : ''} · {roomOccupants.length} residents
@@ -262,7 +262,7 @@ export const WorshipAttendanceView: React.FC = () => {
             {canEdit && roomOccupants.length > 0 && (
               <button
                 onClick={markRoomAllPresent}
-                className="min-h-touch px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 text-xs font-semibold flex items-center gap-1.5"
+                className="shrink-0 min-h-touch px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 text-xs font-semibold whitespace-nowrap flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
                 Mark all present

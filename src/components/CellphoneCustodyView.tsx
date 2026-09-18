@@ -272,7 +272,7 @@ export const CellphoneCustodyView: React.FC = () => {
       category: 'cellphone_policy_breach',
       severity: 'major',
       description: `Device confiscation (${c.deviceModel}): ${reason}`,
-      demeritPoints: 1,
+      demerits: 1,
       reportedBy: currentUser.name,
       status: 'confirmed',
       actionRequired: 'Confiscated until end of term + Dean interview with parent.',
@@ -332,9 +332,9 @@ export const CellphoneCustodyView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <h2 className="text-base sm:text-lg font-bold text-white">Phone Vault Custody</h2>
-            <span className="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap">
               Digital Well-Being
             </span>
           </div>
