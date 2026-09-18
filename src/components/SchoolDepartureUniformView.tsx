@@ -33,7 +33,7 @@ const FIELD =
 const ALL_ROOMS = '__all__';
 
 export const SchoolDepartureUniformView: React.FC = () => {
-  const { uniformLogs, users, rooms, saveUniformLog, canEdit, currentUser, settings } = useDorm();
+  const { uniformLogs, users, rooms, saveUniformLog, canEdit, isSuperAdmin, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
   const today = useManilaToday();
@@ -132,21 +132,41 @@ export const SchoolDepartureUniformView: React.FC = () => {
     };
   };
 
+  /** Residents this run has no gate clearance for yet. */
+  const stillToTake = () => roomOccupants.filter(o => !loggedFor(o.id));
+
   const submitRoom = () => {
     if (!canEdit || !roomOccupants.length) return;
-    roomOccupants.forEach(student => saveUniformLog(buildLog(student)));
+    const total = stillToTake().reduce(
+      (acc, student) => {
+        const r = saveUniformLog(buildLog(student));
+        return { filed: acc.filed + r.filed, kept: acc.kept + r.kept };
+      },
+      { filed: 0, kept: 0 }
+    );
     setRemarks('');
-    flash(`Saved ${session} gate clearance for ${roomOccupants.length} residents in Room ${selectedRoom}.`);
+    flash(
+      total.filed === 0
+        ? `Room ${selectedRoom} is already cleared for the ${session} run — nothing changed.`
+        : `Saved ${session} gate clearance for ${total.filed} ${total.filed === 1 ? 'resident' : 'residents'} in Room ${selectedRoom}.`
+    );
   };
 
   /** One resident cleared on his own, at the moment he goes through the gate. */
   const submitStudent = (student: (typeof occupants)[number]) => {
     if (!canEdit) return;
-    saveUniformLog(buildLog(student));
+    const { filed } = saveUniformLog(buildLog(student));
     flash(
-      `${student.name} cleared for the ${session} run at ${formatTime12h(departureTime)}. Saving the name again corrects this record rather than filing a second departure.`
+      filed
+        ? `${student.name} cleared for the ${session} run at ${formatTime12h(departureTime)}.`
+        : `${student.name} is already cleared for the ${session} run — how he went out the gate stands.${
+            isSuperAdmin ? ' Use the pencil on his row to correct it.' : ' Ask the Dean to correct it.'
+          }`
     );
   };
+
+  const clearedCount = roomOccupants.filter(o => loggedFor(o.id)).length;
+  const remaining = roomOccupants.length - clearedCount;
 
   const checklist = [
     { key: 'uniform' as const, label: 'Uniform', desc: 'Ironed & tucked in', icon: Shirt },
@@ -289,7 +309,25 @@ export const SchoolDepartureUniformView: React.FC = () => {
                   )}
                 </div>
 
-                {canEdit ? (
+                {logged ? (
+                  // This run already holds his clearance; the Dean's pencil is
+                  // what changes it.
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {checklist.map(item => (
+                      <span key={item.key} className={`px-2 py-1 rounded text-[10px] font-semibold flex items-center gap-1 ${
+                        flags[item.key] ? 'bg-emerald-950/70 text-emerald-300' : 'bg-rose-950/70 text-rose-300'
+                      }`}>
+                        {flags[item.key] ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                        {item.label}
+                      </span>
+                    ))}
+                    <span className="text-[11px] text-slate-500 flex items-center gap-1 ml-1">
+                      <Lock className="w-3.5 h-3.5" />
+                      On file
+                    </span>
+                    <RecordOverrideControls kind="uniform" record={logged} />
+                  </div>
+                ) : canEdit ? (
                   <div className="flex flex-wrap gap-1.5">
                     {checklist.map(item => {
                       const Icon = item.icon;
@@ -349,16 +387,19 @@ export const SchoolDepartureUniformView: React.FC = () => {
           <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
             <button
               onClick={submitRoom}
-              className="w-full min-h-touch bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
+              disabled={remaining === 0}
+              className="w-full min-h-touch bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99] disabled:active:scale-100"
             >
               <Save className="w-4 h-4" />
               <span>
-                Save All · {allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`}{' '}
-                {session === 'morning' ? 'Morning' : 'Afternoon'} Departure
+                {remaining === 0
+                  ? `${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`} ${session === 'morning' ? 'Morning' : 'Afternoon'} Run Cleared`
+                  : `Clear the Remaining ${remaining} · ${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`}`}
               </span>
             </button>
             <p className="text-[11px] text-slate-500 text-center mt-2">
-              Or clear each resident at the gate as he leaves — a room rarely goes out together.
+              Clear each resident at the gate as he leaves, or sweep whoever is left. This run holds one
+              clearance per resident — how he actually went out the gate stands.
             </p>
           </div>
         )}

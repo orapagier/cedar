@@ -182,11 +182,11 @@ interface DormContextType {
   // Actions
   loginWithGoogle: (session: { email: string; name: string; avatar?: string }) => void;
   updateUserRole: (userId: string, newRole: UserRole) => { success: boolean; message: string };
-  addInspection: (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => void;
-  saveAttendanceBatch: (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => void;
-  saveCurfewRecord: (rec: Omit<CurfewRecord, 'id'>) => void;
-  saveUniformLog: (log: Omit<SchoolUniformLog, 'id'>) => void;
-  saveStudyLog: (log: Omit<StudyHoursLog, 'id'>) => void;
+  addInspection: (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => CheckSaveResult;
+  saveAttendanceBatch: (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => CheckSaveResult;
+  saveCurfewRecord: (rec: Omit<CurfewRecord, 'id'>) => CheckSaveResult;
+  saveUniformLog: (log: Omit<SchoolUniformLog, 'id'>) => CheckSaveResult;
+  saveStudyLog: (log: Omit<StudyHoursLog, 'id'>) => CheckSaveResult;
   /** Roster a room as the day's cleaning crew (one room per day). */
   assignCleaningDuty: (date: string, roomNumber: string) => void;
   /** Record who helped and how clean the work was; logs the day's violations. */
@@ -197,12 +197,12 @@ interface DormContextType {
     rating: number;
     garbageDisposed: boolean;
     remarks?: string;
-  }) => void;
-  saveLightsOutLog: (log: Omit<LightsOutLog, 'id'>) => void;
+  }) => CheckSaveResult;
+  saveLightsOutLog: (log: Omit<LightsOutLog, 'id'>) => CheckSaveResult;
   updateCellphoneStatus: (id: string, updates: Partial<CellphoneCustody>) => void;
   /** Mark a resident as keeping no phone in the dorm, or undo that. */
   setPhoneExemption: (studentId: string, exempt: boolean) => void;
-  savePhoneDepositBatch: (records: Omit<PhoneDepositLog, 'id'>[]) => void;
+  savePhoneDepositBatch: (records: Omit<PhoneDepositLog, 'id'>[], options?: { replace?: boolean }) => CheckSaveResult;
   /** Sign a deposited phone back out to its owner for a while. */
   savePhoneBorrow: (entry: Omit<PhoneBorrowLog, 'id' | 'status' | 'returnedDate' | 'returnedTime'>) => void;
   /** Take a borrowed phone back into the vault. */
@@ -232,6 +232,22 @@ interface DormContextType {
   archiveRecordsBefore: (cutoff: string) => { archive: Record<string, unknown[]>; archivedCount: number };
   resetAllData: () => void;
 }
+
+/**
+ * What a scheduled check's save actually did. A check belongs to a point in the
+ * schedule — 5 AM worship on a given day, tonight's curfew, this vault cycle —
+ * and that point holds one record. Saving it again leaves the record that is
+ * already there alone, so `kept` counts the checks that were not overwritten.
+ * Correcting a filed check is the Dean's edit, never a second save.
+ */
+export interface CheckSaveResult {
+  /** Records newly written by this save. */
+  filed: number;
+  /** Checks left as they were, because the schedule already held a record. */
+  kept: number;
+}
+
+const NOTHING_SAVED: CheckSaveResult = { filed: 0, kept: 0 };
 
 const DormContext = createContext<DormContextType | null>(null);
 
@@ -786,81 +802,93 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   /** Drop everything one record put on a resident's standing. */
   const clearViolationsFrom = (sourceId: string) => syncViolationsFor(sourceId, []);
 
-  const addInspection = (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => {
-    if (!canEdit) return;
+  // One inspection per room per day. A room walked twice keeps the verdict from
+  // the first walk; changing it is the Dean's edit, not a second inspection.
+  const addInspection = (insp: Omit<RoomInspection, 'id' | 'timestamp'>): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
+    if (inspections.some(i => i.roomNumber === insp.roomNumber && i.date === insp.date)) {
+      return { filed: 0, kept: 1 };
+    }
     const record: RoomInspection = {
       ...insp,
-      id: 'insp-' + Date.now(),
+      id: `insp-${insp.date}-${insp.roomNumber}`,
       timestamp: manilaTime(),
     };
     setInspections(prev => [record, ...prev]);
     syncViolationsFor(record.id, inspectionDrafts(record, roomMembers(record.roomNumber)));
+    return { filed: 1, kept: 0 };
   };
 
-  // One roll call per resident per service per date. Residents rarely leave for
-  // church as a room, so a name saved on its own and then again in the room's
-  // sweep corrects the record already on file instead of filing a second one.
-  const saveAttendanceBatch = (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => {
-    if (!canEdit) return;
+  // One roll call per resident per service per date: 5 AM worship on a given
+  // morning is one check, however many times it is saved. A resident already
+  // logged for that service keeps the record he has — a boy marked present as
+  // he left is not made absent by a later sweep of his room — and the ids are
+  // derived from the service itself, so the same roll call taken on two devices
+  // lands on one record rather than two.
+  const saveAttendanceBatch = (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
     const timeStr = manilaTime();
-    const sameRollCall = (a: { studentId: string; date: string; type: WorshipType }, b: typeof a) =>
-      a.studentId === b.studentId && a.date === b.date && a.type === b.type;
-    const formatted: AttendanceRecord[] = records.map(r => ({
-      ...r,
-      // Keeping the id a record already has carries its points, its redemptions
-      // and its correction stamp over; a new one is derived so the same roll
-      // call taken on two devices lands on one record rather than two.
-      id: attendance.find(a => sameRollCall(a, r))?.id ?? `att-${r.date}-${r.type}-${r.studentId}`,
-      timestamp: timeStr,
-    }));
-    const superseded = (a: AttendanceRecord) => formatted.some(r => sameRollCall(a, r));
-    setAttendance(prev => [...formatted, ...prev.filter(a => !superseded(a))]);
+    const onFile = new Set(attendance.map(a => `${a.date}|${a.type}|${a.studentId}`));
+    const formatted: AttendanceRecord[] = [];
+    let kept = 0;
+    records.forEach(r => {
+      const key = `${r.date}|${r.type}|${r.studentId}`;
+      if (onFile.has(key)) {
+        kept += 1;
+        return;
+      }
+      onFile.add(key);
+      formatted.push({ ...r, id: `att-${r.date}-${r.type}-${r.studentId}`, timestamp: timeStr });
+    });
+    if (!formatted.length) return { filed: 0, kept };
+    setAttendance(prev => [...formatted, ...prev]);
     // Unexcused absences, missing Bibles and improper attire are each 1 pt.
     formatted.forEach(r => syncViolationsFor(r.id, attendanceDrafts(r)));
+    return { filed: formatted.length, kept };
   };
 
-  // One check-in per resident per night, so residents drifting back in ones and
-  // twos can each be logged as they arrive without doubling anyone's record.
-  const saveCurfewRecord = (rec: Omit<CurfewRecord, 'id'>) => {
-    if (!canEdit) return;
-    const sameNight = (c: { studentId: string; date: string }) =>
-      c.studentId === rec.studentId && c.date === rec.date;
-    const record: CurfewRecord = {
-      ...rec,
-      id: curfewRecords.find(sameNight)?.id ?? `cur-${rec.date}-${rec.studentId}`,
-    };
-    setCurfewRecords(prev => [record, ...prev.filter(c => !sameNight(c))]);
+  // One check-in per resident per night. Residents drift back in ones and twos
+  // and each is logged as he arrives; the time he actually came in is the one
+  // that stands, whatever a later sweep of his room says.
+  const saveCurfewRecord = (rec: Omit<CurfewRecord, 'id'>): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
+    if (curfewRecords.some(c => c.studentId === rec.studentId && c.date === rec.date)) {
+      return { filed: 0, kept: 1 };
+    }
+    const record: CurfewRecord = { ...rec, id: `cur-${rec.date}-${rec.studentId}` };
+    setCurfewRecords(prev => [record, ...prev]);
     syncViolationsFor(record.id, curfewDrafts(record));
+    return { filed: 1, kept: 0 };
   };
 
-  // One gate clearance per resident per run. Boys leave for school as they are
-  // ready rather than by room, so each is cleared on his own and a re-check
-  // replaces his record instead of stacking a second departure.
-  const saveUniformLog = (log: Omit<SchoolUniformLog, 'id'>) => {
-    if (!canEdit) return;
+  // One gate clearance per resident per run, morning and afternoon each being
+  // their own check. How he was turned out as he actually went through the gate
+  // is what stands; a second pass over his room does not re-clear him.
+  const saveUniformLog = (log: Omit<SchoolUniformLog, 'id'>): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
     const session = log.session ?? 'morning';
-    const sameRun = (u: SchoolUniformLog) =>
-      u.studentId === log.studentId && u.date === log.date && (u.session ?? 'morning') === session;
-    const record: SchoolUniformLog = {
-      ...log,
-      id: uniformLogs.find(sameRun)?.id ?? `uni-${log.date}-${session}-${log.studentId}`,
-    };
-    setUniformLogs(prev => [record, ...prev.filter(u => !sameRun(u))]);
+    const filed = uniformLogs.some(
+      u => u.studentId === log.studentId && u.date === log.date && (u.session ?? 'morning') === session
+    );
+    if (filed) return { filed: 0, kept: 1 };
+    const record: SchoolUniformLog = { ...log, id: `uni-${log.date}-${session}-${log.studentId}` };
+    setUniformLogs(prev => [record, ...prev]);
     syncViolationsFor(record.id, uniformDrafts(record));
+    return { filed: 1, kept: 0 };
   };
 
-  // One study check per resident per evening, so a hall filling up over the
-  // first half hour can be taken name by name and corrected as boys arrive.
-  const saveStudyLog = (log: Omit<StudyHoursLog, 'id'>) => {
-    if (!canEdit) return;
-    const sameEvening = (l: { studentId: string; date: string }) =>
-      l.studentId === log.studentId && l.date === log.date;
-    const record: StudyHoursLog = {
-      ...log,
-      id: studyLogs.find(sameEvening)?.id ?? `sty-${log.date}-${log.studentId}`,
-    };
-    setStudyLogs(prev => [record, ...prev.filter(l => !sameEvening(l))]);
+  // One study check per resident per evening. A hall filling over the first half
+  // hour is taken name by name, and the check taken when he arrived is the one
+  // that stands.
+  const saveStudyLog = (log: Omit<StudyHoursLog, 'id'>): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
+    if (studyLogs.some(l => l.studentId === log.studentId && l.date === log.date)) {
+      return { filed: 0, kept: 1 };
+    }
+    const record: StudyHoursLog = { ...log, id: `sty-${log.date}-${log.studentId}` };
+    setStudyLogs(prev => [record, ...prev]);
     syncViolationsFor(record.id, studyDrafts(record));
+    return { filed: 1, kept: 0 };
   };
 
   // The cleaning rotation runs one crew per day, so rostering a room takes over
@@ -915,10 +943,14 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     rating: number;
     garbageDisposed: boolean;
     remarks?: string;
-  }) => {
-    if (!canEdit) return;
+  }): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
     const existing = cleaningDuties.find(d => d.date === entry.date);
-    const dutyId = existing?.id ?? 'clean-' + Date.now();
+    // Rostering the day and checking the work are two halves of one record, so
+    // an assigned day is still waiting to be checked. A day already checked
+    // keeps the verdict it was given.
+    if (existing?.status === 'completed') return { filed: 0, kept: 1 };
+    const dutyId = existing?.id ?? `clean-${entry.date}`;
 
     const completed: CleaningDutyRecord = {
       id: dutyId,
@@ -937,16 +969,21 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       prev.some(d => d.id === dutyId) ? prev.map(d => (d.id === dutyId ? completed : d)) : [completed, ...prev]
     );
 
-    // Correcting a day that was already checked replaces the violations that
-    // check produced, so nobody is charged twice for the same cleaning day.
     syncViolationsFor(dutyId, cleaningDrafts(completed));
+    return { filed: 1, kept: 0 };
   };
 
-  const saveLightsOutLog = (log: Omit<LightsOutLog, 'id'>) => {
-    if (!canEdit) return;
-    const record: LightsOutLog = { ...log, id: 'lo-' + Date.now() };
+  // One lights-out round per room per night. Walking a corridor twice keeps
+  // what the first round found.
+  const saveLightsOutLog = (log: Omit<LightsOutLog, 'id'>): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
+    if (lightsOutLogs.some(l => l.roomNumber === log.roomNumber && l.date === log.date)) {
+      return { filed: 0, kept: 1 };
+    }
+    const record: LightsOutLog = { ...log, id: `lo-${log.date}-${log.roomNumber}` };
     setLightsOutLogs(prev => [record, ...prev]);
     syncViolationsFor(record.id, lightsOutDrafts(record, roomMembers(record.roomNumber)));
+    return { filed: 1, kept: 0 };
   };
 
   const updateCellphoneStatus = (id: string, updates: Partial<CellphoneCustody>) => {
@@ -992,29 +1029,48 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  // A room's deposit roll call. Every check is filed against the vault cycle it
-  // falls in — one record per resident per cycle — so re-running a room
-  // replaces its own records instead of stacking new ones.
-  const savePhoneDepositBatch = (records: Omit<PhoneDepositLog, 'id'>[]) => {
-    if (!canEdit) return;
+  /**
+   * A room's deposit roll call. Every check is filed against the vault cycle it
+   * falls in — one record per resident per cycle — and the hand-over already on
+   * file stands, so re-running a room does not re-time anybody's deposit.
+   *
+   * Two things still write over a record. `replace` is the deliberate act, the
+   * Dean excusing a resident from the cycle. And a record the deadline logged
+   * on its own yields to a real check: the sweep only ever guessed that a
+   * silent resident had not handed his phone in, and a phone turning up late
+   * is what actually happened.
+   */
+  const savePhoneDepositBatch = (
+    records: Omit<PhoneDepositLog, 'id'>[],
+    options?: { replace?: boolean }
+  ): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
 
     // Anything handed in past the deadline is late, whatever the dean tapped.
-    const resolved: PhoneDepositLog[] = records.map(r => {
+    const all: PhoneDepositLog[] = records.map(r => {
       const cycleDate = r.cycleDate ?? vaultCycle(r.date, r.depositTime, settings).deadlineDate;
       const late = r.status === 'deposited' && isLateDeposit(r.date, r.depositTime, settings);
       return { ...r, cycleDate, status: late ? 'late' : r.status, id: `dep-${r.studentId}-${cycleDate}` };
     });
+
+    const heldByAPerson = (r: PhoneDepositLog) =>
+      phoneDeposits.some(
+        d => d.studentId === r.studentId && (d.cycleDate ?? d.date) === r.cycleDate && !d.autoLogged
+      );
+    const resolved = options?.replace ? all : all.filter(r => !heldByAPerson(r));
+    const kept = all.length - resolved.length;
+    if (!resolved.length) return { filed: 0, kept };
 
     const supersedes = (d: PhoneDepositLog) =>
       resolved.some(r => r.studentId === d.studentId && (d.cycleDate ?? d.date) === r.cycleDate);
     setPhoneDeposits(prev => [...resolved, ...prev.filter(d => !supersedes(d))]);
     applyDepositsToCustody(resolved);
 
-    // A re-check replaces its own verdict rather than piling points on.
     const dueLabel = describeCyclePoint(settings.phoneDepositDay, settings.phoneDepositTime);
     resolved.forEach(r =>
       syncViolationsFor(violationSourceId('phoneDeposit', r), phoneDepositDrafts(r, dueLabel))
     );
+    return { filed: resolved.length, kept };
   };
 
   /**

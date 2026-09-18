@@ -19,7 +19,8 @@ import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { RoomInspection, OccupantInspectionCheck } from '../types/dorm';
-import { manilaToday, formatFullDate } from '../utils/date';
+import { formatFullDate } from '../utils/date';
+import { useManilaToday } from '../hooks/useManilaToday';
 
 const INDIVIDUAL_ITEMS: { key: 'bedsOk' | 'lockersOk' | 'personalThingsOk'; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'bedsOk', label: 'Bed & Bedding', sub: 'Hospital corners, no dirty clothes', icon: BedDouble },
@@ -30,6 +31,12 @@ const INDIVIDUAL_ITEMS: { key: 'bedsOk' | 'lockersOk' | 'personalThingsOk'; labe
 export const RoomInspectionsView: React.FC = () => {
   const { inspections, rooms, users, addInspection, canEdit, isSuperAdmin, currentUser } = useDorm();
   const [showModal, setShowModal] = useState(false);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const today = useManilaToday();
+
+  /** A room is walked once a day; this is that walk, if it has happened. */
+  const inspectedToday = (roomNumber: string) =>
+    inspections.find(i => i.roomNumber === roomNumber && i.date === today);
 
   const occupantsIn = (roomNumber: string) =>
     users.filter(
@@ -102,8 +109,8 @@ export const RoomInspectionsView: React.FC = () => {
       personalThingsOk: (occupantState[o.id] ?? { bedsOk: true, lockersOk: true, personalThingsOk: true }).personalThingsOk,
     }));
 
-    addInspection({
-      date: manilaToday(),
+    const { filed } = addInspection({
+      date: today,
       roomNumber: selectedRoom,
       inspectorName: currentUser.name,
       inspectorId: currentUser.id,
@@ -120,6 +127,14 @@ export const RoomInspectionsView: React.FC = () => {
 
     setShowModal(false);
     setRemarks('');
+    setSavedMessage(
+      filed
+        ? `Room ${selectedRoom} scored ${currentScore}/100 — ${currentStatus.toUpperCase()}.`
+        : `Room ${selectedRoom} was already inspected today — that score stands.${
+            isSuperAdmin ? ' Correct it with the pencil on the record below.' : ' Ask the Dean to correct it.'
+          }`
+    );
+    setTimeout(() => setSavedMessage(null), 5000);
   };
 
   return (
@@ -141,10 +156,11 @@ export const RoomInspectionsView: React.FC = () => {
         {canEdit ? (
           <button
             onClick={() => openInspect(selectedRoom)}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md self-start sm:self-auto"
+            disabled={!!inspectedToday(selectedRoom)}
+            className="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-bold px-4 py-2 min-h-touch rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md self-start sm:self-auto"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>Score Room Inspection</span>
+            <span>{inspectedToday(selectedRoom) ? `Room ${selectedRoom} Done Today` : 'Score Room Inspection'}</span>
           </button>
         ) : (
           <div className="bg-slate-800 border border-slate-700 text-slate-400 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5">
@@ -153,6 +169,13 @@ export const RoomInspectionsView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {savedMessage && (
+        <div className="p-3 bg-emerald-950/70 border border-emerald-600 text-emerald-300 rounded-xl text-xs flex items-start gap-2">
+          <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{savedMessage}</span>
+        </div>
+      )}
 
       {/* Room Summary Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -189,9 +212,10 @@ export const RoomInspectionsView: React.FC = () => {
                 {canEdit && (
                   <button
                     onClick={() => openInspect(room.roomNumber)}
-                    className="shrink-0 min-h-touch px-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-[11px] font-semibold"
+                    disabled={!!inspectedToday(room.roomNumber)}
+                    className="shrink-0 min-h-touch px-2.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 disabled:cursor-not-allowed text-amber-300 border border-slate-700 rounded-lg text-[11px] font-semibold"
                   >
-                    Inspect
+                    {inspectedToday(room.roomNumber) ? 'Done today' : 'Inspect'}
                   </button>
                 )}
               </div>

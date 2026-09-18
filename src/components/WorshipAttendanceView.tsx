@@ -49,7 +49,7 @@ const FIELD =
 const ALL_ROOMS = '__all__';
 
 export const WorshipAttendanceView: React.FC = () => {
-  const { users, rooms, attendance, saveAttendanceBatch, canEdit, currentUser, settings } = useDorm();
+  const { users, rooms, attendance, saveAttendanceBatch, canEdit, isSuperAdmin, currentUser, settings } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
   const SESSIONS = WORSHIP_SESSIONS.map(session => {
@@ -114,10 +114,13 @@ export const WorshipAttendanceView: React.FC = () => {
     setRoster(prev => ({ ...prev, [id]: { ...(prev[id] ?? getEntry(id)), [field]: value } }));
   };
 
+  /** Residents this service has no record for yet — all that a sweep can file. */
+  const stillToTake = () => roomOccupants.filter(o => !filedFor(o.id));
+
   const markRoomAllPresent = () => {
     setRoster(prev => {
       const next = { ...prev };
-      roomOccupants.forEach(o => {
+      stillToTake().forEach(o => {
         next[o.id] = { ...DEFAULT_ENTRY };
       });
       return next;
@@ -147,17 +150,25 @@ export const WorshipAttendanceView: React.FC = () => {
       })
       .filter(Boolean) as Parameters<typeof saveAttendanceBatch>[0];
 
-    saveAttendanceBatch(records);
+    const { filed, kept } = saveAttendanceBatch(records);
     const service = SESSIONS.find(s => s.id === sessionType)?.short;
+    const already = kept
+      ? ` ${kept} ${kept === 1 ? 'was' : 'were'} already on file for this service and ${kept === 1 ? 'was' : 'were'} left as taken.`
+      : '';
     setSavedMessage(
-      records.length === 1
-        ? `${records[0].studentName} logged for ${service}. Saving the name again corrects this record rather than filing a second one.`
-        : `Saved ${records.length} records for ${service}. Missing Bibles, improper attire and unexcused absences were each logged as 1 pt.`
+      filed === 0
+        ? `Already on file for ${service} — nothing changed.${
+            isSuperAdmin ? ' Use the pencil on the row to correct a record.' : ' Ask the Dean to correct a record.'
+          }`
+        : filed === 1 && records.length === 1
+          ? `${records[0].studentName} logged for ${service}.`
+          : `Filed ${filed} ${filed === 1 ? 'record' : 'records'} for ${service}.${already} Missing Bibles, improper attire and unexcused absences were each logged as 1 pt.`
     );
-    setTimeout(() => setSavedMessage(null), 4000);
+    setTimeout(() => setSavedMessage(null), 5000);
   };
 
   const loggedCount = roomOccupants.filter(o => filedFor(o.id)).length;
+  const remaining = roomOccupants.length - loggedCount;
 
   const historyForSession = attendance.filter(a => a.type === sessionType);
   const selectedWing = rooms.find(r => r.roomNumber === selectedRoom)?.wing;
@@ -284,7 +295,23 @@ export const WorshipAttendanceView: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-                    {canEdit ? (
+                    {filed ? (
+                      // The service already holds this resident's check. It reads
+                      // as taken, and only the Dean's pencil changes it.
+                      <>
+                        <span title="Bible in hand" className={`w-9 h-9 rounded-lg flex items-center justify-center ${filed.broughtBible ? 'bg-blue-950 text-blue-300' : 'bg-rose-950 text-rose-300'}`}>
+                          <BookOpen className="w-4 h-4" />
+                        </span>
+                        <span title="Proper worship attire" className={`w-9 h-9 rounded-lg flex items-center justify-center ${filed.properAttire === false ? 'bg-rose-950 text-rose-300' : 'bg-violet-950 text-violet-300'}`}>
+                          <Shirt className="w-4 h-4" />
+                        </span>
+                        <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                          <Lock className="w-3.5 h-3.5" />
+                          On file
+                        </span>
+                        <RecordOverrideControls kind="attendance" record={filed} />
+                      </>
+                    ) : canEdit ? (
                       <>
                         <div className="flex gap-1.5 flex-1 sm:flex-none">
                           {(Object.keys(STATUS_META) as AttendanceStatus[]).map(status => {
@@ -369,14 +396,20 @@ export const WorshipAttendanceView: React.FC = () => {
           {canEdit && roomOccupants.length > 0 && (
             <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
               <button
-                onClick={() => saveAttendance(roomOccupants.map(o => o.id))}
-                className="w-full min-h-touch bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
+                onClick={() => saveAttendance(stillToTake().map(o => o.id))}
+                disabled={remaining === 0}
+                className="w-full min-h-touch bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99] disabled:active:scale-100"
               >
                 <Save className="w-4 h-4" />
-                <span>Save All · {allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`} Roll Call</span>
+                <span>
+                  {remaining === 0
+                    ? `${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`} Roll Call Complete`
+                    : `Save the Remaining ${remaining} · ${allRooms ? 'Whole Dormitory' : `Room ${selectedRoom}`}`}
+                </span>
               </button>
               <p className="text-[11px] text-slate-500 text-center mt-2">
-                Or save each resident on their own as they leave for church — the room does not have to go together.
+                Save each resident as they leave for church, or sweep whoever is left. This service holds one
+                record per resident — a name already taken keeps the check it was given.
               </p>
             </div>
           )}

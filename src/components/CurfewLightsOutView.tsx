@@ -20,7 +20,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { Segmented } from './ui/Segmented';
-import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
+import { formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 
 type CurfewStatus = 'in_dorm' | 'late' | 'missing' | 'official_pass';
@@ -47,6 +47,7 @@ export const CurfewLightsOutView: React.FC = () => {
     saveCurfewRecord,
     saveLightsOutLog,
     canEdit,
+    isSuperAdmin,
     currentUser,
     settings,
   } = useDorm();
@@ -98,10 +99,13 @@ export const CurfewLightsOutView: React.FC = () => {
     setRoomStatuses(prev => ({ ...prev, [id]: status }));
   };
 
+  /** Residents tonight has no check-in for yet. */
+  const stillToTake = () => roomOccupants.filter(o => !filedFor(o.id));
+
   const markRoomInDorm = () => {
     setRoomStatuses(prev => {
       const next = { ...prev };
-      roomOccupants.forEach(o => {
+      stillToTake().forEach(o => {
         next[o.id] = 'in_dorm';
       });
       return next;
@@ -122,31 +126,47 @@ export const CurfewLightsOutView: React.FC = () => {
 
   const handleRoomSubmit = () => {
     if (!canEdit || !roomOccupants.length) return;
-    roomOccupants.forEach(student => {
-      saveCurfewRecord(buildRecord(student, statusFor(student.id)));
-    });
+    const total = stillToTake().reduce(
+      (acc, student) => {
+        const r = saveCurfewRecord(buildRecord(student, statusFor(student.id)));
+        return { filed: acc.filed + r.filed, kept: acc.kept + r.kept };
+      },
+      { filed: 0, kept: 0 }
+    );
     setCurfewRemarks('');
-    flash(`Checked in ${roomOccupants.length} residents in Room ${selectedRoom}.`);
+    flash(
+      total.filed === 0
+        ? `Room ${selectedRoom} is already checked in for tonight — nothing changed.`
+        : `Checked in ${total.filed} ${total.filed === 1 ? 'resident' : 'residents'} in Room ${selectedRoom}.`
+    );
   };
 
   /** One resident checked in on his own, as he comes through the door. */
   const handleStudentSubmit = (student: (typeof occupants)[number]) => {
     if (!canEdit) return;
-    saveCurfewRecord(buildRecord(student, statusFor(student.id)));
+    const { filed } = saveCurfewRecord(buildRecord(student, statusFor(student.id)));
     flash(
-      `${student.name} checked in at ${formatTime12h(checkInTime)}. Saving the name again corrects tonight's record rather than filing a second one.`
+      filed
+        ? `${student.name} checked in at ${formatTime12h(checkInTime)}.`
+        : `${student.name} is already checked in for tonight — the time on file stands.${
+            isSuperAdmin ? ' Use the pencil on his row to correct it.' : ' Ask the Dean to correct it.'
+          }`
     );
   };
 
   const checkedInCount = roomOccupants.filter(o => filedFor(o.id)).length;
+  const remaining = roomOccupants.length - checkedInCount;
+
+  /** Tonight's round for this room, if it has been walked. */
+  const lightsOutOnFile = lightsOutLogs.find(l => l.roomNumber === lightsOutRoom && l.date === today);
 
   const handleLightsOutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
     const isCompliant = lightsOff && noiseQuiet && gadgetsCompliant;
 
-    saveLightsOutLog({
-      date: manilaToday(),
+    const { filed } = saveLightsOutLog({
+      date: today,
       roomNumber: lightsOutRoom,
       checkTime: settings.lightsOutTime || '22:10',
       allLightsOff: lightsOff,
@@ -158,7 +178,13 @@ export const CurfewLightsOutView: React.FC = () => {
     });
 
     setLightsOutRemarks('');
-    flash(`Lights-out round for Room ${lightsOutRoom} logged as ${isCompliant ? 'compliant' : 'a violation'}.`);
+    flash(
+      filed
+        ? `Lights-out round for Room ${lightsOutRoom} logged as ${isCompliant ? 'compliant' : 'a violation'}.`
+        : `Room ${lightsOutRoom} was already walked tonight — what that round found stands.${
+            isSuperAdmin ? ' Correct it with the pencil on the record below.' : ' Ask the Dean to correct it.'
+          }`
+    );
   };
 
   const complianceItems = [
@@ -309,7 +335,17 @@ export const CurfewLightsOutView: React.FC = () => {
                         )}
                       </div>
 
-                      {canEdit ? (
+                      {filed ? (
+                        // Tonight already holds this resident's check-in; only
+                        // the Dean's pencil changes what it says.
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <Lock className="w-3.5 h-3.5" />
+                            On file
+                          </span>
+                          <RecordOverrideControls kind="curfew" record={filed} />
+                        </div>
+                      ) : canEdit ? (
                         <div className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap">
                           {(Object.keys(CURFEW_STATUS_META) as CurfewStatus[]).map(s => {
                             const meta = CURFEW_STATUS_META[s];
@@ -360,13 +396,19 @@ export const CurfewLightsOutView: React.FC = () => {
                 <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
                   <button
                     onClick={handleRoomSubmit}
-                    className="w-full min-h-touch bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
+                    disabled={remaining === 0}
+                    className="w-full min-h-touch bg-purple-600 hover:bg-purple-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99] disabled:active:scale-100"
                   >
                     <Save className="w-4 h-4" />
-                    <span>Save All · Room {selectedRoom} Curfew</span>
+                    <span>
+                      {remaining === 0
+                        ? `Room ${selectedRoom} Checked In`
+                        : `Check In the Remaining ${remaining} · Room ${selectedRoom}`}
+                    </span>
                   </button>
                   <p className="text-[11px] text-slate-500 text-center mt-2">
-                    Or check residents in one at a time as they come through the door.
+                    Check residents in one at a time as they come through the door. Tonight holds one check-in
+                    per resident — the time he actually came in stands.
                   </p>
                 </div>
               )}
@@ -482,11 +524,17 @@ export const CurfewLightsOutView: React.FC = () => {
               <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
                 <button
                   type="submit"
-                  className="w-full min-h-touch bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
+                  disabled={!!lightsOutOnFile}
+                  className="w-full min-h-touch bg-purple-600 hover:bg-purple-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99] disabled:active:scale-100"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>Log Lights-Out Round</span>
+                  <span>{lightsOutOnFile ? `Room ${lightsOutRoom} Walked Tonight` : 'Log Lights-Out Round'}</span>
                 </button>
+                {lightsOutOnFile && (
+                  <p className="text-[11px] text-slate-500 text-center mt-2">
+                    A room holds one round a night. Correcting this one is the Dean's edit, on the record below.
+                  </p>
+                )}
               </div>
             </form>
           )}

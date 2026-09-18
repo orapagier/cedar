@@ -85,6 +85,7 @@ export const CellphoneCustodyView: React.FC = () => {
     returnPhoneBorrow,
     releaseAllPhones,
     canEdit,
+    isSuperAdmin,
     currentUser,
     saveViolation,
   } = useDorm();
@@ -154,10 +155,18 @@ export const CellphoneCustodyView: React.FC = () => {
   // Residents to roll call: anyone in the room the vault still expects a phone from.
   const checkable = roomOccupants.filter(o => !rollCallExcuse(o.id));
   const checkedThisCycle = checkable.filter(o => depositFor(o.id)).length;
+  // A record the deadline logged on its own is a guess at a silent resident, so
+  // a phone turning up late is still worth taking; a person's check is not.
+  const settled = (studentId: string) => {
+    const d = depositFor(studentId);
+    return d && !d.autoLogged ? d : undefined;
+  };
+  const stillToTake = () => checkable.filter(o => !settled(o.id));
+  const remaining = stillToTake().length;
 
   const submitRoom = () => {
     if (!canEdit || !checkable.length) return;
-    savePhoneDepositBatch(
+    const { filed } = savePhoneDepositBatch(
       checkable.map(student => ({
         date: today,
         cycleDate: cycle.deadlineDate,
@@ -172,15 +181,17 @@ export const CellphoneCustodyView: React.FC = () => {
     );
     setRemarks('');
     flash(
-      `Logged ${checkable.length} phone deposits for Room ${selectedRoom}` +
-        (cycle.deadlinePassed ? ' — past the deadline, so deposits saved as late.' : '.')
+      filed === 0
+        ? `Room ${selectedRoom} is already checked for this cycle — nothing changed.`
+        : `Logged ${filed} phone ${filed === 1 ? 'deposit' : 'deposits'} for Room ${selectedRoom}` +
+            (cycle.deadlinePassed ? ' — past the deadline, so deposits saved as late.' : '.')
     );
   };
 
   /** One resident's phone logged on its own, as he hands it over. */
   const submitStudent = (student: (typeof occupants)[number]) => {
     if (!canEdit) return;
-    savePhoneDepositBatch([{
+    const { filed } = savePhoneDepositBatch([{
       date: today,
       cycleDate: cycle.deadlineDate,
       studentId: student.id,
@@ -192,8 +203,12 @@ export const CellphoneCustodyView: React.FC = () => {
       recordedBy: currentUser.name,
     }]);
     flash(
-      `${student.name}'s phone logged at ${formatTime12h(depositTime)}` +
-        (cycle.deadlinePassed ? ' — past the deadline, so it saved as late.' : '.')
+      filed
+        ? `${student.name}'s phone logged at ${formatTime12h(depositTime)}` +
+            (cycle.deadlinePassed ? ' — past the deadline, so it saved as late.' : '.')
+        : `${student.name} is already checked for this cycle — the hand-over on file stands.${
+            isSuperAdmin ? ' Use the pencil on his row to correct it.' : ' Ask the Dean to correct it.'
+          }`
     );
   };
 
@@ -214,7 +229,7 @@ export const CellphoneCustodyView: React.FC = () => {
       depositTime,
       remarks: 'Excused from this vault cycle.',
       recordedBy: currentUser.name,
-    }]);
+    }], { replace: true });
     flash(`${student.name} excused from the cycle due ${dueLabel}.`);
   };
 
@@ -532,6 +547,13 @@ export const CellphoneCustodyView: React.FC = () => {
                     <span className="shrink-0 text-[10px] font-bold px-2 py-1.5 rounded-lg bg-sky-950 text-sky-300 border border-sky-800/60 max-w-[45%] truncate">
                       {excuse}
                     </span>
+                  ) : settled(student.id) ? (
+                    <div className="shrink-0 flex items-center gap-1.5">
+                      <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${DEPOSIT_META[logged!.status].chip}`}>
+                        {DEPOSIT_META[logged!.status].short}
+                      </span>
+                      <RecordOverrideControls kind="phoneDeposit" record={logged!} />
+                    </div>
                   ) : canEdit ? (
                     <div className="shrink-0 flex flex-wrap items-center justify-end gap-1">
                       {STATUS_ORDER.map(s => {
@@ -631,13 +653,19 @@ export const CellphoneCustodyView: React.FC = () => {
           <div className="p-3 sm:p-4 border-t border-slate-800 sticky bottom-0 bg-slate-900/95 backdrop-blur">
             <button
               onClick={submitRoom}
-              className="w-full min-h-touch bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
+              disabled={remaining === 0}
+              className="w-full min-h-touch bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99] disabled:active:scale-100"
             >
               <Save className="w-4 h-4" />
-              <span>Save All · Room {selectedRoom} Deposit Check</span>
+              <span>
+                {remaining === 0
+                  ? `Room ${selectedRoom} Checked This Cycle`
+                  : `Log the Remaining ${remaining} · Room ${selectedRoom}`}
+              </span>
             </button>
             <p className="text-[11px] text-slate-500 text-center mt-2">
-              Or log each phone as it is handed in — the room does not deposit together.
+              Log each phone as it is handed in, or sweep whoever is left. This cycle holds one check per
+              resident — when he actually handed it over stands.
             </p>
           </div>
         )}

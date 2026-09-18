@@ -185,23 +185,64 @@ reads **Save All** for the times a room really is together. This applies to:
 Room inspections, the daily cleaning duty and the lights-out round stay room-wide,
 because what they grade is the room itself rather than the boys in it.
 
-**Saving a name twice never files it twice.** One record is kept per resident per
-check per day — per service for worship, per run for departures, per cycle for
-the phone vault — so a boy logged on his own and then swept up again in the
-room's **Save All** ends with a single record and a single point. Saving him
-again corrects what is on file, keeping the record's id, so a point he has
-already redeemed stays redeemed and a correction never asks him to work it off
-twice.
+Each row shows what is **already on file** — the verdict and the time it was
+taken — and the room header counts how far the check has got (`3/5 logged`). The
+footer button files only whoever is left, and goes quiet once the room is done.
 
-Because of this, each row shows what is **already on file** — the verdict and the
-time it was taken — and opens with those marks rather than with blank defaults.
-The room header counts how far the check has got (`3/5 logged`), and the row's
-button reads **Update** rather than **Save** once a record exists.
+See **[One record per point in the schedule](#one-record-per-point-in-the-schedule)**
+for what happens when the same check is saved twice.
 
 Worship, study hours and departures also offer **All rooms** in the room picker,
 which lists the whole dormitory as one queue sorted by room. That is the roll
 call taken standing at the church door or the gate, marking boys off as they
 arrive, rather than walking the building room by room.
+
+## One record per point in the schedule
+
+A check belongs to a point in the schedule: **5 AM worship on a given morning**,
+tonight's curfew, this week's vault cycle, today's walk through a room. That
+point holds **one record**, and the first one taken is the one that stands.
+
+Saving the same check again does not overwrite it. A boy marked *late* as he
+left for worship stays late when his room is swept a minute later; a phone
+logged at 7:30 is not re-timed at 8:00; a room scored once this morning is not
+scored again this afternoon. The screen says so rather than silently keeping the
+record: the row reads **On file**, the sweep button goes quiet, and the message
+says what was left alone.
+
+This holds for every scheduled check:
+
+| Check | One record per |
+| --- | --- |
+| Worship roll call | resident · service · day |
+| Curfew check-in | resident · night |
+| Study hours | resident · evening |
+| School departure | resident · run (morning, afternoon) · day |
+| Phone vault deposit | resident · cycle |
+| Room inspection | room · day |
+| Lights-out round | room · night |
+| Cleaning duty | day |
+
+Incident registers are **not** scheduled checks and are unaffected — a resident
+can be booked for foul language twice in a day, because those are two separate
+things that happened.
+
+### Changing a check that is already filed
+
+**The edit is how a filed check changes** — never a second save. The Dean's
+pencil sits beside the record in every register, and now on the roll-call row
+itself, so a correction can be made where the mistake is noticed. Saving
+re-scores the record, and what it put on a resident's standing follows: a point
+it raised is withdrawn when the verdict is reversed, and a point the resident
+has already redeemed keeps its redemption. Administrators file checks; only the
+Dean corrects one afterwards. Deleting a record frees the schedule point, and
+the check can then be taken afresh.
+
+One deliberate exception: a deposit the **vault deadline logged on its own**
+yields to a real check. The deadline only ever guessed that a silent resident
+had not handed his phone in, so a phone turning up late is what actually
+happened and is recorded as such. A check a person took is never overruled this
+way.
 
 ## Occupant Records
 

@@ -95,7 +95,7 @@ export const CleaningDutyView: React.FC = () => {
       studentName: student.name,
       helped: helpedFor(student.id),
     }));
-    saveCleaningDuty({
+    const { filed } = saveCleaningDuty({
       date: dutyDate,
       roomNumber: duty.roomNumber,
       helpers,
@@ -105,8 +105,10 @@ export const CleaningDutyView: React.FC = () => {
     });
     const skipped = helpers.filter(h => !h.helped).length;
     flash(
-      `Saved Room ${duty.roomNumber} cleaning duty — ${helpers.length - skipped} helped` +
-      `${skipped ? `, ${skipped} flagged` : ''}.`
+      filed
+        ? `Saved Room ${duty.roomNumber} cleaning duty — ${helpers.length - skipped} helped` +
+            `${skipped ? `, ${skipped} flagged` : ''}.`
+        : `${formatFullDate(dutyDate)} was already checked — that verdict stands. Correcting it is the Dean's edit.`
     );
   };
 
@@ -353,13 +355,25 @@ export const CleaningDutyView: React.FC = () => {
             )}
 
             {canEdit && (
-              <button
-                onClick={submitDuty}
-                className="w-full min-h-touch bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Room {duty.roomNumber} Cleaning Check ({helpedCount}/{crew.length} helped)</span>
-              </button>
+              <>
+                <button
+                  onClick={submitDuty}
+                  disabled={duty.status === 'completed'}
+                  className="w-full min-h-touch bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.99] disabled:active:scale-100"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>
+                    {duty.status === 'completed'
+                      ? `Room ${duty.roomNumber} Already Checked for This Day`
+                      : `Save Room ${duty.roomNumber} Cleaning Check (${helpedCount}/${crew.length} helped)`}
+                  </span>
+                </button>
+                {duty.status === 'completed' && (
+                  <p className="text-[11px] text-slate-500 text-center">
+                    A day holds one cleaning check. Correcting this one is the Dean's edit, on the record below.
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
