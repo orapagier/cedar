@@ -7,6 +7,9 @@
 //   KV_REST_API_TOKEN  the REST token for that KV database
 
 const KV_KEY = 'dorm-state';
+// Just the timestamp of the last save, kept beside the records so a device can
+// ask "has anything changed?" without downloading the whole store.
+const KV_STAMP_KEY = 'dorm-state-updated';
 
 async function kvGet(key) {
   const res = await fetch(`${process.env.KV_REST_API_URL}/get/${key}`, {
@@ -33,6 +36,17 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
+      // `?meta=1` — the timestamp alone, which is what devices poll. The
+      // records only travel when there is actually something new to fetch.
+      if (req.query?.meta !== undefined) {
+        const stamp = await kvGet(KV_STAMP_KEY);
+        if (stamp != null) return res.status(200).json({ updatedAt: Number(stamp) || 0 });
+        // No stamp written yet: fall back to the state's own timestamp.
+        const raw = await kvGet(KV_KEY);
+        if (raw == null) return res.status(404).json({ error: 'No shared state saved yet' });
+        return res.status(200).json({ updatedAt: Number(JSON.parse(raw).updatedAt) || 0 });
+      }
+
       const raw = await kvGet(KV_KEY);
       if (raw == null) {
         return res.status(404).json({ error: 'No shared state saved yet' });
@@ -51,6 +65,7 @@ export default async function handler(req, res) {
     const now = Number(updatedAt) || Date.now();
     try {
       await kvSet(KV_KEY, { updatedAt: now, data });
+      await kvSet(KV_STAMP_KEY, now);
       return res.status(200).json({ ok: true, updatedAt: now });
     } catch (err) {
       return res.status(500).json({ error: 'Failed to save shared state' });

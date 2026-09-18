@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { manilaToday, manilaTimeValue, formatFullDate, formatTime12h } from '../utils/date';
+import { manilaToday, manilaTimeValue, formatFullDate, formatTime12h, nextWeekdayOnOrAfter } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 import {
   Luggage,
@@ -38,6 +38,12 @@ const DESTINATION_HINTS: Record<GatePassRecord['passType'], string> = {
   personal_matters: 'e.g. Buy school supplies at the market',
 };
 
+// Home leave runs to the weekend: unless the dean says otherwise, a resident is
+// due back the coming Sunday at 5:00 PM.
+const RETURN_WEEKDAY = 0; // Sunday
+const DEFAULT_RETURN_TIME = '17:00';
+const defaultReturnDate = (departure: string) => nextWeekdayOnOrAfter(departure, RETURN_WEEKDAY);
+
 const STATUS_META: Record<GatePassRecord['status'], { label: string; classes: string }> = {
   approved: { label: 'Approved', classes: 'bg-sky-950 text-sky-300 border border-sky-700/50' },
   departed: { label: 'Departed', classes: 'bg-blue-950 text-blue-300 border border-blue-700/50' },
@@ -46,7 +52,7 @@ const STATUS_META: Record<GatePassRecord['status'], { label: string; classes: st
 };
 
 export const GatePassView: React.FC = () => {
-  const { gatePasses, users, rooms, saveGatePass, updateGatePassStatus, canEdit, currentUser, settings } = useDorm();
+  const { gatePasses, users, rooms, saveGatePass, updateGatePassStatus, canEdit, currentUser } = useDorm();
   const occupants = users.filter(u => u.role === 'occupant');
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
@@ -59,8 +65,8 @@ export const GatePassView: React.FC = () => {
   const [passType, setPassType] = useState<GatePassRecord['passType']>('weekend_home');
   const [destination, setDestination] = useState('');
   const [departureDate, setDepartureDate] = useState(() => manilaToday());
-  const [expectedReturnDate, setExpectedReturnDate] = useState(() => manilaToday());
-  const [expectedReturnTime, setExpectedReturnTime] = useState(settings.curfewTime || '17:00');
+  const [expectedReturnDate, setExpectedReturnDate] = useState(() => defaultReturnDate(manilaToday()));
+  const [expectedReturnTime, setExpectedReturnTime] = useState(DEFAULT_RETURN_TIME);
   const [parentConsent, setParentConsent] = useState(true);
   const [parentPhone, setParentPhone] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -83,12 +89,19 @@ export const GatePassView: React.FC = () => {
     setPassType('weekend_home');
     setDestination('');
     setDepartureDate(manilaToday());
-    setExpectedReturnDate(manilaToday());
-    setExpectedReturnTime(settings.curfewTime || '17:00');
+    setExpectedReturnDate(defaultReturnDate(manilaToday()));
+    setExpectedReturnTime(DEFAULT_RETURN_TIME);
     setParentConsent(true);
     setParentPhone(student.parentPhone || '');
     setRemarks('');
     setShowIssueModal(true);
+  };
+
+  // Moving the departure past the return date pulls the return forward to the
+  // Sunday after it, so a pass can never be due back before it starts.
+  const changeDepartureDate = (value: string) => {
+    setDepartureDate(value);
+    if (value > expectedReturnDate) setExpectedReturnDate(defaultReturnDate(value));
   };
 
   const issuingStudent = occupants.find(o => o.id === studentId);
@@ -364,7 +377,7 @@ export const GatePassView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Departure Date</label>
-                  <input type="date" value={departureDate} onChange={e => setDepartureDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+                  <input type="date" value={departureDate} onChange={e => changeDepartureDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
                 </div>
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Expected Return</label>
@@ -375,6 +388,9 @@ export const GatePassView: React.FC = () => {
                   <input type="time" value={expectedReturnTime} onChange={e => setExpectedReturnTime(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" />
                 </div>
               </div>
+              <p className="text-[11px] text-slate-500 -mt-1.5">
+                Returns default to the coming Sunday, {formatTime12h(DEFAULT_RETURN_TIME)} — change either field for a shorter pass.
+              </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Same label-over-control shape and height as the fields around it */}

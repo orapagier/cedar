@@ -267,6 +267,35 @@ export type ViolationCategory =
   | 'cellphone_policy_breach'
   | 'other';
 
+/** The work details a resident can be given to redeem one violation. */
+export type ServiceType =
+  | 'Grounds Beautification'
+  | 'Library Duty'
+  | 'Dorm Maintenance & Sanitizing'
+  | 'Dining/Kitchen Help';
+
+/**
+ * How one violation was paid off. Every violation carries its own redemption,
+ * so a resident settles them one at a time rather than in a lump: either work
+ * rendered ('service') or a reflection they wrote ('reflection').
+ */
+export interface ViolationRedemption {
+  kind: 'service' | 'reflection';
+  /** Service redemptions: what work was done and for how long. */
+  serviceType?: ServiceType;
+  hoursRendered?: number;
+  /** Reflection redemptions: what it was about and what the resident wrote. */
+  reflectionTopic?: string;
+  reflectionText?: string;
+  /** The staff member who supervised the work or read the reflection. */
+  supervisorName: string;
+  completedDate: string; // YYYY-MM-DD
+  remarks?: string;
+  /** Who signed the violation off, and when. */
+  clearedBy: string;
+  clearedAt: string;
+}
+
 export interface Violation {
   id: string;
   date: string;
@@ -283,6 +312,8 @@ export interface Violation {
   /** Id of the record that auto-logged this violation, so re-saving that
    *  record can replace its own violations instead of stacking new ones. */
   sourceId?: string;
+  /** Set once this one violation has been redeemed and cleared. */
+  redemption?: ViolationRedemption;
   createdAt: string;
 }
 
@@ -339,12 +370,16 @@ export interface DemeritClearanceLog {
   studentId: string;
   studentName: string;
   roomNumber: string;
-  serviceType: 'Grounds Beautification' | 'Library Duty' | 'Dorm Maintenance & Sanitizing' | 'Dining/Kitchen Help';
+  /** 'Written Reflection' covers a redemption paid off on paper, not in work. */
+  serviceType: ServiceType | 'Written Reflection';
   hoursRendered: number;
   demeritsDeducted: number;
   supervisorName: string;
   completionDate: string;
   remarks?: string;
+  /** The single violation this clearance redeemed, when it settled just one. */
+  violationId?: string;
+  violationCategory?: ViolationCategory;
 }
 
 export interface ConfiscatedItemRecord {

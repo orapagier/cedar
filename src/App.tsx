@@ -18,6 +18,7 @@ import { GuestView } from './components/GuestView';
 import { ParentView } from './components/ParentView';
 import { OccupantRecordsView } from './components/OccupantRecordsView';
 import { ScheduleSettingsView } from './components/ScheduleSettingsView';
+import { DataStorageView } from './components/DataStorageView';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('overview');
@@ -50,6 +51,7 @@ function AppContent() {
         {!isGuest && !isParent && activeTab === 'rbac' && <AdminManagementView />}
         {!isGuest && !isParent && activeTab === 'occupant-records' && <OccupantRecordsView />}
         {!isGuest && !isParent && activeTab === 'settings' && <ScheduleSettingsView />}
+        {!isGuest && !isParent && activeTab === 'storage' && <DataStorageView />}
       </main>
 
       <footer className="border-t border-slate-900 bg-slate-950/80 py-4 text-center text-xs text-slate-500 pb-safe">

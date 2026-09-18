@@ -9,8 +9,11 @@ import {
   Luggage,
   HeartPulse,
   AlertTriangle,
+  HandHeart,
+  PenLine,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { Violation } from '../types/dorm';
 import { formatFullDate, formatTime12h } from '../utils/date';
 
 const PASS_LABELS: Record<string, string> = {
@@ -37,6 +40,15 @@ function Empty({ text }: { text: string }) {
   return <p className="px-4 py-4 text-center text-xs text-slate-500">{text}</p>;
 }
 
+/** "2 hrs · Library Duty" or "Reflection on curfew breach" — how one violation was paid off. */
+const redemptionLabel = (v: Violation) => {
+  const r = v.redemption;
+  if (!r) return 'Cleared';
+  if (r.kind === 'reflection') return `Reflection${r.reflectionTopic ? ` on ${r.reflectionTopic}` : ''}`;
+  const hours = r.hoursRendered ?? 0;
+  return `${hours} hr${hours === 1 ? '' : 's'} · ${r.serviceType ?? 'Work service'}`;
+};
+
 /** Read-only aggregate of every record tied to one occupant. Used by the
  *  Occupant Records drill and the parent self-serve view. */
 export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number }> = ({ studentId, limit = 5 }) => {
@@ -60,6 +72,7 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
   const room = rooms.find(r => r.roomNumber === occupant?.roomNumber);
   const childInspections = inspections.filter(i => i.roomNumber === occupant?.roomNumber);
   const activeViolations = violations.filter(v => v.studentId === studentId && v.status !== 'cleared_service');
+  const redeemedViolations = violations.filter(v => v.studentId === studentId && v.status === 'cleared_service');
   const demerits = activeViolations.reduce((s, v) => s + v.demeritPoints, 0);
   const lastInspection = childInspections[0];
   const phoneEntry = cellphones.find(c => c.studentId === studentId);
@@ -250,12 +263,47 @@ export const OccupantRecordsPanel: React.FC<{ studentId: string; limit?: number 
         {activeViolations.slice(0, limit).map(v => (
           <div key={v.id} className="px-4 py-2.5 flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white">{v.category}</p>
+              <p className="text-xs font-semibold text-white capitalize">{v.category.replace(/_/g, ' ')}</p>
               <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
+              {v.actionRequired && (
+                <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.actionRequired}</p>
+              )}
             </div>
             <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300">
               +{v.demeritPoints} pts
             </span>
+          </div>
+        ))}
+      </Section>
+
+      <Section icon={HandHeart} title="Redeemed Violations">
+        {redeemedViolations.length === 0 && <Empty text="Nothing redeemed yet." />}
+        {redeemedViolations.slice(0, limit).map(v => (
+          <div key={v.id} className="px-4 py-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
+                  {v.redemption?.kind === 'reflection'
+                    ? <PenLine className="w-3 h-3 shrink-0" />
+                    : <HandHeart className="w-3 h-3 shrink-0" />}
+                  <span className="truncate">{redemptionLabel(v)}</span>
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5 capitalize">
+                  {v.category.replace(/_/g, ' ')} · {formatFullDate(v.date)}
+                </p>
+                {v.redemption && (
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Signed off by {v.redemption.supervisorName} on {formatFullDate(v.redemption.completedDate)}
+                  </p>
+                )}
+                {v.redemption?.reflectionText && (
+                  <p className="text-[11px] text-slate-300 mt-1 italic line-clamp-3">"{v.redemption.reflectionText}"</p>
+                )}
+              </div>
+              <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300">
+                −{v.demeritPoints} pts
+              </span>
+            </div>
           </div>
         ))}
       </Section>

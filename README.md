@@ -46,12 +46,69 @@ The frontend pulls the shared state on load and every ~30 seconds, and pushes
 debounced changes — so a check recorded on your laptop shows up on the phone for
 you, your residents, and linked parents.
 
+The poll itself is cheap. Every ~30 seconds a device asks `GET /api/state?meta=1`,
+which answers with the last-saved timestamp and nothing else (a few dozen bytes).
+The records are only fetched when that timestamp has actually moved. A tab that
+is hidden — a phone in a pocket between roll calls — polls nothing at all and
+catches up the moment it is looked at again. A push whose bytes match what the
+server already holds is skipped, so a device that pulls someone else's change
+does not echo it straight back.
+
 ### How the store works
 
 - **Dev / single-instance:** stores `data/dorm-state.json` (`DATA_DIR`).
 - **Vercel:** sees `KV_REST_API_URL` + `KV_REST_API_TOKEN` and uses
   **Vercel KV** through `api/state.mjs` instead — required because Vercel
   functions have no writable filesystem.
+
+## Will the free database fill up?
+
+Not on storage. A 30-resident dormitory running every check writes roughly
+**57 KB per school day** — about **1.2 MB a month**, or **12 MB over a 10-month
+school year**. The free KV tier holds 256 MB, so a decade of records would fit.
+
+The real limit is the **shape** of the store, not its size: everything lives in
+one JSON blob, and every save sends the whole blob in a single request. The free
+Upstash/Vercel KV REST tier **rejects a request body over 1 MB**. That is the
+wall — reached after roughly a term of daily checks, long before storage is a
+concern.
+
+So the routine is:
+
+1. Open **Admin → Data & Storage**. The bar shows the live payload against a
+   900 KB budget (just under the 1 MB ceiling), with the growth rate and how
+   long the store has left at that rate.
+2. **Download full backup** at the end of every term, and before archiving.
+3. **Archive closed-out records**: pick a cutoff, and every dated log before it
+   downloads as a JSON archive and leaves the live store. The roster, rooms,
+   phone register, medical sheets and schedules are never touched — only the
+   daily logs that pile up.
+
+Archived violations stop counting toward a resident's standing and disappear
+from their Occupant Records page, so only archive terms that are settled.
+
+If the dormitory outgrows that rhythm — many more residents, or nobody to run
+the archive — the durable fix is to move off the single-blob store onto a
+row-based database (Supabase or Neon both have free Postgres tiers), so a save
+sends one changed row instead of the whole year.
+
+## Violations and redemption
+
+Every violation is worth a flat **1 point**, and each one is redeemed on its
+own — there is no clearing a resident's record in a lump. Under **Resident
+Performance**, each pending violation carries its own **Redeem** button, which
+asks how that single violation was paid off:
+
+- **Work Service** — a work detail (grounds, library, dorm maintenance, kitchen)
+  and the hours rendered.
+- **Written Reflection** — a topic and the reflection the resident wrote, kept
+  verbatim on the record.
+
+Either way the redemption is signed off by a staff member with a completion
+date, only that violation clears, and the resident's points drop by that one
+point. Redeemed violations stay visible with what was done to settle them, on
+both the Resident Performance page and the resident's Occupant Records, and a
+redemption can be undone if it was logged by mistake.
 
 ## Deploying to Vercel
 

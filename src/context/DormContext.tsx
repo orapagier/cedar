@@ -15,6 +15,7 @@ import {
   PhoneDepositLog,
   PhoneBorrowLog,
   Violation,
+  ViolationRedemption,
   MedicalExcuseSlip,
   GatePassRecord,
   DemeritClearanceLog,
@@ -45,6 +46,7 @@ import {
   worshipLabel,
 } from '../data/dormSeed';
 import { manilaToday, manilaTime, manilaTimeValue } from '../utils/date';
+import { splitAtCutoff } from '../utils/records';
 import {
   vaultCycle,
   isLateDeposit,
@@ -84,8 +86,8 @@ interface DormContextType {
   saveGatePass: (pass: Omit<GatePassRecord, 'id' | 'issuedAt'>) => void;
   updateGatePassStatus: (id: string, status: GatePassRecord['status'], actualReturnDate?: string) => void;
 
+  /** The paper trail of redemptions, one entry per violation settled. */
   demeritClearances: DemeritClearanceLog[];
-  saveDemeritClearance: (log: Omit<DemeritClearanceLog, 'id'>) => void;
 
   confiscatedItems: ConfiscatedItemRecord[];
   saveConfiscatedItem: (item: Omit<ConfiscatedItemRecord, 'id'>) => void;
@@ -172,6 +174,16 @@ interface DormContextType {
   releaseAllPhones: () => void;
   saveViolation: (viol: Omit<Violation, 'id' | 'createdAt'>) => void;
   updateViolationStatus: (id: string, status: Violation['status'], actionRequired?: string) => void;
+  /** Settle one violation on its own — work rendered, or a reflection written. */
+  redeemViolation: (violationId: string, redemption: Omit<ViolationRedemption, 'clearedBy' | 'clearedAt'>) => void;
+  /** Put a redeemed violation back on a resident's record. */
+  undoViolationRedemption: (violationId: string) => void;
+
+  // Shared-store housekeeping
+  /** Everything the devices share, for the size meter and for backups. */
+  sharedStateSnapshot: () => Record<string, unknown>;
+  /** Lift every dated log before `cutoff` out of the live store. */
+  archiveRecordsBefore: (cutoff: string) => { archive: Record<string, unknown[]>; archivedCount: number };
   resetAllData: () => void;
 }
 
@@ -409,32 +421,40 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initialPullDone = useRef(false);
   const debounceTimer = useRef<number | undefined>(undefined);
   const pushStateRef = useRef<(() => Promise<void>) | null>(null);
+  // The records exactly as the server last saw them. A push that would send
+  // the same bytes back is skipped — which covers the echo every device would
+  // otherwise fire the moment it pulls someone else's change.
+  const lastSyncedJson = useRef<string | null>(null);
+
+  // Everything the devices share, in one object: what gets pushed to the
+  // server, what the size meter measures, and what an archive is cut from.
+  const sharedState = (): Record<string, unknown> => ({
+    users,
+    rooms,
+    inspections,
+    attendance,
+    curfewRecords,
+    uniformLogs,
+    studyLogs,
+    cleaningDuties,
+    lightsOutLogs,
+    cellphones,
+    phoneDeposits,
+    phoneBorrows,
+    violations,
+    medicalSlips,
+    gatePasses,
+    demeritClearances,
+    confiscatedItems,
+    studentMedicals,
+    settings,
+  });
 
   const pushState = async () => {
-    const payload = {
-      updatedAt: Date.now(),
-      data: {
-        users,
-        rooms,
-        inspections,
-        attendance,
-        curfewRecords,
-        uniformLogs,
-        studyLogs,
-        cleaningDuties,
-        lightsOutLogs,
-        cellphones,
-        phoneDeposits,
-        phoneBorrows,
-        violations,
-        medicalSlips,
-        gatePasses,
-        demeritClearances,
-        confiscatedItems,
-        studentMedicals,
-        settings,
-      },
-    };
+    const data = sharedState();
+    const json = JSON.stringify(data);
+    if (json === lastSyncedJson.current) return; // nothing actually changed
+    const payload = { updatedAt: Date.now(), data };
     try {
       const res = await fetch(SERVER_STATE_URL, {
         method: 'PUT',
@@ -444,6 +464,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.ok) {
         const body = (await res.json()) as { updatedAt?: number };
         saveToStorage('lastPushedAt', body.updatedAt ?? Date.now());
+        lastSyncedJson.current = json;
       }
     } catch {
       // Server offline — local storage still works until it comes back.
@@ -466,10 +487,25 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         medicalSlips, gatePasses, demeritClearances, confiscatedItems, studentMedicals]);
 
   // Pull the shared state on load, then poll for updates from other devices.
+  // The poll itself only asks for the last-saved timestamp; the records are
+  // fetched when — and only when — that timestamp moves. A store holding a
+  // school year of checks is megabytes, and nobody's phone should re-download
+  // it every thirty seconds to find out nothing happened.
   useEffect(() => {
     let alive = true;
-    const pull = async () => {
+    const pull = async (force = false) => {
       try {
+        if (!force && initialPullDone.current) {
+          const metaRes = await fetch(`${SERVER_STATE_URL}?meta=1`);
+          if (metaRes.ok) {
+            const meta = (await metaRes.json()) as { updatedAt?: number };
+            const seen = Number(loadFromStorage('lastPushedAt', 0)) || 0;
+            if ((meta.updatedAt ?? 0) <= seen) return; // nothing new to fetch
+          } else if (metaRes.status !== 404) {
+            return;
+          }
+        }
+
         const res = await fetch(SERVER_STATE_URL);
         if (res.status === 404) {
           // No shared data yet — seed the server with this device's records.
@@ -492,6 +528,9 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if ((body.updatedAt ?? 0) > localPushed && alive) {
           const d = body.data;
           saveToStorage('lastPushedAt', body.updatedAt ?? 0);
+          // These are the records the server already holds, so the state
+          // changes below must not bounce straight back to it.
+          lastSyncedJson.current = JSON.stringify(d);
           if (d.users) setUsers(d.users as User[]);
           if (d.rooms) setRooms(d.rooms as Room[]);
           if (d.inspections) setInspections(d.inspections as RoomInspection[]);
@@ -517,11 +556,21 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (alive) initialPullDone.current = true;
       }
     };
-    pull();
-    const id = window.setInterval(pull, SERVER_POLL_MS);
+    pull(true);
+    // A backgrounded tab — a phone in a pocket between roll calls — polls
+    // nothing at all, and catches up the moment it is looked at again.
+    const tick = () => {
+      if (!document.hidden) pull();
+    };
+    const id = window.setInterval(tick, SERVER_POLL_MS);
+    const onVisible = () => {
+      if (!document.hidden) pull();
+    };
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       alive = false;
       window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 
@@ -808,7 +857,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  /** Drop the violations a given record auto-logged, before it logs them again. */
+  /**
+   * Drop the violations a given record auto-logged, before it logs them again.
+   * Re-logging keeps each violation's id (see `saveViolation`), so a redemption
+   * already rendered against it stays attached.
+   */
   const clearViolationsFrom = (sourceId: string) =>
     setViolations(prev => prev.filter(v => v.sourceId !== sourceId));
 
@@ -1238,9 +1291,18 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveViolation = (viol: Omit<Violation, 'id' | 'createdAt'>) => {
     if (!canEdit) return;
     const timeStr = manilaTime();
+    // A record that re-logs its own violations replaces them in place, keeping
+    // the same id — so a redemption the resident already worked off survives a
+    // correction to the check that raised it.
+    const previous = viol.sourceId
+      ? violations.find(v => v.sourceId === viol.sourceId)
+      : undefined;
+    const redeemed = previous?.status === 'cleared_service' ? previous : undefined;
     const newRecord: Violation = {
       ...viol,
-      id: 'viol-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      id: previous?.id ?? 'viol-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      status: redeemed ? 'cleared_service' : viol.status,
+      redemption: redeemed?.redemption,
       createdAt: timeStr,
     };
     setViolations(prev => [newRecord, ...prev]);
@@ -1251,6 +1313,86 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setViolations(prev =>
       prev.map(v => (v.id === id ? { ...v, status, actionRequired: actionRequired || v.actionRequired } : v))
     );
+  };
+
+  // Each violation is redeemed on its own terms: the resident either renders
+  // the work it carries or writes the reflection it asks for, and only that one
+  // violation clears. The clearance log keeps the paper trail, tagged with the
+  // violation it settled.
+  const redeemViolation = (
+    violationId: string,
+    redemption: Omit<ViolationRedemption, 'clearedBy' | 'clearedAt'>,
+  ) => {
+    if (!canEdit) return;
+    const violation = violations.find(v => v.id === violationId);
+    if (!violation || violation.status === 'cleared_service') return;
+
+    const record: ViolationRedemption = {
+      ...redemption,
+      clearedBy: currentUser.name,
+      clearedAt: new Date().toISOString(),
+    };
+
+    setViolations(prev =>
+      prev.map(v => (v.id === violationId ? { ...v, status: 'cleared_service', redemption: record } : v))
+    );
+
+    const newLog: DemeritClearanceLog = {
+      id: 'clr-' + Date.now(),
+      studentId: violation.studentId,
+      studentName: violation.studentName,
+      roomNumber: violation.roomNumber,
+      serviceType: record.kind === 'reflection'
+        ? 'Written Reflection'
+        : record.serviceType ?? 'Dorm Maintenance & Sanitizing',
+      hoursRendered: record.hoursRendered ?? 0,
+      demeritsDeducted: violation.demeritPoints,
+      supervisorName: record.supervisorName,
+      completionDate: record.completedDate,
+      remarks: record.remarks,
+      violationId,
+      violationCategory: violation.category,
+    };
+    setDemeritClearances(prev => [newLog, ...prev]);
+  };
+
+  const undoViolationRedemption = (violationId: string) => {
+    if (!canEdit) return;
+    setViolations(prev =>
+      prev.map(v =>
+        v.id === violationId ? { ...v, status: 'pending_settlement', redemption: undefined } : v
+      )
+    );
+    setDemeritClearances(prev => prev.filter(c => c.violationId !== violationId));
+  };
+
+  const sharedStateSnapshot = () => sharedState();
+
+  // End-of-term housekeeping: the dated logs before the cutoff leave the live
+  // store so every device keeps syncing a small payload. The roster, rooms,
+  // phone register, medical sheets and schedules are what the dormitory is
+  // today, so they always stay.
+  const archiveRecordsBefore = (cutoff: string) => {
+    if (!isSuperAdmin) return { archive: {}, archivedCount: 0 };
+    const { archived, kept, archivedCount } = splitAtCutoff(sharedState(), cutoff);
+    if (archivedCount === 0) return { archive: archived, archivedCount: 0 };
+
+    setInspections(kept.inspections as RoomInspection[]);
+    setAttendance(kept.attendance as AttendanceRecord[]);
+    setCurfewRecords(kept.curfewRecords as CurfewRecord[]);
+    setUniformLogs(kept.uniformLogs as SchoolUniformLog[]);
+    setStudyLogs(kept.studyLogs as StudyHoursLog[]);
+    setCleaningDuties(kept.cleaningDuties as CleaningDutyRecord[]);
+    setLightsOutLogs(kept.lightsOutLogs as LightsOutLog[]);
+    setPhoneDeposits(kept.phoneDeposits as PhoneDepositLog[]);
+    setPhoneBorrows(kept.phoneBorrows as PhoneBorrowLog[]);
+    setViolations(kept.violations as Violation[]);
+    setMedicalSlips(kept.medicalSlips as MedicalExcuseSlip[]);
+    setGatePasses(kept.gatePasses as GatePassRecord[]);
+    setDemeritClearances(kept.demeritClearances as DemeritClearanceLog[]);
+    setConfiscatedItems(kept.confiscatedItems as ConfiscatedItemRecord[]);
+
+    return { archive: archived, archivedCount };
   };
 
   const resetAllData = () => {
@@ -1512,32 +1654,6 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
-  const saveDemeritClearance = (log: Omit<DemeritClearanceLog, 'id'>) => {
-    const newLog: DemeritClearanceLog = {
-      ...log,
-      id: 'clr-' + Date.now(),
-    };
-    setDemeritClearances(prev => [newLog, ...prev]);
-
-    // Automatically resolve or reduce violation points for this student
-    if (log.demeritsDeducted > 0) {
-      setViolations(prev => {
-        let remainingPointsToClear = log.demeritsDeducted;
-        return prev.map(v => {
-          if (v.studentId === log.studentId && v.status !== 'cleared_service' && remainingPointsToClear > 0) {
-            remainingPointsToClear -= v.demeritPoints;
-            return {
-              ...v,
-              status: 'cleared_service',
-              actionRequired: `Cleared through community service: ${log.serviceType} (${log.hoursRendered} hrs approved by ${log.supervisorName})`,
-            };
-          }
-          return v;
-        });
-      });
-    }
-  };
-
   const saveConfiscatedItem = (item: Omit<ConfiscatedItemRecord, 'id'>) => {
     const newItem: ConfiscatedItemRecord = {
       ...item,
@@ -1674,7 +1790,6 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveGatePass,
         updateGatePassStatus,
         demeritClearances,
-        saveDemeritClearance,
         confiscatedItems,
         saveConfiscatedItem,
         updateConfiscatedItemStatus,
@@ -1703,6 +1818,10 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         releaseAllPhones,
         saveViolation,
         updateViolationStatus,
+        redeemViolation,
+        undoViolationRedemption,
+        sharedStateSnapshot,
+        archiveRecordsBefore,
         resetAllData,
         addOccupant,
         updateOccupant,

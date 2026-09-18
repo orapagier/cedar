@@ -10,6 +10,9 @@ app.use(express.json({ limit: '20mb' }));
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const STATE_FILE = path.join(DATA_DIR, 'dorm-state.json');
 const KV_KEY = 'dorm-state';
+// Just the timestamp of the last save, kept beside the records so a device can
+// ask "has anything changed?" without downloading the whole store.
+const KV_STAMP_KEY = 'dorm-state-updated';
 const PORT = process.env.PORT || 4000;
 
 // When Vercel KV env vars are present, the server uses KV (shared, durable).
@@ -33,6 +36,22 @@ async function readState() {
   }
 }
 
+/** The last-saved timestamp on its own — a few bytes instead of the whole store. */
+async function readStamp() {
+  if (useKv) {
+    const res = await fetch(`${process.env.KV_REST_API_URL}/get/${KV_STAMP_KEY}`, {
+      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+    });
+    if (res.ok) {
+      const body = await res.json();
+      if (body.result != null) return Number(body.result) || 0;
+    }
+  }
+  // No stamp yet (or a file store): fall back to the state's own timestamp.
+  const state = await readState();
+  return state ? Number(state.updatedAt) || 0 : null;
+}
+
 async function writeState(updatedAt, data) {
   const now = Number(updatedAt) || Date.now();
   const payload = { updatedAt: now, data };
@@ -43,6 +62,10 @@ async function writeState(updatedAt, data) {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error('KV set failed');
+    await fetch(`${process.env.KV_REST_API_URL}/set/${KV_STAMP_KEY}/${now}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+    });
   } else {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(STATE_FILE, JSON.stringify(payload, null, 2), 'utf8');
@@ -54,9 +77,16 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-// Read the shared dorm state (single source of truth across devices)
-app.get('/api/state', async (_req, res) => {
+// Read the shared dorm state (single source of truth across devices).
+// `?meta=1` answers with the timestamp alone, which is what devices poll: the
+// records only travel when there is actually something new to fetch.
+app.get('/api/state', async (req, res) => {
   try {
+    if (req.query.meta !== undefined) {
+      const updatedAt = await readStamp();
+      if (updatedAt === null) return res.status(404).json({ error: 'No shared state saved yet' });
+      return res.json({ updatedAt });
+    }
     const state = await readState();
     if (!state) return res.status(404).json({ error: 'No shared state saved yet' });
     res.json(state);

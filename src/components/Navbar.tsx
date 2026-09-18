@@ -19,6 +19,7 @@ import {
   Luggage,
   Settings,
   ClipboardList,
+  Database,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 
@@ -54,6 +55,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'roster', label: 'Manage Roster', icon: UserCog, group: 'residents' },
   { id: 'rbac', label: 'Staff & Access', icon: Shield, group: 'admin' },
   { id: 'settings', label: 'Schedule Settings', icon: Settings, group: 'admin' },
+  { id: 'storage', label: 'Data & Storage', icon: Database, group: 'admin' },
 ];
 
 const MENU_GROUPS: MenuGroup[] = [

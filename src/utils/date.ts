@@ -96,3 +96,14 @@ export const formatTime12h = (value?: string, fallback = '—') => {
   if (m === undefined || Number.isNaN(hour)) return value;
   return `${hour % 12 === 0 ? 12 : hour % 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
 };
+
+/**
+ * The next occurrence of a weekday (0 = Sunday) on or after a stored date —
+ * so a pass issued on the Sunday itself still returns that same Sunday.
+ */
+export const nextWeekdayOnOrAfter = (date: string, weekday: number) => {
+  const start = asDate(date);
+  if (Number.isNaN(start.getTime())) return date;
+  const ahead = (weekday - start.getUTCDay() + 7) % 7;
+  return manilaToday(new Date(start.getTime() + ahead * 86_400_000));
+};
