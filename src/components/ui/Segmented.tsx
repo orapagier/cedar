@@ -44,9 +44,9 @@ export function Segmented<T extends string>({
             }`}
           >
             {Icon && <Icon className="w-4 h-4 shrink-0" />}
-            <span className="whitespace-nowrap flex flex-col items-center leading-tight min-w-0">
-              <span className="truncate max-w-full">{option.label}</span>
-              {option.sub && <span className="text-[10px] font-normal opacity-75">{option.sub}</span>}
+            <span className="min-w-0 max-w-full text-center leading-tight">
+              <span className="block truncate">{option.label}</span>
+              {option.sub && <span className="block truncate text-[10px] font-normal opacity-75">{option.sub}</span>}
             </span>
           </button>
         );
