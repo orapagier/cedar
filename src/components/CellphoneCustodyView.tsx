@@ -540,37 +540,46 @@ export const CellphoneCustodyView: React.FC = () => {
 
             return (
               <div key={student.id} className={item?.custodyStatus === 'confiscated' ? 'bg-rose-950/10' : ''}>
-                {/* Name on the left, the call on the right, one line. */}
-                <div className="p-3 sm:p-4 flex items-center justify-between gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setOpenRow(open ? null : student.id)}
-                    aria-expanded={open}
-                    className="min-w-0 flex-1 flex items-center gap-1.5 text-left"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-semibold text-white text-sm truncate" title={student.name}>{student.name}</p>
-                      <p className="text-[11px] text-slate-400 truncate">
-                        {item ? item.deviceModel : 'Smartphone (not yet registered)'}
-                        {logged ? ` · ${DEPOSIT_META[logged.status].short} ${formatTime12h(logged.depositTime)}` : ''}
-                      </p>
-                    </div>
-                    <ChevronDown className={`w-3.5 h-3.5 text-slate-600 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-                  </button>
+                {/* The name owns the first line; the deposit checks sit below
+                    it so a long name is never crushed against the buttons. */}
+                <div className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setOpenRow(open ? null : student.id)}
+                      aria-expanded={open}
+                      className="min-w-0 flex-1 flex items-center gap-1.5 text-left"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white text-sm truncate" title={student.name}>{student.name}</p>
+                        <p className="text-[11px] text-slate-400 truncate">
+                          {item ? item.deviceModel : 'Smartphone (not yet registered)'}
+                          {logged ? ` · ${DEPOSIT_META[logged.status].short} ${formatTime12h(logged.depositTime)}` : ''}
+                        </p>
+                      </div>
+                      <ChevronDown className={`w-3.5 h-3.5 text-slate-600 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                    </button>
 
-                  {excuse ? (
-                    <span className="shrink-0 text-[10px] font-bold px-2 py-1.5 rounded-lg bg-sky-950 text-sky-300 border border-sky-800/60 max-w-[45%] truncate">
-                      {excuse}
-                    </span>
-                  ) : settled(student.id) ? (
-                    <div className="shrink-0 flex items-center gap-1.5">
-                      <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${DEPOSIT_META[logged!.status].chip}`}>
-                        {DEPOSIT_META[logged!.status].short}
+                    {excuse ? (
+                      <span className="shrink-0 text-[10px] font-bold px-2 py-1.5 rounded-lg bg-sky-950 text-sky-300 border border-sky-800/60 max-w-[45%] truncate">
+                        {excuse}
                       </span>
-                      <RecordOverrideControls kind="phoneDeposit" record={logged!} />
-                    </div>
-                  ) : canEdit ? (
-                    <div className="shrink-0 flex flex-wrap items-center justify-end gap-1">
+                    ) : settled(student.id) ? (
+                      <div className="shrink-0 flex items-center gap-1.5">
+                        <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${DEPOSIT_META[logged!.status].chip}`}>
+                          {DEPOSIT_META[logged!.status].short}
+                        </span>
+                        <RecordOverrideControls kind="phoneDeposit" record={logged!} />
+                      </div>
+                    ) : !canEdit ? (
+                      <span className={`shrink-0 px-2 py-1 rounded-md text-[11px] font-bold ${DEPOSIT_META[status].chip}`}>
+                        {DEPOSIT_META[status].short}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {canEdit && !excuse && !settled(student.id) && (
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 sm:justify-end">
                       {STATUS_ORDER.map(s => {
                         const meta = DEPOSIT_META[s];
                         const Icon = meta.icon;
@@ -603,13 +612,9 @@ export const CellphoneCustodyView: React.FC = () => {
                         }`}
                       >
                         <Save className="w-4 h-4" />
-                        <span className="hidden sm:inline">{logged ? 'Update' : 'Save'}</span>
+                        <span>{logged ? 'Update' : 'Save'}</span>
                       </button>
                     </div>
-                  ) : (
-                    <span className={`shrink-0 px-2 py-1 rounded-md text-[11px] font-bold ${DEPOSIT_META[status].chip}`}>
-                      {DEPOSIT_META[status].short}
-                    </span>
                   )}
                 </div>
 

@@ -291,7 +291,10 @@ export const StudyHoursLibraryView: React.FC = () => {
                     <RecordOverrideControls kind="study" record={filed} />
                   </div>
                 ) : canEdit ? (
-                  <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                  // Each roll-call row's checks sit on one line: Present/Absent,
+                  // Quiet/Noisy, then save. On a phone the status buttons shrink
+                  // to icons so the line never wraps beneath the name.
+                  <div className="flex items-stretch gap-1.5 sm:justify-end">
                     {(Object.keys(STATUS_META) as StudyStatus[]).map(s => {
                       const meta = STATUS_META[s];
                       const Icon = meta.icon;
@@ -303,16 +306,16 @@ export const StudyHoursLibraryView: React.FC = () => {
                           aria-label={`${student.name}: ${meta.label}`}
                           aria-pressed={selected}
                           onClick={() => setStatus(student.id, s)}
-                          className={`min-h-touch px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                          className={`h-10 w-10 sm:h-auto sm:min-h-touch sm:w-auto sm:px-3 rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
                             selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                           }`}
                         >
-                          <Icon className="w-4 h-4" />
-                          <span>{meta.label}</span>
+                          <Icon className="w-4 h-4 shrink-0" />
+                          <span className="hidden sm:inline">{meta.label}</span>
                         </button>
                       );
                     })}
-                    <span className="w-px bg-slate-800 mx-0.5 self-stretch" aria-hidden="true" />
+                    <span className="w-px bg-slate-800 mx-0.5 self-stretch hidden sm:block" aria-hidden="true" />
                     {(Object.keys(QUIET_META) as Quietness[]).map(q => {
                       const meta = QUIET_META[q];
                       const Icon = meta.icon;
@@ -324,12 +327,12 @@ export const StudyHoursLibraryView: React.FC = () => {
                           aria-label={`${student.name}: ${meta.label}`}
                           aria-pressed={selected}
                           onClick={() => setQuiet(student.id, q)}
-                          className={`min-h-touch px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                          className={`h-10 w-10 sm:h-auto sm:min-h-touch sm:w-auto sm:px-3 rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
                             selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                           }`}
                         >
-                          <Icon className="w-4 h-4" />
-                          <span>{meta.label}</span>
+                          <Icon className="w-4 h-4 shrink-0" />
+                          <span className="hidden sm:inline">{meta.label}</span>
                         </button>
                       );
                     })}
@@ -338,13 +341,13 @@ export const StudyHoursLibraryView: React.FC = () => {
                       title={`Save ${student.name} on his own`}
                       aria-label={`Save ${student.name}`}
                       onClick={() => submitStudent(student)}
-                      className={`min-h-touch px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all active:scale-95 ${
+                      className={`h-10 sm:h-auto sm:min-h-touch shrink-0 px-2.5 sm:px-3 rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5 text-[11px] sm:text-xs font-bold transition-all active:scale-95 ${
                         filed
                           ? 'bg-slate-800 text-indigo-300 border border-indigo-800/60 hover:bg-slate-700'
                           : 'bg-indigo-600 text-white hover:bg-indigo-500'
                       }`}
                     >
-                      <Save className="w-4 h-4" />
+                      <Save className="w-4 h-4 shrink-0" />
                       <span>{filed ? 'Update' : 'Save'}</span>
                     </button>
                   </div>

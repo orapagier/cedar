@@ -216,8 +216,8 @@ export const CurfewLightsOutView: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              The {formatTime12h(settings.curfewTime || '21:00')} curfew check-in and{' '}
-              {formatTime12h(settings.lightsOutTime || '22:00')} lights-out silence and gadget restriction.
+              The <span className="whitespace-nowrap">{formatTime12h(settings.curfewTime || '21:00')}</span> curfew check-in and{' '}
+              <span className="whitespace-nowrap">{formatTime12h(settings.lightsOutTime || '22:00')}</span> lights-out silence and gadget restriction.
             </p>
           </div>
 
@@ -483,7 +483,9 @@ export const CurfewLightsOutView: React.FC = () => {
             <form onSubmit={handleLightsOutSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-slate-800 flex items-center gap-2">
                 <Moon className="w-4 h-4 text-purple-400" />
-                <h3 className="font-bold text-white text-sm">{formatTime12h(settings.lightsOutTime || '22:10')} Lights-Out Inspection</h3>
+                <h3 className="font-bold text-white text-sm">
+                  <span className="whitespace-nowrap">{formatTime12h(settings.lightsOutTime || '22:10')}</span>{' '}Lights-Out Inspection
+                </h3>
               </div>
 
               <div className="p-4 space-y-4">

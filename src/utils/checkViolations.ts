@@ -10,6 +10,7 @@ import {
   StudyHoursLog,
   UnauthorizedExitLog,
   Violation,
+  ViolationCategory,
 } from '../types/dorm';
 import { WORSHIP_SESSIONS, worshipLabel } from '../data/dormSeed';
 import { formatTime12h } from './date';
@@ -22,6 +23,40 @@ export const VIOLATION_DEMERITS = 1;
 
 /** "1 demerit" / "3 demerits" — never "pts": these are owed, not scored. */
 export const demeritLabel = (n: number) => `${n} demerit${n === 1 ? '' : 's'}`;
+
+const titleCaseText = (value: string) =>
+  value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+/**
+ * How a violation reads as a headline: the event it happened at, not the rule
+ * it broke. A worship check's own violation carries its session in the
+ * description — "Failed to bring personal physical Bible to Morning Worship." —
+ * so the entry opens on "Morning Worship" with the finding beneath it, the way
+ * every check record reads. Anything else falls back to its category in words.
+ */
+export const violationTitle = (v: Pick<Violation, 'category' | 'description'>): string => {
+  const session = WORSHIP_SESSIONS.find(s => v.description?.toLowerCase().includes(s.label.toLowerCase()));
+  if (session) return session.label;
+  const byCategory: Record<ViolationCategory, string> = {
+    cleanliness: 'Room cleanliness',
+    worship_absence: 'Absent from worship',
+    worship_late: 'Late to worship',
+    no_bible: 'Worship without a Bible',
+    improper_worship_attire: 'Worship without proper attire',
+    curfew_breach: 'Curfew breach',
+    uniform_violation: 'Uniform violation',
+    church_absence: 'Absent from church',
+    irregular_school_departure: 'Irregular school departure',
+    unauthorized_campus_exit: 'Off-campus exit',
+    foul_language: 'Foul language',
+    study_hour_skipping: 'Skipped study hours',
+    chore_neglect: 'Missed cleaning duty',
+    lights_out_violation: 'Lights-out violation',
+    cellphone_policy_breach: 'Phone policy breach',
+    other: 'Incident',
+  };
+  return byCategory[v.category] ?? titleCaseText(v.category);
+};
 
 /** A violation a check record implies, before it is given an id and filed. */
 export type ViolationDraft = Omit<Violation, 'id' | 'createdAt' | 'sourceId'>;

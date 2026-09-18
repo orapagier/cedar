@@ -27,7 +27,7 @@ import {
   UnauthorizedExitLog,
   Violation,
 } from '../types/dorm';
-import { LANGUAGE_KIND_LABELS, violationSourceId } from './checkViolations';
+import { LANGUAGE_KIND_LABELS, violationSourceId, violationTitle } from './checkViolations';
 import { formatTime12h } from './date';
 
 /** How an entry reads at a glance: kept, slipped, broken, or just noted. */
@@ -331,7 +331,7 @@ export function buildOccupantTimeline(studentId: string, src: TimelineSource): R
       id: `redemption-${v.id}`,
       kind: 'redemption',
       date: v.redemption.completedDate,
-      title: `Redeemed — ${titleCase(v.category)}`,
+      title: `Redeemed — ${violationTitle(v)}`,
       detail:
         v.redemption.kind === 'reflection'
           ? `Reflection${v.redemption.reflectionTopic ? ` on ${v.redemption.reflectionTopic}` : ''} · signed off by ${v.redemption.supervisorName}`
@@ -352,7 +352,7 @@ export function buildOccupantTimeline(studentId: string, src: TimelineSource): R
       id: `violation-${v.id}`,
       kind: 'violation',
       date: v.date,
-      title: titleCase(v.category),
+      title: violationTitle(v),
       detail: v.description,
       tone: v.status === 'cleared_service' ? 'good' : 'bad',
       marks: [{ demerits: v.demerits, redeemed: v.status === 'cleared_service' }],

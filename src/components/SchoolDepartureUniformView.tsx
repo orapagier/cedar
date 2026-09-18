@@ -199,8 +199,8 @@ export const SchoolDepartureUniformView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Two school runs a day — morning {formatTime12h(settings.departureStart)} and afternoon{' '}
-            {formatTime12h(settings.departureAfternoonStart)} (set under Schedule Settings) — plus uniform, ID badge,
+            Two school runs a day — morning <span className="whitespace-nowrap">{formatTime12h(settings.departureStart)}</span> and afternoon{' '}
+            <span className="whitespace-nowrap">{formatTime12h(settings.departureAfternoonStart)}</span> (set under Schedule Settings) — plus uniform, ID badge,
             haircut, and shoe compliance.
           </p>
         </div>

@@ -142,10 +142,20 @@ export const OccupantRecordsView: React.FC = () => {
               Tap a name to open their full record.
             </p>
           </div>
-          <div className="hidden sm:flex shrink-0 gap-2 text-center">
-            <Tally label="Residents" value={visible.length} />
-            <Tally label="With demerits" value={withDemerits} tone={withDemerits ? 'text-amber-300' : undefined} />
-            <Tally label="On notice" value={onNotice} tone={onNotice ? 'text-rose-400' : undefined} />
+          <div className="shrink-0 flex flex-col items-end gap-2">
+            <div className="hidden sm:flex shrink-0 gap-2 text-center">
+              <Tally label="Residents" value={visible.length} />
+              <Tally label="With demerits" value={withDemerits} tone={withDemerits ? 'text-amber-300' : undefined} />
+              <Tally label="On notice" value={onNotice} tone={onNotice ? 'text-rose-400' : undefined} />
+            </div>
+            <button
+              onClick={() => setGrouping(g => (g === 'room' ? 'name' : 'room'))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+              title="Switch between room and alphabetical order"
+            >
+              <ArrowDownUp className="w-3.5 h-3.5" />
+              {grouping === 'room' ? 'By room' : 'A–Z'}
+            </button>
           </div>
         </div>
 
@@ -184,13 +194,6 @@ export const OccupantRecordsView: React.FC = () => {
               {f.label}
             </button>
           ))}
-          <button
-            onClick={() => setGrouping(g => (g === 'room' ? 'name' : 'room'))}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
-          >
-            <ArrowDownUp className="w-3.5 h-3.5" />
-            {grouping === 'room' ? 'By room' : 'A–Z'}
-          </button>
         </div>
       </div>
 

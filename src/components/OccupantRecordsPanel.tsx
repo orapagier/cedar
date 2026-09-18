@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Violation } from '../types/dorm';
-import { LANGUAGE_KIND_LABELS, LANGUAGE_SETTING_LABELS, demeritLabel } from '../utils/checkViolations';
+import { LANGUAGE_KIND_LABELS, LANGUAGE_SETTING_LABELS, demeritLabel, violationTitle } from '../utils/checkViolations';
 import { formatFullDate, formatTime12h } from '../utils/date';
 
 const PASS_LABELS: Record<string, string> = {
@@ -165,7 +165,9 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
           {studyLogs.filter(l => l.studentId === studentId).slice(0, limit).map(l => (
             <div key={l.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-white">{l.location.replace(/_/g, ' ')}</p>
+                <p className="text-xs font-semibold text-white">
+                  {l.location.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </p>
                 <p className="text-[11px] text-slate-400">
                   {formatFullDate(l.date)}
                   {l.checkTime && ` · ${formatTime12h(l.checkTime)}`} · {l.quietness ?? 'quiet'}
@@ -183,8 +185,11 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
           {curfewRecords.filter(c => c.studentId === studentId).slice(0, limit).map(c => (
             <div key={c.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-white">{formatFullDate(c.date)}</p>
-                <p className="text-[11px] text-slate-400">Curfew {c.curfewTime}{c.actualCheckInTime ? ` · in at ${c.actualCheckInTime}` : ''}</p>
+                <p className="text-xs font-semibold text-white">Curfew check-in</p>
+                <p className="text-[11px] text-slate-400">
+                  {formatFullDate(c.date)} · limit {formatTime12h(c.curfewTime)}
+                  {c.actualCheckInTime ? ` · in at ${formatTime12h(c.actualCheckInTime)}` : ''}
+                </p>
               </div>
               <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusChip(c.status)}`}>{c.status.replace(/_/g, ' ')}</span>
             </div>
@@ -199,10 +204,10 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
             <div key={u.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-white">
-                  {formatFullDate(u.date)} · {formatTime12h(u.departureTime)}
-                  <span className="text-slate-500 font-normal"> · {u.session === 'afternoon' ? 'Afternoon' : 'Morning'}</span>
+                  {u.session === 'afternoon' ? 'Afternoon' : 'Morning'} departure run
                 </p>
                 <p className="text-[11px] text-slate-400">
+                  {formatFullDate(u.date)} · {formatTime12h(u.departureTime)} ·{' '}
                   Uniform {u.uniformCompliant ? '✓' : '✗'} · Hair {u.hairGroomingCompliant ? '✓' : '✗'} ·
                   ID {u.idBadgeCompliant ? '✓' : '✗'} · Shoes {u.shoesCompliant ? '✓' : '✗'}
                 </p>
@@ -289,7 +294,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
           {unauthorizedExits.filter(e => e.studentId === studentId).slice(0, limit).map(e => (
             <div key={e.id} className="px-4 py-2.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-white">{formatFullDate(e.date)}</p>
+                <p className="text-xs font-semibold text-white">Off-campus without a pass</p>
                 <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                   e.status === 'excused' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
                 }`}>
@@ -297,7 +302,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                {e.destination || 'Destination unknown'} · noticed {formatTime12h(e.noticedTime)} ·{' '}
+                {formatFullDate(e.date)} · {e.destination || 'Destination unknown'} · noticed {formatTime12h(e.noticedTime)} ·{' '}
                 {e.returnedTime ? `back at ${formatTime12h(e.returnedTime)}` : 'not yet logged back in'}
               </p>
               {e.status === 'excused' && e.excuseReason && (
@@ -365,7 +370,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
           {activeViolations.slice(0, limit).map(v => (
             <div key={v.id} className="px-4 py-2.5 flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-white capitalize">{v.category.replace(/_/g, ' ')}</p>
+                <p className="text-xs font-semibold text-white">{violationTitle(v)}</p>
                 <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
                 {v.assignedRedemption ? (
                   <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.assignedRedemption}</p>
@@ -394,8 +399,8 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
                       : <HandHeart className="w-3 h-3 shrink-0" />}
                     <span className="truncate">{redemptionLabel(v)}</span>
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5 capitalize">
-                    {v.category.replace(/_/g, ' ')} · {formatFullDate(v.date)}
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {violationTitle(v)} · {formatFullDate(v.date)}
                   </p>
                   {v.redemption && (
                     <p className="text-[10px] text-slate-500 mt-0.5">
