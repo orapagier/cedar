@@ -306,7 +306,7 @@ export const StudyHoursLibraryView: React.FC = () => {
                           aria-label={`${student.name}: ${meta.label}`}
                           aria-pressed={selected}
                           onClick={() => setStatus(student.id, s)}
-                          className={`h-10 w-10 sm:h-auto sm:min-h-touch sm:w-auto sm:px-3 rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                          className={`min-w-touch min-h-touch flex-1 sm:flex-none sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
                             selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                           }`}
                         >
@@ -327,7 +327,7 @@ export const StudyHoursLibraryView: React.FC = () => {
                           aria-label={`${student.name}: ${meta.label}`}
                           aria-pressed={selected}
                           onClick={() => setQuiet(student.id, q)}
-                          className={`h-10 w-10 sm:h-auto sm:min-h-touch sm:w-auto sm:px-3 rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
+                          className={`min-w-touch min-h-touch flex-1 sm:flex-none sm:px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold transition-all active:scale-95 ${
                             selected ? meta.active : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                           }`}
                         >
