@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { Modal } from './ui/Modal';
 import { ServiceType, Violation, ViolationCategory } from '../types/dorm';
 import { formatFullDate, manilaToday } from '../utils/date';
 
@@ -360,7 +361,7 @@ export const ResidentPerformanceView: React.FC = () => {
       })}
 
       {canEdit && showAddModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+        <Modal onClose={() => setShowAddModal(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
@@ -434,11 +435,11 @@ export const ResidentPerformanceView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {canEdit && redeeming && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+        <Modal onClose={() => setRedeeming(null)}>
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -561,7 +562,7 @@ export const ResidentPerformanceView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {!canEdit && (

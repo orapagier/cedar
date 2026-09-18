@@ -15,6 +15,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { RecordOverrideControls } from './RecordOverrideControls';
 import { DepartureSession } from '../types/dorm';
 import { manilaToday, manilaHour, formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
@@ -332,13 +333,17 @@ export const SchoolDepartureUniformView: React.FC = () => {
                     {log.status.toUpperCase()}
                   </span>
                 </div>
-                <span className={`shrink-0 font-mono font-bold text-xs ${log.isDepartureOnSchedule ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {formatTime12h(log.departureTime)}
-                </span>
+                <div className="shrink-0 flex items-center gap-2">
+                  <span className={`font-mono font-bold text-xs ${log.isDepartureOnSchedule ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {formatTime12h(log.departureTime)}
+                  </span>
+                  <RecordOverrideControls kind="uniform" record={log} />
+                </div>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 Room {log.roomNumber} · {log.session === 'afternoon' ? 'Afternoon' : 'Morning'} run ·{' '}
                 {formatFullDate(log.date)} · by {log.inspectedBy}
+                {log.overriddenBy && <span className="text-amber-300/90"> · overridden by {log.overriddenBy}</span>}
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {[

@@ -16,6 +16,8 @@ import {
   Shirt,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { Modal } from './ui/Modal';
+import { RecordOverrideControls } from './RecordOverrideControls';
 import { RoomInspection, OccupantInspectionCheck } from '../types/dorm';
 import { manilaToday, formatFullDate } from '../utils/date';
 
@@ -26,7 +28,7 @@ const INDIVIDUAL_ITEMS: { key: 'bedsOk' | 'lockersOk' | 'personalThingsOk'; labe
 ];
 
 export const RoomInspectionsView: React.FC = () => {
-  const { inspections, rooms, users, addInspection, canEdit, currentUser } = useDorm();
+  const { inspections, rooms, users, addInspection, canEdit, isSuperAdmin, currentUser } = useDorm();
   const [showModal, setShowModal] = useState(false);
 
   const occupantsIn = (roomNumber: string) =>
@@ -305,7 +307,13 @@ export const RoomInspectionsView: React.FC = () => {
                 ))}
               </div>
               {insp.remarks && <p className="text-[11px] text-slate-400 mt-1.5">{insp.remarks}</p>}
-              <p className="text-[11px] text-slate-500 mt-1">Inspected by {insp.inspectorName}</p>
+              <div className="flex items-center justify-between gap-2 mt-1">
+                <p className="text-[11px] text-slate-500 truncate">
+                  Inspected by {insp.inspectorName}
+                  {insp.overriddenBy && <span className="text-amber-300/90"> · overridden by {insp.overriddenBy}</span>}
+                </p>
+                <RecordOverrideControls kind="inspection" record={insp} />
+              </div>
             </div>
           ))}
         </div>
@@ -323,6 +331,7 @@ export const RoomInspectionsView: React.FC = () => {
                 <th className="p-3.5">Score</th>
                 <th className="p-3.5">Remarks</th>
                 <th className="p-3.5">Inspector</th>
+                {isSuperAdmin && <th className="p-3.5 text-right">Override</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
@@ -354,7 +363,19 @@ export const RoomInspectionsView: React.FC = () => {
                     </span>
                   </td>
                   <td className="p-3.5 text-slate-400 max-w-xs truncate">{insp.remarks || '-'}</td>
-                  <td className="p-3.5 text-slate-400 whitespace-nowrap">{insp.inspectorName}</td>
+                  <td className="p-3.5 text-slate-400 whitespace-nowrap">
+                    {insp.inspectorName}
+                    {insp.overriddenBy && (
+                      <span className="block text-[10px] text-amber-300/90">overridden by {insp.overriddenBy}</span>
+                    )}
+                  </td>
+                  {isSuperAdmin && (
+                    <td className="p-3.5">
+                      <div className="flex justify-end">
+                        <RecordOverrideControls kind="inspection" record={insp} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -364,7 +385,7 @@ export const RoomInspectionsView: React.FC = () => {
 
       {/* New Inspection Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+        <Modal onClose={() => setShowModal(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
@@ -526,7 +547,7 @@ export const RoomInspectionsView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

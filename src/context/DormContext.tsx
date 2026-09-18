@@ -22,6 +22,7 @@ import {
   ConfiscatedItemRecord,
   StudentMedicalRecord,
   DormSettings,
+  OverrideStamp,
 } from '../types/dorm';
 import {
   INITIAL_USERS,
@@ -43,7 +44,6 @@ import {
   INITIAL_CONFISCATED_ITEMS,
   INITIAL_STUDENT_MEDICALS,
   INITIAL_SETTINGS,
-  worshipLabel,
 } from '../data/dormSeed';
 import { manilaToday, manilaTime, manilaTimeValue } from '../utils/date';
 import { splitAtCutoff } from '../utils/records';
@@ -54,6 +54,24 @@ import {
   vaultExemptionReason,
   WEEKDAY_NAMES,
 } from '../utils/phoneVault';
+import {
+  CheckKind,
+  RoomMember,
+  ViolationDraft,
+  VIOLATION_POINTS,
+  attendanceDrafts,
+  cleaningDrafts,
+  curfewDrafts,
+  inspectionDrafts,
+  lightsOutDrafts,
+  phoneDepositDrafts,
+  recomputeInspection,
+  recomputeLightsOut,
+  recomputeUniform,
+  studyDrafts,
+  uniformDrafts,
+  violationSourceId,
+} from '../utils/checkViolations';
 
 interface DormContextType {
   currentUser: User;
@@ -179,6 +197,15 @@ interface DormContextType {
   /** Put a redeemed violation back on a resident's record. */
   undoViolationRedemption: (violationId: string) => void;
 
+  /**
+   * Super Admin only: change a check already on file, whoever filed it. The
+   * record is re-scored and the violations it raised are filed again from the
+   * corrected version; a violation already redeemed keeps its redemption.
+   */
+  overrideCheckRecord: (kind: CheckKind, id: string, updates: Record<string, unknown>) => void;
+  /** Super Admin only: strike a check off, and everything it put on a standing. */
+  deleteCheckRecord: (kind: CheckKind, id: string) => void;
+
   // Shared-store housekeeping
   /** Everything the devices share, for the size meter and for backups. */
   sharedStateSnapshot: () => Record<string, unknown>;
@@ -190,10 +217,6 @@ interface DormContextType {
 const DormContext = createContext<DormContextType | null>(null);
 
 const STORAGE_KEY_PREFIX = 'dorm_dean_v1_';
-
-// Every infraction is worth the same single point, whatever its severity, so a
-// resident's total reads as "how many rules were broken" and nothing else.
-const VIOLATION_POINTS = 1;
 
 // What the vault records against a resident who keeps no phone in the dorm.
 const NO_PHONE_REMARK = 'No phone in the dorm — exempt from the vault run.';
@@ -676,194 +699,104 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true, message: `Role updated to ${newRole.toUpperCase()} successfully.` };
   };
 
+  /** The residents a room-wide check falls on. */
+  const roomMembers = (roomNumber: string): RoomMember[] => {
+    const room = rooms.find(r => r.roomNumber === roomNumber);
+    if (!room) return [];
+    return room.occupantIds
+      .map(id => users.find(u => u.id === id))
+      .filter((u): u is User => !!u && u.role === 'occupant')
+      .map(u => ({ id: u.id, name: u.name }));
+  };
+
+  /**
+   * File the violations one check record implies, replacing whatever that same
+   * record filed before. Ids are derived from the record, the resident and the
+   * category, so the same check saved on two devices lands on one violation
+   * rather than two. A violation already redeemed keeps its id, its cleared
+   * status and the redemption — correcting the check behind it never asks a
+   * resident to work the same point off twice — and one the correction removes
+   * takes its clearance log with it.
+   */
+  const syncViolationsFor = (sourceId: string, drafts: ViolationDraft[]) => {
+    const stamp = manilaTime();
+    const key = (v: { studentId: string; category: Violation['category'] }) => `${v.studentId}|${v.category}`;
+    const surviving = new Set(drafts.map(key));
+    const droppedIds = violations
+      .filter(v => v.sourceId === sourceId && !surviving.has(key(v)))
+      .map(v => v.id);
+
+    setViolations(prev => {
+      const priorByKey = new Map<string, Violation>(prev.filter(v => v.sourceId === sourceId).map(v => [key(v), v]));
+      const filed = drafts.map<Violation>(draft => {
+        const prior = priorByKey.get(key(draft));
+        const redeemed = prior?.status === 'cleared_service' ? prior : undefined;
+        return {
+          ...draft,
+          sourceId,
+          id: prior?.id ?? `viol-${sourceId}-${draft.studentId}-${draft.category}`,
+          status: redeemed ? 'cleared_service' : draft.status,
+          redemption: redeemed?.redemption,
+          createdAt: prior?.createdAt ?? stamp,
+        };
+      });
+      return [...filed, ...prev.filter(v => v.sourceId !== sourceId)];
+    });
+
+    if (droppedIds.length) {
+      setDemeritClearances(prev => prev.filter(c => !c.violationId || !droppedIds.includes(c.violationId)));
+    }
+  };
+
+  /** Drop everything one record put on a resident's standing. */
+  const clearViolationsFrom = (sourceId: string) => syncViolationsFor(sourceId, []);
+
   const addInspection = (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => {
     if (!canEdit) return;
-    const timeStr = manilaTime();
-    const newRecord: RoomInspection = {
+    const record: RoomInspection = {
       ...insp,
       id: 'insp-' + Date.now(),
-      timestamp: timeStr,
+      timestamp: manilaTime(),
     };
-    setInspections(prev => [newRecord, ...prev]);
-
-    // If fail, create automatic violation
-    if (newRecord.status === 'fail') {
-      const room = rooms.find(r => r.roomNumber === insp.roomNumber);
-      if (room && room.occupantIds.length > 0) {
-        room.occupantIds.forEach(occId => {
-          const occ = users.find(u => u.id === occId);
-          if (occ && occ.role === 'occupant') {
-            saveViolation({
-              date: insp.date,
-              studentId: occ.id,
-              studentName: occ.name,
-              roomNumber: insp.roomNumber,
-              category: 'cleanliness',
-              severity: 'moderate',
-              description: `Room ${insp.roomNumber} failed daily inspection score (${insp.score}/100): ${insp.remarks || 'Sanitation issues'}`,
-              demeritPoints: VIOLATION_POINTS,
-              reportedBy: currentUser.name,
-              status: 'pending_settlement',
-              actionRequired: 'Re-inspection by 5:00 PM required.',
-            });
-          }
-        });
-      }
-    }
+    setInspections(prev => [record, ...prev]);
+    syncViolationsFor(record.id, inspectionDrafts(record, roomMembers(record.roomNumber)));
   };
 
   const saveAttendanceBatch = (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => {
     if (!canEdit) return;
     const timeStr = manilaTime();
-    const formatted = records.map((r, idx) => ({
+    const formatted: AttendanceRecord[] = records.map((r, idx) => ({
       ...r,
-      id: `att-${Date.now()}-${idx}`,
+      id: `att-${Date.now()}-${idx}-${r.studentId}`,
       timestamp: timeStr,
     }));
     setAttendance(prev => [...formatted, ...prev]);
-
-    // Automatically flag unexcused absences, missing Bibles and improper attire.
-    records.forEach(r => {
-      const session = worshipLabel(r.type);
-      const attended = r.status === 'present' || r.status === 'late';
-
-      if (r.status === 'absent') {
-        saveViolation({
-          date: r.date,
-          studentId: r.studentId,
-          studentName: r.studentName,
-          roomNumber: r.roomNumber,
-          category: 'worship_absence',
-          severity: 'moderate',
-          description: `Unexcused absence from ${session}.`,
-          demeritPoints: VIOLATION_POINTS,
-          reportedBy: currentUser.name,
-          status: 'pending_settlement',
-          actionRequired: 'Submit dean excuse slip or make-up devotional session.',
-        });
-        return;
-      }
-
-      if (!attended) return;
-
-      if (!r.broughtBible) {
-        saveViolation({
-          date: r.date,
-          studentId: r.studentId,
-          studentName: r.studentName,
-          roomNumber: r.roomNumber,
-          category: 'no_bible',
-          severity: 'minor',
-          description: `Failed to bring personal physical Bible to ${session}.`,
-          demeritPoints: VIOLATION_POINTS,
-          reportedBy: currentUser.name,
-          status: 'pending_settlement',
-          actionRequired: 'Ensure Bible is in hand for next worship.',
-        });
-      }
-
-      if (r.properAttire === false) {
-        saveViolation({
-          date: r.date,
-          studentId: r.studentId,
-          studentName: r.studentName,
-          roomNumber: r.roomNumber,
-          category: 'improper_worship_attire',
-          severity: 'minor',
-          description: `Improper worship attire at ${session}.`,
-          demeritPoints: VIOLATION_POINTS,
-          reportedBy: currentUser.name,
-          status: 'pending_settlement',
-          actionRequired: 'Come in proper worship attire for the next service.',
-        });
-      }
-    });
+    // Unexcused absences, missing Bibles and improper attire are each 1 pt.
+    formatted.forEach(r => syncViolationsFor(r.id, attendanceDrafts(r)));
   };
 
   const saveCurfewRecord = (rec: Omit<CurfewRecord, 'id'>) => {
     if (!canEdit) return;
-    const newRecord: CurfewRecord = {
-      ...rec,
-      id: 'cur-' + Date.now(),
-    };
-    setCurfewRecords(prev => [newRecord, ...prev]);
-
-    if (rec.status === 'late' || rec.status === 'missing') {
-      saveViolation({
-        date: rec.date,
-        studentId: rec.studentId,
-        studentName: rec.studentName,
-        roomNumber: rec.roomNumber,
-        category: 'curfew_breach',
-        severity: rec.status === 'missing' ? 'major' : 'moderate',
-        description: rec.status === 'missing' 
-          ? `Missing from dormitory past curfew without authorization.`
-          : `Late curfew arrival (${rec.actualCheckInTime || 'unrecorded'}). ${rec.remarks || ''}`,
-        demeritPoints: VIOLATION_POINTS,
-        reportedBy: currentUser.name,
-        status: 'pending_settlement',
-        actionRequired: 'Dean inquiry interview.',
-      });
-    }
+    // The resident is in the id: a room's roll call files every resident in one
+    // tick, and a bare timestamp would hand them all the same one.
+    const record: CurfewRecord = { ...rec, id: `cur-${Date.now()}-${rec.studentId}` };
+    setCurfewRecords(prev => [record, ...prev]);
+    syncViolationsFor(record.id, curfewDrafts(record));
   };
 
   const saveUniformLog = (log: Omit<SchoolUniformLog, 'id'>) => {
     if (!canEdit) return;
-    const newRecord: SchoolUniformLog = {
-      ...log,
-      id: 'uni-' + Date.now(),
-    };
-    setUniformLogs(prev => [newRecord, ...prev]);
-
-    if (log.status === 'flagged') {
-      saveViolation({
-        date: log.date,
-        studentId: log.studentId,
-        studentName: log.studentName,
-        roomNumber: log.roomNumber,
-        category: !log.isDepartureOnSchedule ? 'irregular_school_departure' : 'uniform_violation',
-        severity: 'minor',
-        description: `School departure gate inspection issue: ${log.remarks || 'Uniform/Grooming non-compliant or departed off-schedule'}.`,
-        demeritPoints: VIOLATION_POINTS,
-        reportedBy: currentUser.name,
-        status: 'pending_settlement',
-        actionRequired: 'Correction before school gate pass clearance.',
-      });
-    }
+    const record: SchoolUniformLog = { ...log, id: `uni-${Date.now()}-${log.studentId}` };
+    setUniformLogs(prev => [record, ...prev]);
+    syncViolationsFor(record.id, uniformDrafts(record));
   };
 
   const saveStudyLog = (log: Omit<StudyHoursLog, 'id'>) => {
     if (!canEdit) return;
-    const newRecord: StudyHoursLog = {
-      ...log,
-      id: 'sty-' + Date.now(),
-    };
-    setStudyLogs(prev => [newRecord, ...prev]);
-
-    if (log.status === 'absent' || log.quietness === 'noisy') {
-      saveViolation({
-        date: log.date,
-        studentId: log.studentId,
-        studentName: log.studentName,
-        roomNumber: log.roomNumber,
-        category: 'study_hour_skipping',
-        severity: 'minor',
-        description: `Study hours infraction: ${log.status === 'absent' ? 'Absent from study period' : 'Noise during quiet study'}.`,
-        demeritPoints: VIOLATION_POINTS,
-        reportedBy: currentUser.name,
-        status: 'pending_settlement',
-        actionRequired: 'Silent study monitoring assigned.',
-      });
-    }
+    const record: StudyHoursLog = { ...log, id: `sty-${Date.now()}-${log.studentId}` };
+    setStudyLogs(prev => [record, ...prev]);
+    syncViolationsFor(record.id, studyDrafts(record));
   };
-
-  /**
-   * Drop the violations a given record auto-logged, before it logs them again.
-   * Re-logging keeps each violation's id (see `saveViolation`), so a redemption
-   * already rendered against it stays attached.
-   */
-  const clearViolationsFrom = (sourceId: string) =>
-    setViolations(prev => prev.filter(v => v.sourceId !== sourceId));
 
   // The cleaning rotation runs one crew per day, so rostering a room takes over
   // that date: re-rostering a day that was already checked starts it fresh.
@@ -919,7 +852,6 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     remarks?: string;
   }) => {
     if (!canEdit) return;
-    const timeStr = manilaTime();
     const existing = cleaningDuties.find(d => d.date === entry.date);
     const dutyId = existing?.id ?? 'clean-' + Date.now();
 
@@ -934,7 +866,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       remarks: entry.remarks,
       assignedBy: existing?.assignedBy ?? currentUser.name,
       recordedBy: currentUser.name,
-      timestamp: timeStr,
+      timestamp: manilaTime(),
     };
     setCleaningDuties(prev =>
       prev.some(d => d.id === dutyId) ? prev.map(d => (d.id === dutyId ? completed : d)) : [completed, ...prev]
@@ -942,86 +874,14 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Correcting a day that was already checked replaces the violations that
     // check produced, so nobody is charged twice for the same cleaning day.
-    clearViolationsFrom(dutyId);
-
-    // Missing your room's cleaning day is the resident's own infraction.
-    entry.helpers
-      .filter(h => !h.helped)
-      .forEach(h =>
-        saveViolation({
-          date: entry.date,
-          studentId: h.studentId,
-          studentName: h.studentName,
-          roomNumber: entry.roomNumber,
-          category: 'chore_neglect',
-          severity: 'minor',
-          description: `Did not help with Room ${entry.roomNumber}'s dorm cleaning duty.${entry.remarks ? ` ${entry.remarks}` : ''}`,
-          demeritPoints: VIOLATION_POINTS,
-          reportedBy: currentUser.name,
-          status: 'pending_settlement',
-          actionRequired: 'Serve the next cleaning rotation under monitor sign-off.',
-          sourceId: dutyId,
-        })
-      );
-
-    // Poor work falls on the crew that actually showed up; the residents who
-    // skipped are already answering for the same day above.
-    const poorWork = entry.rating <= 2 || !entry.garbageDisposed;
-    if (poorWork) {
-      const reason = !entry.garbageDisposed
-        ? 'garbage not disposed'
-        : `cleaning rated ${entry.rating}/5`;
-      entry.helpers
-        .filter(h => h.helped)
-        .forEach(h =>
-          saveViolation({
-            date: entry.date,
-            studentId: h.studentId,
-            studentName: h.studentName,
-            roomNumber: entry.roomNumber,
-            category: 'cleanliness',
-            severity: 'minor',
-            description: `Dorm cleaning duty below standard (${reason}).${entry.remarks ? ` ${entry.remarks}` : ''}`,
-            demeritPoints: VIOLATION_POINTS,
-            reportedBy: currentUser.name,
-            status: 'pending_settlement',
-            actionRequired: 'Redo the assigned area before the next inspection.',
-            sourceId: dutyId,
-          })
-        );
-    }
+    syncViolationsFor(dutyId, cleaningDrafts(completed));
   };
 
   const saveLightsOutLog = (log: Omit<LightsOutLog, 'id'>) => {
     if (!canEdit) return;
-    const newRecord: LightsOutLog = {
-      ...log,
-      id: 'lo-' + Date.now(),
-    };
-    setLightsOutLogs(prev => [newRecord, ...prev]);
-
-    if (log.status === 'violation') {
-      const room = rooms.find(r => r.roomNumber === log.roomNumber);
-      if (room) {
-        room.occupantIds.forEach(occId => {
-          const occ = users.find(u => u.id === occId);
-          if (occ && occ.role === 'occupant') {
-            saveViolation({
-              date: log.date,
-              studentId: occ.id,
-              studentName: occ.name,
-              roomNumber: log.roomNumber,
-              category: 'lights_out_violation',
-              severity: 'moderate',
-              description: `Room ${log.roomNumber} lights-out violation at ${log.checkTime}: ${log.violatorRemarks || 'Lights on or noise disturbance'}`,
-              demeritPoints: VIOLATION_POINTS,
-              reportedBy: currentUser.name,
-              status: 'pending_settlement',
-            });
-          }
-        });
-      }
-    }
+    const record: LightsOutLog = { ...log, id: 'lo-' + Date.now() };
+    setLightsOutLogs(prev => [record, ...prev]);
+    syncViolationsFor(record.id, lightsOutDrafts(record, roomMembers(record.roomNumber)));
   };
 
   const updateCellphoneStatus = (id: string, updates: Partial<CellphoneCustody>) => {
@@ -1031,23 +891,8 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
-  // A room's deposit roll call. Every check is filed against the vault cycle it
-  // falls in — one record per resident per cycle — so re-running a room
-  // replaces its own records instead of stacking new ones.
-  const savePhoneDepositBatch = (records: Omit<PhoneDepositLog, 'id'>[]) => {
-    if (!canEdit) return;
-
-    // Anything handed in past the deadline is late, whatever the dean tapped.
-    const resolved: PhoneDepositLog[] = records.map(r => {
-      const cycleDate = r.cycleDate ?? vaultCycle(r.date, r.depositTime, settings).deadlineDate;
-      const late = r.status === 'deposited' && isLateDeposit(r.date, r.depositTime, settings);
-      return { ...r, cycleDate, status: late ? 'late' : r.status, id: `dep-${r.studentId}-${cycleDate}` };
-    });
-
-    const supersedes = (d: PhoneDepositLog) =>
-      resolved.some(r => r.studentId === d.studentId && (d.cycleDate ?? d.date) === r.cycleDate);
-    setPhoneDeposits(prev => [...resolved, ...prev.filter(d => !supersedes(d))]);
-
+  /** Move each resident's device to where their deposit check says it is. */
+  const applyDepositsToCustody = (resolved: PhoneDepositLog[]) => {
     setCellphones(prev => {
       const updated = prev.map(c => {
         const rec = resolved.find(r => r.studentId === c.studentId);
@@ -1060,7 +905,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           turnedOverSunday: inVault,
           turnOverTime: inVault ? rec.depositTime : c.turnOverTime,
           returnedFriday: inVault ? false : c.returnedFriday,
-          custodyStatus: inVault ? 'in_vault' : 'with_student',
+          custodyStatus: inVault ? 'in_vault' as const : 'with_student' as const,
         };
       });
       // First deposit for a resident whose device was never registered: the
@@ -1080,32 +925,31 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }));
       return fresh.length ? [...fresh, ...updated] : updated;
     });
+  };
 
-    const dueLabel = describeCyclePoint(settings.phoneDepositDay, settings.phoneDepositTime);
-    resolved.forEach(r => {
-      const sourceId = `phone-${r.studentId}-${r.cycleDate}`;
-      // A re-check replaces its own verdict rather than piling points on.
-      clearViolationsFrom(sourceId);
-      if (r.status === 'deposited' || r.status === 'excused') return;
-      saveViolation({
-        date: r.date,
-        studentId: r.studentId,
-        studentName: r.studentName,
-        roomNumber: r.roomNumber,
-        category: 'cellphone_policy_breach',
-        severity: r.status === 'late' ? 'minor' : 'moderate',
-        description: r.status === 'late'
-          ? `Late phone deposit at ${r.depositTime} — due ${dueLabel}.${r.remarks ? ` ${r.remarks}` : ''}`
-          : `Did not deposit phone for the cycle due ${dueLabel}.${r.remarks ? ` ${r.remarks}` : ''}`,
-        demeritPoints: VIOLATION_POINTS,
-        reportedBy: currentUser.name,
-        status: 'pending_settlement',
-        sourceId,
-        actionRequired: r.status === 'late'
-          ? 'Deposit on time at the next vault run.'
-          : 'Surrender the device to the Dean immediately.',
-      });
+  // A room's deposit roll call. Every check is filed against the vault cycle it
+  // falls in — one record per resident per cycle — so re-running a room
+  // replaces its own records instead of stacking new ones.
+  const savePhoneDepositBatch = (records: Omit<PhoneDepositLog, 'id'>[]) => {
+    if (!canEdit) return;
+
+    // Anything handed in past the deadline is late, whatever the dean tapped.
+    const resolved: PhoneDepositLog[] = records.map(r => {
+      const cycleDate = r.cycleDate ?? vaultCycle(r.date, r.depositTime, settings).deadlineDate;
+      const late = r.status === 'deposited' && isLateDeposit(r.date, r.depositTime, settings);
+      return { ...r, cycleDate, status: late ? 'late' : r.status, id: `dep-${r.studentId}-${cycleDate}` };
     });
+
+    const supersedes = (d: PhoneDepositLog) =>
+      resolved.some(r => r.studentId === d.studentId && (d.cycleDate ?? d.date) === r.cycleDate);
+    setPhoneDeposits(prev => [...resolved, ...prev.filter(d => !supersedes(d))]);
+    applyDepositsToCustody(resolved);
+
+    // A re-check replaces its own verdict rather than piling points on.
+    const dueLabel = describeCyclePoint(settings.phoneDepositDay, settings.phoneDepositTime);
+    resolved.forEach(r =>
+      syncViolationsFor(violationSourceId('phoneDeposit', r), phoneDepositDrafts(r, dueLabel))
+    );
   };
 
   /**
@@ -1143,26 +987,22 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
     const sweptIds = new Set(swept.map(d => d.id));
 
-    const flagged: Violation[] = missing.map(u => ({
-      id: `viol-phone-${u.id}-${cycle.deadlineDate}`,
-      date: cycle.deadlineDate,
-      studentId: u.id,
-      studentName: u.name,
-      roomNumber: u.roomNumber || '—',
-      category: 'cellphone_policy_breach',
-      severity: 'moderate',
-      description: `No phone deposit recorded for the cycle due ${dueLabel}.`,
-      demeritPoints: VIOLATION_POINTS,
-      reportedBy: 'Vault deadline',
-      status: 'pending_settlement',
-      sourceId: `phone-${u.id}-${cycle.deadlineDate}`,
-      actionRequired: 'Surrender the device to the Dean, or have the absence excused.',
-      createdAt: manilaTime(),
-    }));
-    const flaggedSources = new Set(flagged.map(v => v.sourceId));
-
     setPhoneDeposits(prev => [...swept, ...prev.filter(d => !sweptIds.has(d.id))]);
-    setViolations(prev => [...flagged, ...prev.filter(v => !v.sourceId || !flaggedSources.has(v.sourceId))]);
+    swept.forEach(d =>
+      syncViolationsFor(violationSourceId('phoneDeposit', d), [{
+        date: d.date,
+        studentId: d.studentId,
+        studentName: d.studentName,
+        roomNumber: d.roomNumber,
+        category: 'cellphone_policy_breach',
+        severity: 'moderate',
+        description: `No phone deposit recorded for the cycle due ${dueLabel}.`,
+        demeritPoints: VIOLATION_POINTS,
+        reportedBy: 'Vault deadline',
+        status: 'pending_settlement',
+        actionRequired: 'Surrender the device to the Dean, or have the absence excused.',
+      }])
+    );
     setCellphones(prev =>
       prev.map(c =>
         sweptIds.has(`dep-${c.studentId}-${cycle.deadlineDate}`) && c.custodyStatus === 'in_vault'
@@ -1288,22 +1128,17 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  /**
+   * A violation written by hand rather than raised by a check. Violations a
+   * check raises go through `syncViolationsFor`, which ties them to the record
+   * they came from so correcting that record corrects them too.
+   */
   const saveViolation = (viol: Omit<Violation, 'id' | 'createdAt'>) => {
     if (!canEdit) return;
-    const timeStr = manilaTime();
-    // A record that re-logs its own violations replaces them in place, keeping
-    // the same id — so a redemption the resident already worked off survives a
-    // correction to the check that raised it.
-    const previous = viol.sourceId
-      ? violations.find(v => v.sourceId === viol.sourceId)
-      : undefined;
-    const redeemed = previous?.status === 'cleared_service' ? previous : undefined;
     const newRecord: Violation = {
       ...viol,
-      id: previous?.id ?? 'viol-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-      status: redeemed ? 'cleared_service' : viol.status,
-      redemption: redeemed?.redemption,
-      createdAt: timeStr,
+      id: 'viol-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      createdAt: manilaTime(),
     };
     setViolations(prev => [newRecord, ...prev]);
   };
@@ -1364,6 +1199,122 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       )
     );
     setDemeritClearances(prev => prev.filter(c => c.violationId !== violationId));
+  };
+
+  // ---------------------------------------------------------------------
+  // Super Admin override of a check already on file
+  //
+  // Administrators file checks; the Dean is the one who can go back and change
+  // one afterwards, whoever took it. A corrected record keeps its place in the
+  // register and carries a note of who changed it and when. Anything it worked
+  // out for itself — an inspection score, a gate clearance, a lights-out
+  // verdict — is recomputed, and the violations it raised are filed again from
+  // the corrected record, so a resident's standing follows the correction.
+  // ---------------------------------------------------------------------
+
+  const overrideStamp = (): OverrideStamp => ({
+    overriddenBy: currentUser.name,
+    overriddenAt: new Date().toISOString(),
+  });
+
+  const depositDueLabel = () => describeCyclePoint(settings.phoneDepositDay, settings.phoneDepositTime);
+
+  const overrideCheckRecord = (kind: CheckKind, id: string, updates: Record<string, unknown>) => {
+    if (!isSuperAdmin) return;
+    const stamp = overrideStamp();
+
+    switch (kind) {
+      case 'inspection': {
+        const current = inspections.find(r => r.id === id);
+        if (!current) return;
+        const next = recomputeInspection({ ...current, ...updates, ...stamp } as RoomInspection);
+        setInspections(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, inspectionDrafts(next, roomMembers(next.roomNumber)));
+        return;
+      }
+      case 'attendance': {
+        const current = attendance.find(r => r.id === id);
+        if (!current) return;
+        const next = { ...current, ...updates, ...stamp } as AttendanceRecord;
+        setAttendance(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, attendanceDrafts(next));
+        return;
+      }
+      case 'curfew': {
+        const current = curfewRecords.find(r => r.id === id);
+        if (!current) return;
+        const next = { ...current, ...updates, ...stamp } as CurfewRecord;
+        setCurfewRecords(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, curfewDrafts(next));
+        return;
+      }
+      case 'uniform': {
+        const current = uniformLogs.find(r => r.id === id);
+        if (!current) return;
+        const next = recomputeUniform({ ...current, ...updates, ...stamp } as SchoolUniformLog);
+        setUniformLogs(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, uniformDrafts(next));
+        return;
+      }
+      case 'study': {
+        const current = studyLogs.find(r => r.id === id);
+        if (!current) return;
+        const next = { ...current, ...updates, ...stamp } as StudyHoursLog;
+        setStudyLogs(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, studyDrafts(next));
+        return;
+      }
+      case 'cleaning': {
+        const current = cleaningDuties.find(r => r.id === id);
+        if (!current) return;
+        const next = { ...current, ...updates, ...stamp } as CleaningDutyRecord;
+        setCleaningDuties(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, cleaningDrafts(next));
+        return;
+      }
+      case 'lightsOut': {
+        const current = lightsOutLogs.find(r => r.id === id);
+        if (!current) return;
+        const next = recomputeLightsOut({ ...current, ...updates, ...stamp } as LightsOutLog);
+        setLightsOutLogs(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, lightsOutDrafts(next, roomMembers(next.roomNumber)));
+        return;
+      }
+      case 'phoneDeposit': {
+        const current = phoneDeposits.find(r => r.id === id);
+        if (!current) return;
+        // The Dean's word settles it, so the deadline's automatic late/missing
+        // verdict is not re-applied over the top of the correction.
+        const next = { ...current, ...updates, ...stamp, autoLogged: false } as PhoneDepositLog;
+        setPhoneDeposits(prev => prev.map(r => (r.id === id ? next : r)));
+        applyDepositsToCustody([next]);
+        syncViolationsFor(violationSourceId('phoneDeposit', next), phoneDepositDrafts(next, depositDueLabel()));
+        return;
+      }
+    }
+  };
+
+  /** Strike a check off the register, and everything it put on a standing. */
+  const deleteCheckRecord = (kind: CheckKind, id: string) => {
+    if (!isSuperAdmin) return;
+    const drop = <T extends { id: string }>(list: T[]) => list.filter(r => r.id !== id);
+
+    switch (kind) {
+      case 'inspection': setInspections(drop); break;
+      case 'attendance': setAttendance(drop); break;
+      case 'curfew': setCurfewRecords(drop); break;
+      case 'uniform': setUniformLogs(drop); break;
+      case 'study': setStudyLogs(drop); break;
+      case 'cleaning': setCleaningDuties(drop); break;
+      case 'lightsOut': setLightsOutLogs(drop); break;
+      case 'phoneDeposit': {
+        const current = phoneDeposits.find(r => r.id === id);
+        setPhoneDeposits(drop);
+        if (current) clearViolationsFrom(violationSourceId('phoneDeposit', current));
+        return;
+      }
+    }
+    clearViolationsFrom(id);
   };
 
   const sharedStateSnapshot = () => sharedState();
@@ -1795,6 +1746,8 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateConfiscatedItemStatus,
         studentMedicals,
         saveStudentMedical,
+        overrideCheckRecord,
+        deleteCheckRecord,
         canEdit,
         isSuperAdmin,
         isOccupant,

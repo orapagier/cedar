@@ -11,6 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { RecordOverrideControls } from './RecordOverrideControls';
 import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
 
 type StudyStatus = 'present' | 'absent';
@@ -301,7 +302,13 @@ export const StudyHoursLibraryView: React.FC = () => {
                 <span className="capitalize text-indigo-300 font-medium">{log.location.replace('_', ' ')}</span>
               </p>
               {log.remarks && <p className="text-[11px] text-slate-400 mt-0.5">{log.remarks}</p>}
-              <p className="text-[11px] text-slate-500 mt-0.5">Proctor: {log.recordedBy}</p>
+              <div className="flex items-center justify-between gap-2 mt-0.5">
+                <p className="text-[11px] text-slate-500 truncate">
+                  Proctor: {log.recordedBy}
+                  {log.overriddenBy && <span className="text-amber-300/90"> · overridden by {log.overriddenBy}</span>}
+                </p>
+                <RecordOverrideControls kind="study" record={log} />
+              </div>
             </div>
           ))}
         </div>

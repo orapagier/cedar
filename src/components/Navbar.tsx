@@ -22,6 +22,7 @@ import {
   Database,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { useDismissOnOutside } from './ui/Modal';
 
 interface NavbarProps {
   activeTab: string;
@@ -76,6 +77,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const { currentUser, logout, canEdit, isGuest, isParent } = useDorm();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  // Wraps the avatar button as well as the panel, so tapping the button is its
+  // own toggle rather than an outside tap that closes and reopens in one go.
+  const profileRef = useDismissOnOutside<HTMLDivElement>(() => setProfileOpen(false), profileOpen);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -130,7 +134,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
         </div>
 
         {/* User profile dropdown */}
-        <div className="relative">
+        <div className="relative" ref={profileRef}>
           <button
             onClick={() => setProfileOpen(v => !v)}
             aria-label="User menu"

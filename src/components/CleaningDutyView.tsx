@@ -12,6 +12,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { RecordOverrideControls } from './RecordOverrideControls';
 import { CleaningHelperCheck } from '../types/dorm';
 import { formatFullDate } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
@@ -380,11 +381,8 @@ export const CleaningDutyView: React.FC = () => {
           {recentRotation.map(record => {
             const skipped = record.helpers.filter(h => !h.helped);
             return (
-              <button
-                key={record.id}
-                onClick={() => setDutyDate(record.date)}
-                className="w-full text-left p-3 sm:p-4 hover:bg-slate-800/40 transition-colors"
-              >
+              <div key={record.id} className="p-3 sm:p-4 hover:bg-slate-800/40 transition-colors">
+                <button onClick={() => setDutyDate(record.date)} className="w-full text-left">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <p className="font-semibold text-white text-sm truncate">Room {record.roomNumber}</p>
@@ -417,11 +415,18 @@ export const CleaningDutyView: React.FC = () => {
                   </p>
                 )}
                 {record.remarks && <p className="text-[11px] text-slate-400 mt-0.5">{record.remarks}</p>}
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Set by {record.assignedBy}
-                  {record.recordedBy ? ` · Checked by ${record.recordedBy}` : ''}
-                </p>
-              </button>
+                </button>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <p className="text-[11px] text-slate-500 truncate">
+                    Set by {record.assignedBy}
+                    {record.recordedBy ? ` · Checked by ${record.recordedBy}` : ''}
+                    {record.overriddenBy && (
+                      <span className="text-amber-300/90"> · overridden by {record.overriddenBy}</span>
+                    )}
+                  </p>
+                  <RecordOverrideControls kind="cleaning" record={record} />
+                </div>
+              </div>
             );
           })}
         </div>

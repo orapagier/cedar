@@ -18,6 +18,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { RecordOverrideControls } from './RecordOverrideControls';
 import { Segmented } from './ui/Segmented';
 import { manilaToday, formatFullDate, formatTime12h } from '../utils/date';
 
@@ -347,12 +348,18 @@ export const CurfewLightsOutView: React.FC = () => {
                         </div>
                         <p className="text-[11px] text-slate-400 mt-0.5">
                           Room {cr.roomNumber} · {formatFullDate(cr.date)} · limit {formatTime12h(cr.curfewTime)} · by {cr.loggedBy}
+                          {cr.overriddenBy && (
+                            <span className="text-amber-300/90"> · overridden by {cr.overriddenBy}</span>
+                          )}
                         </p>
                         {cr.remarks && <p className="text-[11px] text-slate-400 mt-0.5">{cr.remarks}</p>}
                       </div>
-                      <span className={`shrink-0 font-mono text-xs ${late ? 'text-rose-400 font-bold' : 'text-emerald-400'}`}>
-                        {formatTime12h(cr.actualCheckInTime)}
-                      </span>
+                      <div className="shrink-0 flex items-center gap-2">
+                        <span className={`font-mono text-xs ${late ? 'text-rose-400 font-bold' : 'text-emerald-400'}`}>
+                          {formatTime12h(cr.actualCheckInTime)}
+                        </span>
+                        <RecordOverrideControls kind="curfew" record={cr} />
+                      </div>
                     </div>
                   );
                 })}
@@ -479,7 +486,13 @@ export const CurfewLightsOutView: React.FC = () => {
                       ))}
                     </div>
                     {log.violatorRemarks && <p className="text-[11px] text-slate-400 mt-1.5">{log.violatorRemarks}</p>}
-                    <p className="text-[11px] text-slate-500 mt-1">Logged by {log.inspectedBy}</p>
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                      <p className="text-[11px] text-slate-500 truncate">
+                        Logged by {log.inspectedBy}
+                        {log.overriddenBy && <span className="text-amber-300/90"> · overridden by {log.overriddenBy}</span>}
+                      </p>
+                      <RecordOverrideControls kind="lightsOut" record={log} />
+                    </div>
                   </div>
                 ))}
               </div>

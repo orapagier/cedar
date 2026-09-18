@@ -18,6 +18,7 @@ import {
   Ban,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { RecordOverrideControls } from './RecordOverrideControls';
 import { PhoneDepositLog } from '../types/dorm';
 import { manilaToday, manilaTime, manilaTimeValue, formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
@@ -765,10 +766,14 @@ export const CellphoneCustodyView: React.FC = () => {
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 bg-slate-800 text-slate-400">AUTO</span>
                   )}
                 </div>
-                <span className="shrink-0 font-mono font-bold text-xs text-slate-300">{formatTime12h(d.depositTime)}</span>
+                <div className="shrink-0 flex items-center gap-2">
+                  <span className="font-mono font-bold text-xs text-slate-300">{formatTime12h(d.depositTime)}</span>
+                  <RecordOverrideControls kind="phoneDeposit" record={d} />
+                </div>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 Room {d.roomNumber} · {formatFullDate(d.date)} · by {d.recordedBy}
+                {d.overriddenBy && <span className="text-amber-300/90"> · overridden by {d.overriddenBy}</span>}
               </p>
               {d.remarks && <p className="text-[11px] text-slate-400 mt-0.5">{d.remarks}</p>}
             </div>

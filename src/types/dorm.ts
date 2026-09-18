@@ -28,6 +28,15 @@ export interface Room {
   occupantIds: string[];
 }
 
+/**
+ * Stamped on any check record the Super Admin has changed after it was filed,
+ * so a corrected record still says who corrected it and when.
+ */
+export interface OverrideStamp {
+  overriddenBy?: string;
+  overriddenAt?: string; // ISO timestamp
+}
+
 export interface OccupantInspectionCheck {
   studentId: string;
   studentName: string;
@@ -36,7 +45,7 @@ export interface OccupantInspectionCheck {
   personalThingsOk: boolean;
 }
 
-export interface RoomInspection {
+export interface RoomInspection extends OverrideStamp {
   id: string;
   date: string; // YYYY-MM-DD
   roomNumber: string;
@@ -93,7 +102,7 @@ export type WorshipType =
   | 'sabbath_morning'
   | 'sabbath_afternoon';
 
-export interface AttendanceRecord {
+export interface AttendanceRecord extends OverrideStamp {
   id: string;
   date: string;
   type: WorshipType;
@@ -109,7 +118,7 @@ export interface AttendanceRecord {
   timestamp: string;
 }
 
-export interface CurfewRecord {
+export interface CurfewRecord extends OverrideStamp {
   id: string;
   date: string;
   studentId: string;
@@ -122,7 +131,7 @@ export interface CurfewRecord {
   loggedBy: string;
 }
 
-export interface SchoolUniformLog {
+export interface SchoolUniformLog extends OverrideStamp {
   id: string;
   date: string;
   studentId: string;
@@ -142,7 +151,7 @@ export interface SchoolUniformLog {
   inspectedBy: string;
 }
 
-export interface StudyHoursLog {
+export interface StudyHoursLog extends OverrideStamp {
   id: string;
   date: string;
   studentId: string;
@@ -168,7 +177,7 @@ export interface CleaningHelperCheck {
  * Each of its residents is checked individually for helping, and the room is
  * rated as a whole for how clean the dorm was left, garbage included.
  */
-export interface CleaningDutyRecord {
+export interface CleaningDutyRecord extends OverrideStamp {
   id: string;
   date: string;       // YYYY-MM-DD — one duty room per day
   roomNumber: string; // the room rostered to clean that day
@@ -183,7 +192,7 @@ export interface CleaningDutyRecord {
   timestamp: string;
 }
 
-export interface LightsOutLog {
+export interface LightsOutLog extends OverrideStamp {
   id: string;
   date: string;
   roomNumber: string;
@@ -197,7 +206,7 @@ export interface LightsOutLog {
 }
 
 /** Weekly per-resident phone deposit roll call, checked room by room. */
-export interface PhoneDepositLog {
+export interface PhoneDepositLog extends OverrideStamp {
   id: string;
   date: string;
   /** Deadline date of the vault cycle this check belongs to, so a cycle's

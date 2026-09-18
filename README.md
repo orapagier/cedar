@@ -110,6 +110,25 @@ point. Redeemed violations stay visible with what was done to settle them, on
 both the Resident Performance page and the resident's Occupant Records, and a
 redemption can be undone if it was logged by mistake.
 
+## Correcting a check after it is filed
+
+Administrators file checks; the Dean is the one who can go back and change one
+afterwards — **whoever took it**. Every register (room inspections, worship roll
+calls, curfew, departures, study hours, cleaning, lights-out rounds, phone
+deposits) carries a pencil and a bin beside each record, visible to the Super
+Admin only.
+
+- **Override** reopens that record's checks. Saving re-scores it — an inspection
+  score, a gate clearance, a lights-out verdict all recompute — and the record
+  keeps a note of who corrected it and when, while still crediting the
+  administrator who originally filed it.
+- Whatever the record put on a resident's standing follows the correction: a
+  point it raised is withdrawn when the verdict is reversed, and a point a
+  corrected record still implies stays exactly where it was. **A point the
+  resident has already redeemed keeps its redemption** — correcting the check
+  behind it never asks them to work it off twice.
+- **Delete** strikes the record off the register and takes its points with it.
+
 ## Deploying to Vercel
 
 1. Push this repo to GitHub and import it in Vercel (framework preset: Vite).

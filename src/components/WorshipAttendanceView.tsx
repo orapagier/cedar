@@ -15,6 +15,7 @@ import {
   Shirt,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { RecordOverrideControls } from './RecordOverrideControls';
 import { WorshipType, AttendanceRecord } from '../types/dorm';
 import { WORSHIP_SESSIONS } from '../data/dormSeed';
 import { Segmented } from './ui/Segmented';
@@ -333,6 +334,9 @@ export const WorshipAttendanceView: React.FC = () => {
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
                       Room {item.roomNumber} · {formatFullDate(item.date)} {item.timestamp} · by {item.recordedBy}
+                      {item.overriddenBy && (
+                        <span className="text-amber-300/90"> · overridden by {item.overriddenBy}</span>
+                      )}
                     </p>
                     {item.notes && <p className="text-[11px] text-slate-400 mt-0.5">{item.notes}</p>}
                   </div>
@@ -343,6 +347,7 @@ export const WorshipAttendanceView: React.FC = () => {
                     <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.properAttire === false ? 'bg-rose-950 text-rose-300' : 'bg-violet-950 text-violet-300'}`} title={item.properAttire === false ? 'Improper worship attire' : 'Proper worship attire'}>
                       <Shirt className="w-4 h-4" />
                     </span>
+                    <RecordOverrideControls kind="attendance" record={item} />
                   </div>
                 </div>
               );

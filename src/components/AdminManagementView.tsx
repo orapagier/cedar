@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { Modal } from './ui/Modal';
 import { UserRole } from '../types/dorm';
 
 export const AdminManagementView: React.FC = () => {
@@ -365,7 +366,7 @@ export const AdminManagementView: React.FC = () => {
 
       {/* ADD ADMIN MODAL */}
       {showAddAdminModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+        <Modal onClose={() => setShowAddAdminModal(false)} padding="p-0 sm:p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
@@ -433,7 +434,7 @@ export const AdminManagementView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

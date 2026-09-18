@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
+import { Modal } from './ui/Modal';
 import { User, Room } from '../types/dorm';
 
 export const OccupantsDirectoryView: React.FC = () => {
@@ -610,7 +611,7 @@ export const OccupantsDirectoryView: React.FC = () => {
 
       {/* MODAL 1: ADD NEW STUDENT */}
       {showAddStudentModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+        <Modal onClose={() => setShowAddStudentModal(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
@@ -746,12 +747,12 @@ export const OccupantsDirectoryView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* MODAL 2: EDIT STUDENT */}
       {showEditStudentModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+        <Modal onClose={() => setShowEditStudentModal(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
@@ -880,12 +881,12 @@ export const OccupantsDirectoryView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* MODAL 3: BULK IMPORT CSV / TEXT */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+        <Modal onClose={() => setShowBulkModal(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden text-slate-100 flex flex-col max-h-[92vh]">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
@@ -990,12 +991,12 @@ export const OccupantsDirectoryView: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* MODAL 4: ADD ROOM */}
       {showAddRoomModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center z-50 p-4">
+        <Modal onClose={() => setShowAddRoomModal(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
@@ -1088,7 +1089,7 @@ export const OccupantsDirectoryView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
