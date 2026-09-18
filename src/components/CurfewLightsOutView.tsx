@@ -236,13 +236,15 @@ export const CurfewLightsOutView: React.FC = () => {
           options={[
             {
               value: 'curfew',
-              label: `Curfew · ${formatTime12h(settings.curfewTime || '21:00')}`,
+              label: 'Curfew',
+              sub: formatTime12h(settings.curfewTime || '21:00'),
               icon: Clock,
               activeClass: 'bg-purple-600 text-white shadow-sm',
             },
             {
               value: 'lights_out',
-              label: `Lights-Out · ${formatTime12h(settings.lightsOutTime || '22:00')}`,
+              label: 'Lights-Out',
+              sub: formatTime12h(settings.lightsOutTime || '22:00'),
               icon: Moon,
               activeClass: 'bg-purple-600 text-white shadow-sm',
             },
