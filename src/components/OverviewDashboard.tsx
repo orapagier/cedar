@@ -104,8 +104,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     const q = query.trim().toLowerCase();
     return occupants
       .filter(o => !q || residentMatches(o, q) || (o.parentName || '').toLowerCase().includes(q))
-      .sort(byRoomThenName)
-      .slice(0, 12);
+      .sort(byRoomThenName);
   }, [occupants, query]);
 
   const hour = manilaHour();
