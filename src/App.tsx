@@ -20,6 +20,7 @@ import { NeighborRoomView } from './components/NeighborRoomView';
 import { GuestView } from './components/GuestView';
 import { ParentView } from './components/ParentView';
 import { OccupantRecordsView } from './components/OccupantRecordsView';
+import { ProfileView } from './components/ProfileView';
 import { ScheduleSettingsView } from './components/ScheduleSettingsView';
 import { DataStorageView } from './components/DataStorageView';
 import { PwaPrompts } from './components/PwaPrompts';
@@ -55,8 +56,12 @@ function AppContent() {
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-12 lg:py-6">
-        {isGuest && <GuestView />}
-        {isParent && <ParentView />}
+        {activeTab === 'profile' ? (
+          <ProfileView />
+        ) : (
+          <>
+            {isGuest && <GuestView />}
+            {isParent && <ParentView />}
         {!isGuest && !isParent && activeTab === 'overview' && (
           <OverviewDashboard onNavigate={(tab) => setActiveTab(tab)} />
         )}
@@ -77,6 +82,8 @@ function AppContent() {
         {!isGuest && !isParent && activeTab === 'occupant-records' && <OccupantRecordsView />}
         {!isGuest && !isParent && activeTab === 'settings' && <ScheduleSettingsView />}
         {!isGuest && !isParent && activeTab === 'storage' && <DataStorageView />}
+          </>
+        )}
       </main>
 
       <footer className="border-t border-slate-900 bg-slate-950/80 py-4 text-center text-xs text-slate-500 pb-safe">

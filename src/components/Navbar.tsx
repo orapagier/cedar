@@ -6,6 +6,7 @@ import {
   LogOut,
   Users,
   ChevronDown,
+  User,
   Menu,
   X,
   Home,
@@ -170,6 +171,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   </div>
 
                   <div className="border-t border-slate-800 mt-1 pt-1 px-2">
+                    <button
+                      onClick={() => goTo('profile')}
+                      className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-800 text-slate-200 flex items-center space-x-2 font-semibold"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      <span>View Profile</span>
+                    </button>
                     <button
                       onClick={() => {
                         setProfileOpen(false);
