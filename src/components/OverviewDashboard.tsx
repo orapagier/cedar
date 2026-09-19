@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Users,
   Shield,
+  User,
   Search,
   X,
 } from 'lucide-react';
@@ -28,6 +29,8 @@ import { OccupantRecordModal } from './OccupantRecordModal';
 
 interface OverviewDashboardProps {
   onNavigate: (tab: string) => void;
+  /** Open a resident's profile page from the search results. */
+  onOpenProfile?: (id: string) => void;
 }
 
 const CHECKS: { id: string; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -47,7 +50,7 @@ const CHECKS: { id: string; label: string; sub: string; icon: React.ComponentTyp
 const initials = (name: string) =>
   name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
-export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate }) => {
+export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate, onOpenProfile }) => {
   const {
     currentUser,
     isOccupant,
@@ -71,6 +74,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
   } = useDorm();
 
   const occupants = users.filter(u => u.role === 'occupant');
+  const isSuper = currentUser.role === 'superadmin';
   const today = useManilaToday();
   const todayViolations = violations.filter(v => v.date === today);
   const activeViolations = violations.filter(
@@ -167,57 +171,68 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
         </div>
       </div>
 
-      {/* Find a resident — the record cabinet without leaving the dashboard */}
-      {canEdit && (
-        <div ref={searchRef} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-bold text-white text-sm flex items-center gap-2">
-              <Search className="w-4 h-4 text-amber-400" />
-              Find a Resident
-            </h2>
+      {/* Find a resident — the record cabinet without leaving the dashboard.
+          The Dean opens the full record from a tap and the profile page from
+          the icon; administrators and residents get the profile page directly,
+          with the personal details hidden from their access level. */}
+      <div ref={searchRef} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-bold text-white text-sm flex items-center gap-2">
+            <Search className="w-4 h-4 text-amber-400" />
+            {isOccupant ? 'Find a Dormitorian' : 'Find a Resident'}
+          </h2>
+          {canEdit && (
             <button
               onClick={() => onNavigate('occupant-records')}
               className="text-xs text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1 shrink-0"
             >
               Full records <ChevronRight className="w-3.5 h-3.5" />
             </button>
-          </div>
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onFocus={() => setSearchOpen(true)}
-              placeholder="Search name, room, email, or parent…"
-              aria-label="Search residents"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery('')}
-                aria-label="Clear search"
-                className="absolute right-1 top-1/2 -translate-y-1/2 min-w-touch min-h-touch flex items-center justify-center text-slate-500 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+          )}
+        </div>
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onFocus={() => setSearchOpen(true)}
+            placeholder={canEdit ? 'Search name, room, email, or parent…' : 'Search name or room…'}
+            aria-label="Search residents"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="absolute right-1 top-1/2 -translate-y-1/2 min-w-touch min-h-touch flex items-center justify-center text-slate-500 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
 
-            {searchOpen && (
-              <div className="absolute left-0 right-0 top-full mt-2 z-20 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
-                {results.length === 0 ? (
-                  <p className="px-4 py-4 text-center text-xs text-slate-500">
-                    No residents match<span className="text-slate-400"> “{query.trim()}”</span>.
-                  </p>
-                ) : (
-                  <div className="max-h-[320px] overflow-y-auto divide-y divide-slate-800/70">
-                    {results.map(o => (
+          {searchOpen && (
+            <div className="absolute left-0 right-0 top-full mt-2 z-20 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
+              {results.length === 0 ? (
+                <p className="px-4 py-4 text-center text-xs text-slate-500">
+                  No residents match<span className="text-slate-400"> “{query.trim()}”</span>.
+                </p>
+              ) : (
+                <div className="max-h-[320px] overflow-y-auto divide-y divide-slate-800/70">
+                  {results.map(o => (
+                    <div
+                      key={o.id}
+                      className="flex items-center gap-1 pr-2 hover:bg-slate-800/60 active:bg-slate-800 transition-colors"
+                    >
                       <button
-                        key={o.id}
                         onClick={() => {
-                          setOpenId(o.id);
+                          if (isSuper) {
+                            setOpenId(o.id);
+                          } else {
+                            onOpenProfile?.(o.id);
+                          }
                           setSearchOpen(false);
                         }}
-                        className="w-full min-h-touch flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-800/60 active:bg-slate-800 transition-colors"
+                        className="min-w-0 flex-1 min-h-touch flex items-center gap-3 px-4 py-2.5 text-left"
                       >
                         <span className="w-8 h-8 shrink-0 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
                           {initials(o.name)}
@@ -225,21 +240,35 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm font-semibold text-white truncate">{o.name}</span>
                           <span className="block text-[11px] text-slate-500 truncate">
-                            Room {o.roomNumber} · {o.parentName || o.email || 'No email on file'}
+                            Room {o.roomNumber}
+                            {isSuper ? ` · ${o.parentName || o.email || 'No email on file'}` : ''}
                           </span>
                         </span>
                         <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${demeritStanding(demeritsFor(o.id)).classes}`}>
                           {demeritLabel(demeritsFor(o.id))}
                         </span>
                       </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                      {isSuper && onOpenProfile && (
+                        <button
+                          onClick={() => {
+                            onOpenProfile(o.id);
+                            setSearchOpen(false);
+                          }}
+                          aria-label={`Open ${o.name}'s profile`}
+                          title="Open profile"
+                          className="min-w-touch min-h-touch flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-300 transition-colors"
+                        >
+                          <User className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

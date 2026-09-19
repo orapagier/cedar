@@ -38,7 +38,15 @@ function initialTab(): string {
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [profileStudentId, setProfileStudentId] = useState<string | null>(null);
   const { isAuthenticated, isGuest, isParent } = useDorm();
+
+  // Open a resident's profile page. The avatar menu opens the viewer's own
+  // profile (no id); the homepage search passes the resident it found.
+  const openProfile = (id?: string | null) => {
+    setProfileStudentId(id ?? null);
+    setActiveTab('profile');
+  };
 
   // Each tab is a page of its own, so it opens at the top rather than inheriting
   // however far down the tab before it was scrolled. Before paint, and instantly
@@ -53,35 +61,35 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} onOpenProfile={openProfile} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-12 lg:py-6">
         {activeTab === 'profile' ? (
-          <ProfileView />
+          <ProfileView studentId={profileStudentId} />
         ) : (
           <>
             {isGuest && <GuestView />}
             {isParent && <ParentView />}
-        {!isGuest && !isParent && activeTab === 'overview' && (
-          <OverviewDashboard onNavigate={(tab) => setActiveTab(tab)} />
-        )}
-        {!isGuest && !isParent && activeTab === 'inspections' && <RoomInspectionsView />}
-        {!isGuest && !isParent && activeTab === 'worship' && <WorshipAttendanceView />}
-        {!isGuest && !isParent && activeTab === 'study' && <StudyHoursLibraryView />}
-        {!isGuest && !isParent && activeTab === 'curfew' && <CurfewLightsOutView />}
-        {!isGuest && !isParent && activeTab === 'uniform' && <SchoolDepartureUniformView />}
-        {!isGuest && !isParent && activeTab === 'cleaning' && <CleaningDutyView />}
-        {!isGuest && !isParent && activeTab === 'cellphones' && <CellphoneCustodyView />}
-        {!isGuest && !isParent && activeTab === 'performance' && <ResidentPerformanceView />}
-        {!isGuest && !isParent && activeTab === 'gatepass' && <GatePassView />}
-        {!isGuest && !isParent && activeTab === 'offcampus' && <UnauthorizedExitView />}
-        {!isGuest && !isParent && activeTab === 'language' && <BadLanguageView />}
-        {!isGuest && !isParent && activeTab === 'neighbor' && <NeighborRoomView />}
-        {!isGuest && !isParent && activeTab === 'roster' && <OccupantsDirectoryView />}
-        {!isGuest && !isParent && activeTab === 'rbac' && <AdminManagementView />}
-        {!isGuest && !isParent && activeTab === 'occupant-records' && <OccupantRecordsView />}
-        {!isGuest && !isParent && activeTab === 'settings' && <ScheduleSettingsView />}
-        {!isGuest && !isParent && activeTab === 'storage' && <DataStorageView />}
+            {!isGuest && !isParent && activeTab === 'overview' && (
+              <OverviewDashboard onNavigate={(tab) => setActiveTab(tab)} onOpenProfile={openProfile} />
+            )}
+            {!isGuest && !isParent && activeTab === 'inspections' && <RoomInspectionsView />}
+            {!isGuest && !isParent && activeTab === 'worship' && <WorshipAttendanceView />}
+            {!isGuest && !isParent && activeTab === 'study' && <StudyHoursLibraryView />}
+            {!isGuest && !isParent && activeTab === 'curfew' && <CurfewLightsOutView />}
+            {!isGuest && !isParent && activeTab === 'uniform' && <SchoolDepartureUniformView />}
+            {!isGuest && !isParent && activeTab === 'cleaning' && <CleaningDutyView />}
+            {!isGuest && !isParent && activeTab === 'cellphones' && <CellphoneCustodyView />}
+            {!isGuest && !isParent && activeTab === 'performance' && <ResidentPerformanceView />}
+            {!isGuest && !isParent && activeTab === 'gatepass' && <GatePassView />}
+            {!isGuest && !isParent && activeTab === 'offcampus' && <UnauthorizedExitView />}
+            {!isGuest && !isParent && activeTab === 'language' && <BadLanguageView />}
+            {!isGuest && !isParent && activeTab === 'neighbor' && <NeighborRoomView />}
+            {!isGuest && !isParent && activeTab === 'roster' && <OccupantsDirectoryView />}
+            {!isGuest && !isParent && activeTab === 'rbac' && <AdminManagementView />}
+            {!isGuest && !isParent && activeTab === 'occupant-records' && <OccupantRecordsView />}
+            {!isGuest && !isParent && activeTab === 'settings' && <ScheduleSettingsView />}
+            {!isGuest && !isParent && activeTab === 'storage' && <DataStorageView />}
           </>
         )}
       </main>

@@ -35,6 +35,8 @@ import { promptInstall } from '../utils/pwa';
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  /** Open the profile page; an id shows that resident's file, none shows the viewer's own. */
+  onOpenProfile?: (id?: string | null) => void;
 }
 
 interface MenuItem {
@@ -84,7 +86,7 @@ const roleLabel = (role: string) =>
   : role === 'guest' ? 'Guest'
   : 'Resident';
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenProfile }) => {
   const { currentUser, logout, canEdit, isGuest, isParent } = useDorm();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -172,7 +174,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
                   <div className="border-t border-slate-800 mt-1 pt-1 px-2">
                     <button
-                      onClick={() => goTo('profile')}
+                      onClick={() => {
+                        onOpenProfile?.(null);
+                        goTo('profile');
+                      }}
                       className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-800 text-slate-200 flex items-center space-x-2 font-semibold"
                     >
                       <User className="w-3.5 h-3.5" />

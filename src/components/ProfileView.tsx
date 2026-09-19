@@ -82,37 +82,80 @@ const initials = (name: string) =>
   name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
 /**
+ * How much of a resident's file the viewer may read:
+ *  - `full`  — the Dean, a parent of the child, or the resident themselves.
+ *  - `staff` — administrators: parent contact details are withheld.
+ *  - `public` — a resident looking at a dormitorian: contact and medical
+ *    details are withheld, keeping only what a dormitory mate knows.
+ */
+type Visibility = 'full' | 'staff' | 'public';
+
+/**
  * The logged-in profile: whoever the current user is, everything about them.
  *
  * A resident's profile is their whole dormitory file — standing, contacts,
  * room, medical notes and every check that names them. A parent's is their own
  * header over their child's file. Everyone else (the Dean, staff, a guest) gets
  * the account page. It lives behind the avatar menu so it is always one tap away.
+ *
+ * `studentId` lets the Dean and administrators open another resident's file
+ * here directly (from the homepage search). What the open profile shows follows
+ * the viewer's role: the Dean sees everything, staff see it minus a resident's
+ * home contacts, and a resident looking at a dormitorian sees only what the
+ * dormitory is expected to know — no phone, email, parent or medical details.
  */
-export const ProfileView: React.FC = () => {
+export const ProfileView: React.FC<{ studentId?: string | null }> = ({ studentId = null }) => {
   const dorm = useDorm();
   const { currentUser } = dorm;
 
   const subjectId =
-    currentUser.role === 'occupant'
+    studentId ??
+    (currentUser.role === 'occupant'
       ? currentUser.id
       : currentUser.role === 'parent'
         ? currentUser.relatedStudentId
-        : undefined;
+        : undefined);
   const subject = subjectId ? dorm.users.find(u => u.id === subjectId) : undefined;
 
-  if ((currentUser.role === 'occupant' || currentUser.role === 'parent') && subject) {
+  // What the viewer may see on this resident's file. A parent viewing their own
+  // child and a resident viewing themselves are the people the record belongs
+  // to, so they read it whole.
+  const visibility: Visibility =
+    !subject ? 'public'
+    : currentUser.role === 'superadmin' ? 'full'
+    : subject.id === currentUser.id ? 'full'
+    : currentUser.role === 'parent' ? 'full'
+    : currentUser.role === 'admin' ? 'staff'
+    : 'public';
+
+  if (subject && (subject.role === 'occupant' || subject.role === 'parent')) {
+    const viewingOther = subject.id !== currentUser.id && currentUser.role !== 'parent';
     return (
       <div className="space-y-4 sm:space-y-6">
-        {currentUser.role === 'parent' && (
+        {viewingOther && (
+          <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+            Viewing <span className="text-slate-300 font-semibold">{subject.name}</span>'s record · signed
+            in as {currentUser.name}.
+            {visibility !== 'full' && ' Some personal information is hidden from your access level.'}
+          </p>
+        )}
+        {currentUser.role === 'parent' && subject.role === 'occupant' && (
           <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
             Parent account — signed in as {currentUser.name}, viewing
             <span className="text-slate-300 font-semibold">{subject.name}</span>'s record.
           </p>
         )}
-        <ResidentProfile user={subject} />
+        {subject.role === 'occupant' ? (
+          <ResidentProfile user={subject} visibility={visibility} />
+        ) : (
+          <AccountProfile user={subject} />
+        )}
       </div>
     );
+  }
+
+  if (subject) {
+    return <AccountProfile user={subject} />;
   }
 
   return <AccountProfile user={currentUser} />;
@@ -178,7 +221,7 @@ const AccountProfile: React.FC<{ user: User }> = ({ user }) => {
 };
 
 /** A resident's whole dormitory file, laid out for reading top to bottom. */
-const ResidentProfile: React.FC<{ user: User }> = ({ user }) => {
+const ResidentProfile: React.FC<{ user: User; visibility?: Visibility }> = ({ user, visibility = 'full' }) => {
   const dorm = useDorm();
   const {
     users,
@@ -209,6 +252,12 @@ const ResidentProfile: React.FC<{ user: User }> = ({ user }) => {
   const medical = studentMedicals.find(m => m.studentId === user.id);
   const standing = demeritStanding(demerits);
   const timeline = useMemo(() => buildOccupantTimeline(user.id, dorm), [user.id, dorm]);
+
+  // What this viewer may see of the file's personal details.
+  const showEmail = visibility !== 'public';
+  const showPhone = visibility !== 'public';
+  const showParent = visibility === 'full';
+  const showMedical = visibility !== 'public';
 
   const stats: Array<{ label: string; value: string; tone?: string }> = [
     { label: 'Demerits', value: String(demerits), tone: standing.tone },
@@ -245,7 +294,7 @@ const ResidentProfile: React.FC<{ user: User }> = ({ user }) => {
                 Excused Leave
               </span>
             )}
-            {user.parentEmail && (
+            {showParent && user.parentEmail && (
               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-sky-950 text-sky-300 border border-sky-700/60 flex items-center gap-1">
                 <BadgeCheck className="w-3 h-3" /> Parent Linked
               </span>
@@ -269,17 +318,29 @@ const ResidentProfile: React.FC<{ user: User }> = ({ user }) => {
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/70 text-xs">
-        <Fact icon={Mail} label="Email" value={user.email || 'Not on file'} />
-        <Fact icon={Phone} label="Resident phone" value={user.phone || 'Not on file'} />
-        <Fact
-          icon={Users}
-          label="Parent / guardian"
-          value={
-            user.parentName
-              ? `${user.parentName}${user.parentPhone ? ` · ${user.parentPhone}` : ''}`
-              : 'Not on file'
-          }
-        />
+        {showEmail ? (
+          <Fact icon={Mail} label="Email" value={user.email || 'Not on file'} />
+        ) : (
+          <Fact icon={Mail} label="Email" value="Hidden" />
+        )}
+        {showPhone ? (
+          <Fact icon={Phone} label="Resident phone" value={user.phone || 'Not on file'} />
+        ) : (
+          <Fact icon={Phone} label="Resident phone" value="Hidden" />
+        )}
+        {showParent ? (
+          <Fact
+            icon={Users}
+            label="Parent / guardian"
+            value={
+              user.parentName
+                ? `${user.parentName}${user.parentPhone ? ` · ${user.parentPhone}` : ''}`
+                : 'Not on file'
+            }
+          />
+        ) : (
+          <Fact icon={Users} label="Parent / guardian" value="Hidden" />
+        )}
         <Fact
           icon={Home}
           label="Roommates"
@@ -288,7 +349,7 @@ const ResidentProfile: React.FC<{ user: User }> = ({ user }) => {
         {room?.captainName && <Fact icon={BadgeCheck} label="Room captain" value={room.captainName} />}
       </div>
 
-      {medical && (
+      {medical && showMedical && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/70 text-xs">
           <div className="px-4 py-2.5 flex items-center gap-2">
             <HeartPulse className="w-4 h-4 text-amber-400" />
