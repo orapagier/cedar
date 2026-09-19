@@ -217,7 +217,7 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
             {canEdit && (
               <button
                 onClick={() => setLogging(true)}
-                className="shrink-0 min-w-touch min-h-touch flex items-center gap-1.5 px-3 rounded-lg text-[11px] font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-colors"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-colors"
               >
                 <PlusCircle className="w-4 h-4" />
                 Log violation
