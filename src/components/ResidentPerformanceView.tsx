@@ -21,6 +21,7 @@ import { residentMatches } from '../utils/residentSearch';
 import { ServiceType, Violation, ViolationCategory } from '../types/dorm';
 import { formatFullDate, manilaToday } from '../utils/date';
 import { demeritsForSeverity, demeritLabel, demeritStanding } from '../utils/checkViolations';
+import { ViolationActions } from './ViolationActions';
 
 const SERVICE_TYPES: ServiceType[] = [
   'Grounds Beautification',
@@ -333,6 +334,7 @@ export const ResidentPerformanceView: React.FC = () => {
                                   }`}>
                                     {v.status.replace('_', ' ')}
                                   </span>
+                                  <ViolationActions violation={v} />
                                 </div>
                                 {canEdit && (
                                   <div className="mt-1.5 grid grid-cols-2 gap-1.5">
@@ -388,13 +390,16 @@ export const ResidentPerformanceView: React.FC = () => {
                                       )}
                                     </div>
                                     {canEdit && (
-                                      <button
-                                        onClick={() => undoViolationRedemption(v.id)}
-                                        title="Put this violation back on the record"
-                                        className="shrink-0 min-h-touch px-2 text-slate-400 hover:text-white flex items-center gap-1 text-[10px] font-semibold"
-                                      >
-                                        <Undo2 className="w-3.5 h-3.5" /> Undo
-                                      </button>
+                                      <div className="flex items-center gap-1.5">
+                                        <button
+                                          onClick={() => undoViolationRedemption(v.id)}
+                                          title="Put this violation back on the record"
+                                          className="shrink-0 min-h-touch px-2 text-slate-400 hover:text-white flex items-center gap-1 text-[10px] font-semibold"
+                                        >
+                                          <Undo2 className="w-3.5 h-3.5" /> Undo
+                                        </button>
+                                        <ViolationActions violation={v} />
+                                      </div>
                                     )}
                                   </div>
                                 </div>

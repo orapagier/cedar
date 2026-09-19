@@ -23,8 +23,9 @@ import { useDorm } from '../context/DormContext';
 import { User } from '../types/dorm';
 import { buildOccupantTimeline, EventKind, EventMark, EventTone } from '../utils/occupantTimeline';
 import { formatFullDate, formatTime12h } from '../utils/date';
-import { demeritLabel, demeritStanding } from '../utils/checkViolations';
+import { demeritLabel, demeritStanding, violationTitle } from '../utils/checkViolations';
 import { OccupantRecordsPanel } from './OccupantRecordsPanel';
+import { ViolationActions } from './ViolationActions';
 
 const roleLabel = (role: string) =>
   role === 'superadmin' ? 'Dean (Super Admin)'
@@ -236,6 +237,7 @@ const ResidentProfile: React.FC<{ user: User; visibility?: Visibility }> = ({ us
   const room = rooms.find(r => r.roomNumber === user.roomNumber);
   const wingKey = room?.wing.split(' ')[0] ?? '';
   const activeViolations = violations.filter(v => v.studentId === user.id && v.status !== 'cleared_service');
+  const studentViolations = violations.filter(v => v.studentId === user.id);
   const demerits = activeViolations.reduce((s, v) => s + v.demerits, 0);
   const roomInspections = inspections.filter(i => i.roomNumber === user.roomNumber);
   const cleanliness = roomInspections.length
@@ -316,6 +318,59 @@ const ResidentProfile: React.FC<{ user: User; visibility?: Visibility }> = ({ us
           </div>
         ))}
       </div>
+
+      {dorm.currentUser.role === 'superadmin' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-2">
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-amber-400" />
+              Violations
+              <span className="text-[10px] font-semibold uppercase text-slate-400">
+                {activeViolations.length} open · {studentViolations.length - activeViolations.length} settled
+              </span>
+            </h3>
+            <span className="hidden sm:inline text-[10px] text-slate-500">Edit · clear · delete</span>
+          </div>
+          {studentViolations.length === 0 ? (
+            <p className="px-4 py-6 text-center text-xs text-slate-500">
+              Nothing on file yet — great standing!
+            </p>
+          ) : (
+            <div className="divide-y divide-slate-800/70">
+              {studentViolations.map(v => (
+                <div key={v.id} className="px-4 py-2.5 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-white">{violationTitle(v)}</p>
+                    <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
+                    {v.assignedRedemption && (
+                      <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.assignedRedemption}</p>
+                    )}
+                    {v.status === 'cleared_service' && (
+                      <p className="text-[10px] text-emerald-400/90 mt-0.5">
+                        {v.redemption
+                          ? `Settled — ${v.redemption.kind === 'reflection'
+                              ? v.redemption.reflectionTopic ?? 'reflection'
+                              : `${v.redemption.hoursRendered ?? 0} hr · ${v.redemption.serviceType ?? 'work service'}`}`
+                          : 'Cleared'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      v.status === 'cleared_service'
+                        ? 'bg-emerald-950 text-emerald-300'
+                        : 'bg-rose-950 text-rose-300'
+                    }`}>
+                      {v.status === 'cleared_service' ? '−' : '+'}{demeritLabel(v.demerits)}
+                    </span>
+                    <ViolationActions violation={v} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/70 text-xs">
         {showEmail ? (

@@ -13,7 +13,7 @@
  */
 
 // Bump this to retire every cache the last version left behind.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `cedar-hall-shell-${VERSION}`;
 const ASSET_CACHE = `cedar-hall-assets-${VERSION}`;
 const CURRENT_CACHES = [SHELL_CACHE, ASSET_CACHE];
