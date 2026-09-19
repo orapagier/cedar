@@ -235,6 +235,10 @@ interface DormContextType {
   overrideCheckRecord: (kind: CheckKind, id: string, updates: Record<string, unknown>) => void;
   /** Super Admin only: strike a check off, and everything it put on a standing. */
   deleteCheckRecord: (kind: CheckKind, id: string) => void;
+  /** Super Admin only: change one violation on a resident's standing. */
+  overrideViolation: (id: string, updates: Partial<Omit<Violation, 'id' | 'createdAt'>>) => void;
+  /** Super Admin only: strike one violation, and the clearance that settled it, off the record. */
+  deleteViolation: (id: string) => void;
 
   // Shared-store housekeeping
   /** Everything the devices share, for the size meter and for backups. */
@@ -1501,6 +1505,27 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearViolationsFrom(id);
   };
 
+  /**
+   * Super Admin only: change one violation on a resident's standing — its
+   * wording, its weight, even what it was for. The resident's total re-totals
+   * from the corrected list, so changing the demerits changes what he owes.
+   */
+  const overrideViolation = (id: string, updates: Partial<Omit<Violation, 'id' | 'createdAt'>>) => {
+    if (!isSuperAdmin) return;
+    setViolations(prev => prev.map(v => (v.id === id ? { ...v, ...updates } : v)));
+  };
+
+  /**
+   * Super Admin only: strike one violation off a resident's record entirely.
+   * Whatever it owed leaves the standing, and the clearance that settled it
+   * goes with it.
+   */
+  const deleteViolation = (id: string) => {
+    if (!isSuperAdmin) return;
+    setViolations(prev => prev.filter(v => v.id !== id));
+    setDemeritClearances(prev => prev.filter(c => c.violationId !== id));
+  };
+
   const sharedStateSnapshot = () => sharedState();
 
   // End-of-term housekeeping: the dated logs before the cutoff leave the live
@@ -2030,6 +2055,8 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveStudentMedical,
         overrideCheckRecord,
         deleteCheckRecord,
+        overrideViolation,
+        deleteViolation,
         canEdit,
         isSuperAdmin,
         isOccupant,

@@ -19,6 +19,7 @@ import { useDorm } from '../context/DormContext';
 import { Violation } from '../types/dorm';
 import { LANGUAGE_KIND_LABELS, LANGUAGE_SETTING_LABELS, demeritLabel, demeritStanding, violationTitle } from '../utils/checkViolations';
 import { formatFullDate, formatTime12h } from '../utils/date';
+import { ViolationActions } from './ViolationActions';
 
 const PASS_LABELS: Record<string, string> = {
   weekend_home: 'Weekend Home Leave',
@@ -408,9 +409,12 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
                   <p className="text-[10px] text-slate-500 mt-0.5">Redemption not set — the Dean decides the work or the reflection.</p>
                 )}
               </div>
-              <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300">
-                +{demeritLabel(v.demerits)}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300">
+                  +{demeritLabel(v.demerits)}
+                </span>
+                <ViolationActions violation={v} />
+              </div>
             </div>
           ))}
         </Section>
@@ -441,9 +445,12 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
                     <p className="text-[11px] text-slate-300 mt-1 italic line-clamp-3">"{v.redemption.reflectionText}"</p>
                   )}
                 </div>
-                <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300">
-                  −{demeritLabel(v.demerits)}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300">
+                    −{demeritLabel(v.demerits)}
+                  </span>
+                  <ViolationActions violation={v} />
+                </div>
               </div>
             </div>
           ))}
