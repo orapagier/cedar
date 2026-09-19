@@ -94,9 +94,19 @@ sends one changed row instead of the whole year.
 
 ## Violations and redemption
 
-A demerit is not a score a resident holds — it is **work owed**. Every violation
-is worth a flat **1 demerit**, and each one is redeemed on its own; there is no
-clearing a resident's record in a lump.
+A demerit is not a score a resident holds — it is **work owed**. What a violation
+weighs follows the grade of the offense:
+
+- **Minor (0.5 demerit)** — late to worship, a late departure for school, a late
+  phone deposit, in from curfew from curfew time up to 10 PM.
+- **Moderate (1 demerit)** — cursing or vulgar words, a skipped study hour, an
+  improper uniform or departure, improper worship attire, missing a Bible, a
+  neglected chore, in from curfew past 10 PM.
+- **Major (2 demerits)** — off campus without a pass, abusive or threatening
+  language.
+
+Each one is redeemed on its own; there is no clearing a resident's record in a
+lump.
 
 **What a resident must do to work a violation off is the Dean's to say.** A
 check records what was broken and what it cost — never what to do about it. Each

@@ -181,7 +181,7 @@ export const UnauthorizedExitView: React.FC = () => {
           </div>
           <p className="text-xs text-slate-400 mt-1">
             Room by room, record a resident who left campus with no gate pass on file. Each confirmed exit is
-            1 demerit and a dean inquiry; excuse it and the demerit is withdrawn.
+            2 demerits and a dean inquiry; excuse it and the demerits are withdrawn.
           </p>
         </div>
 
@@ -561,7 +561,7 @@ export const UnauthorizedExitView: React.FC = () => {
 
               <p className="text-[11px] text-slate-500 flex items-start gap-1.5">
                 <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                Filing this puts 1 demerit on the resident's standing and calls for a dean inquiry with the parents.
+                Filing this puts 2 demerits on the resident's standing and calls for a dean inquiry with the parents.
                 Excuse the record later if leave turns out to have been on file.
               </p>
 

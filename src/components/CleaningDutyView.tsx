@@ -350,7 +350,7 @@ export const CleaningDutyView: React.FC = () => {
             {(rating <= 2 || !garbageDisposed) && (
               <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px] flex items-center gap-2">
                 <XCircle className="w-4 h-4 shrink-0" />
-                <span>Saving will log a 1-demerit violation for each resident who did the cleaning at this standard.</span>
+                <span>Saving will log a half-demerit violation for each resident who did the cleaning at this standard.</span>
               </div>
             )}
 

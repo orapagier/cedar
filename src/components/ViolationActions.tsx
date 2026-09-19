@@ -40,7 +40,7 @@ const CATEGORY_LABELS: Record<Violation['category'], string> = {
 const SEVERITY_OPTIONS: Array<[Violation['severity'], string]> = [
   ['minor', 'Minor — half a demerit'],
   ['moderate', 'Moderate — one demerit'],
-  ['major', 'Major — one demerit, referred'],
+  ['major', 'Major — two demerits, referred'],
 ];
 
 const FIELD_CLASS =

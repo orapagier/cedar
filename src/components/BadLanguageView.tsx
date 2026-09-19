@@ -214,7 +214,7 @@ export const BadLanguageView: React.FC = () => {
           </div>
           <p className="text-xs text-slate-400 mt-1">
             Room by room, record a resident heard cursing, swearing or speaking foul language. Each confirmed
-            report is 1 demerit and a reflection on clean speech; excuse it and the demerit is withdrawn.
+            report is 1 demerit — 2 for abusive or threatening words — and a reflection on clean speech; excuse it and the demerit is withdrawn.
           </p>
         </div>
 
@@ -641,7 +641,7 @@ export const BadLanguageView: React.FC = () => {
 
               <p className="text-[11px] text-slate-500 flex items-start gap-1.5">
                 <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                Filing this puts 1 demerit on the resident's standing and calls for a reflection on clean speech.
+                Filing this puts 1 demerit on the resident's standing (2 for abusive or threatening words) and calls for a reflection on clean speech.
                 Excuse the record later if the words turn out not to have been his.
               </p>
 

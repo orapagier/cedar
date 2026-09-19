@@ -16,37 +16,45 @@ import {
 import { WORSHIP_SESSIONS, worshipLabel } from '../data/dormSeed';
 import { formatTime12h } from './date';
 
-// Every infraction is worth the same single demerit, whatever its severity, so
-// a resident's total reads as "how many rules were broken" and nothing else. A
-// demerit is not a score a resident holds; it is work owed until it is redeemed.
+// How much a violation weighs is set by the grade the offense earns. A demerit
+// is not a score a resident holds; it is work owed until it is redeemed.
 
-/** Every moderate or major violation is worth the same single demerit. */
-export const VIOLATION_DEMERITS = 1;
-
-/**
- * A minor offense — being late, sitting down without a Bible, coming to worship
- * without proper attire or shoes — is half a demerit, so a boy needs two of
- * them before the same single demerit his moderate and major slips put on him.
- */
+/** A minor offense — late for worship, a late leave or deposit, in from curfew
+ *  before 10 PM — is half a demerit, so a boy needs two of them before a full
+ *  demerit lands on his record. */
 export const MINOR_VIOLATION_DEMERITS = 0.5;
+
+/** A moderate offense — cursing or vulgar words, a study skip, an improper
+ *  uniform, improper worship attire, a missing Bible, a chore neglected, or in
+ *  from curfew past 10 PM — is one full demerit. */
+export const MODERATE_VIOLATION_DEMERITS = 1;
+
+/** A major offense — leaving campus without a pass, or words meant to threaten
+ *  or degrade — is worth two demerits. */
+export const MAJOR_VIOLATION_DEMERITS = 2;
+
+/** The full demerit a moderate infraction owes, and the weight assumed for old
+ *  records saved before severity carried its own values. */
+export const VIOLATION_DEMERITS = MODERATE_VIOLATION_DEMERITS;
 
 /**
  * What a violation of a given grade weighs before it is filed. Minor slips
- * count half, because two of them read as one; everything else keeps the full
- * single demerit.
+ * count half, moderate offenses a full single demerit, and major offenses two.
  */
 export const demeritsForSeverity = (severity: Violation['severity']): number =>
-  severity === 'minor' ? MINOR_VIOLATION_DEMERITS : VIOLATION_DEMERITS;
+  severity === 'minor' ? MINOR_VIOLATION_DEMERITS
+  : severity === 'major' ? MAJOR_VIOLATION_DEMERITS
+  : MODERATE_VIOLATION_DEMERITS;
 
 /** "1 demerit" / "1.5 demerits" — never "pts": these are owed, not scored. */
 export const demeritLabel = (n: number) => `${n} demerit${n === 1 ? '' : 's'}`;
 
 /**
- * How a resident's open demerits read as a standing. Every violation is a
- * single demerit, so the total is a count of rules broken and work owed: 0-2 is
- * a clean record, 3-5 a wobble, 6-10 a bad spell, and 11+ is past what the
- * dormitory alone should carry and goes to the guidance counselor. Returns the
- * badge classes too, so every screen wears the same colors.
+ * How a resident's open demerits read as a standing. The total is the weight of
+ * the violations still owed, in grades: 0-2 is a clean record, 3-5 a wobble,
+ * 6-10 a bad spell, and 11+ is past what the dormitory alone should carry and
+ * goes to the guidance counselor. Returns the badge classes too, so every
+ * screen wears the same colors.
  */
 export const demeritStanding = (demerits: number) =>
   demerits >= 11
@@ -273,55 +281,93 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
     drafts.push({
       ...base,
       category: 'no_bible',
-      severity: 'minor',
+      severity: 'moderate',
       description: `Failed to bring personal physical Bible to ${session}.`,
-      demerits: demeritsForSeverity('minor'),
+      demerits: demeritsForSeverity('moderate'),
     });
   }
   if (rec.properAttire === false) {
     drafts.push({
       ...base,
       category: 'improper_worship_attire',
-      severity: 'minor',
+      severity: 'moderate',
       description: `Improper worship attire at ${session}.`,
-      demerits: demeritsForSeverity('minor'),
+      demerits: demeritsForSeverity('moderate'),
     });
   }
   return drafts;
 };
 
+/**
+ * The hour cut-off for a late curfew arrival: in by this time is a minor slip,
+ * past it is the moderate offense. A boy in from curfew up to 10 PM is late but
+ * inside; after 10 PM the dormitory has been waiting on him beyond what a minor
+ * slip covers.
+ */
+const LATE_CURFEW_BEYOND = '22:00';
+
 export const curfewDrafts = (rec: CurfewRecord): ViolationDraft[] => {
   if (rec.status !== 'late' && rec.status !== 'missing') return [];
+  const severity: ViolationDraft['severity'] = rec.status === 'missing'
+    ? 'major'
+    : !rec.actualCheckInTime || rec.actualCheckInTime <= LATE_CURFEW_BEYOND
+      ? 'minor'
+      : 'moderate';
   return [{
     date: rec.date,
     studentId: rec.studentId,
     studentName: rec.studentName,
     roomNumber: rec.roomNumber,
     category: 'curfew_breach',
-    severity: rec.status === 'missing' ? 'major' : 'moderate',
+    severity,
     description: rec.status === 'missing'
       ? 'Missing from dormitory past curfew without authorization.'
-      : `Late curfew arrival (${rec.actualCheckInTime || 'unrecorded'}). ${rec.remarks || ''}`,
-    demerits: VIOLATION_DEMERITS,
+      : `Late curfew arrival (${rec.actualCheckInTime || 'unrecorded'}), after the ${formatTime12h(rec.curfewTime, rec.curfewTime)} curfew${rec.actualCheckInTime && rec.actualCheckInTime > LATE_CURFEW_BEYOND ? ' — past 10 PM' : ''}. ${rec.remarks || ''}`,
+    demerits: demeritsForSeverity(severity),
     reportedBy: rec.loggedBy,
     status: 'pending_settlement',
   }];
 };
 
+/**
+ * A school-departure gate check that flags a resident can be one slip or two:
+ * turning out in an improper uniform or grooming is the moderate offense,
+ * while leaving off the scheduled window is its own lighter "late departure"
+ * minor slip. Each is filed on its own, so a record with both answers for both.
+ */
 export const uniformDrafts = (log: SchoolUniformLog): ViolationDraft[] => {
   if (log.status !== 'flagged') return [];
-  return [{
+  const base = {
     date: log.date,
     studentId: log.studentId,
     studentName: log.studentName,
     roomNumber: log.roomNumber,
-    category: !log.isDepartureOnSchedule ? 'irregular_school_departure' : 'uniform_violation',
-    severity: 'minor',
-    description: `School departure gate inspection issue: ${log.remarks || 'Uniform/Grooming non-compliant or departed off-schedule'}.`,
-    demerits: demeritsForSeverity('minor'),
     reportedBy: log.inspectedBy,
-    status: 'pending_settlement',
-  }];
+    status: 'pending_settlement' as const,
+  };
+  const drafts: ViolationDraft[] = [];
+
+  if (!log.uniformCompliant || !log.hairGroomingCompliant || !log.idBadgeCompliant || !log.shoesCompliant) {
+    drafts.push({
+      ...base,
+      category: 'uniform_violation',
+      severity: 'moderate',
+      description: `School departure gate inspection issue: ${log.remarks || 'Uniform/Grooming non-compliant'}.`,
+      demerits: demeritsForSeverity('moderate'),
+    });
+  }
+
+  if (!log.isDepartureOnSchedule) {
+    drafts.push({
+      ...base,
+      category: 'irregular_school_departure',
+      severity: 'minor',
+      description: `Departed off the school-run schedule (${log.departureTime}). ${log.remarks || ''}`,
+      demerits: demeritsForSeverity('minor'),
+    });
+  }
+
+  return drafts;
 };
 
 export const studyDrafts = (log: StudyHoursLog): ViolationDraft[] => {
@@ -332,9 +378,9 @@ export const studyDrafts = (log: StudyHoursLog): ViolationDraft[] => {
     studentName: log.studentName,
     roomNumber: log.roomNumber,
     category: 'study_hour_skipping',
-    severity: 'minor',
+    severity: 'moderate',
     description: `Study hours infraction: ${log.status === 'absent' ? 'Absent from study period' : 'Noise during quiet study'}.`,
-    demerits: demeritsForSeverity('minor'),
+    demerits: demeritsForSeverity('moderate'),
     reportedBy: log.recordedBy,
     status: 'pending_settlement',
   }];
@@ -370,9 +416,9 @@ export const cleaningDrafts = (duty: CleaningDutyRecord): ViolationDraft[] => {
       studentName: h.studentName,
       roomNumber: duty.roomNumber,
       category: 'chore_neglect',
-      severity: 'minor',
+      severity: 'moderate',
       description: `Did not help with Room ${duty.roomNumber}'s dorm cleaning duty.${note}`,
-      demerits: demeritsForSeverity('minor'),
+      demerits: demeritsForSeverity('moderate'),
       reportedBy: reporter,
       status: 'pending_settlement',
     }));
@@ -426,7 +472,7 @@ export const unauthorizedExitDrafts = (log: UnauthorizedExitLog): ViolationDraft
     description:
       `Left campus${where} without a gate pass, noticed at ${formatTime12h(log.noticedTime, log.noticedTime)} ` +
       `(${EXIT_DISCOVERY_LABELS[log.discoveredVia].toLowerCase()}).${note}`,
-    demerits: VIOLATION_DEMERITS,
+    demerits: demeritsForSeverity('major'),
     reportedBy: log.loggedBy,
     status: 'pending_settlement',
   }];
@@ -462,15 +508,15 @@ export const LANGUAGE_DISCOVERY_LABELS: Record<BadLanguageLog['discoveredVia'], 
 };
 
 /**
- * Speech is graded by what the words did, not by how loud they were: a cuss
- * word said in temper is a minor slip, God's name taken in vain or mockery of
- * another resident is moderate, and language meant to threaten or degrade is
- * major. Every one of them is still the same single demerit; the grade only says
- * how the dormitory reads it. An excused report carries nothing at all.
+ * Speech is graded by what the words did, not by how loud they were: cursing
+ * and vulgar talk, God's name taken in vain or mockery of another resident are
+ * the moderate offenses — one demerit — and language meant to threaten or
+ * degrade is the major one, worth two. The grade says how the dormitory reads
+ * it; an excused report carries nothing at all.
  */
 const LANGUAGE_SEVERITY: Record<BadLanguageLog['kind'], ViolationDraft['severity']> = {
-  cursing: 'minor',
-  vulgar_talk: 'minor',
+  cursing: 'moderate',
+  vulgar_talk: 'moderate',
   blasphemy: 'moderate',
   name_calling: 'moderate',
   abusive: 'major',

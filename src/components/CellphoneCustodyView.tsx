@@ -24,6 +24,7 @@ import { manilaToday, manilaTime, manilaTimeValue, formatFullDate, formatTime12h
 import { ResidentSearch } from './ui/ResidentSearch';
 import { listedResidents } from '../utils/residentSearch';
 import { useManilaToday } from '../hooks/useManilaToday';
+import { demeritsForSeverity } from '../utils/checkViolations';
 import { vaultCycle, describeCyclePoint, vaultCustodyExemption, cycleExcuseReason } from '../utils/phoneVault';
 
 const FIELD =
@@ -282,7 +283,7 @@ export const CellphoneCustodyView: React.FC = () => {
       category: 'cellphone_policy_breach',
       severity: 'major',
       description: `Device confiscation (${c.deviceModel}): ${reason}`,
-      demerits: 1,
+      demerits: demeritsForSeverity('major'),
       reportedBy: currentUser.name,
       status: 'confirmed',
     });

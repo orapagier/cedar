@@ -84,7 +84,8 @@ const [description, setDescription] = useState('');
           <div>
             <h2 className="text-base sm:text-lg font-bold text-white">Resident Performance & Standing</h2>
             <p className="text-xs text-slate-400 mt-1">
-              Demerits owed and compliance status for every occupant. Every violation is worth 1 demerit.
+              Demerits owed and compliance status for every occupant. Minor slips are half a demerit, moderate
+              offenses one, and major offenses two.
             </p>
           </div>
           {canEdit && (
@@ -231,7 +232,7 @@ const [description, setDescription] = useState('');
           <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto text-slate-100">
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white">Log Rule Violation (1 demerit)</h3>
+                <h3 className="text-base font-bold text-white">Log Rule Violation</h3>
                 <p className="text-xs text-slate-400">Dean / Admin Incident Form</p>
               </div>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2">
@@ -286,7 +287,7 @@ const [description, setDescription] = useState('');
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Demerits</label>
                   <div className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-slate-300">
-                    1 demerit <span className="text-slate-500">· fixed for every violation</span>
+                    {demeritLabel(demeritsForSeverity(severity))} <span className="text-slate-500">· graded by severity</span>
                   </div>
                 </div>
               </div>
