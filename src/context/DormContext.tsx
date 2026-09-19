@@ -21,6 +21,7 @@ import {
   GatePassRecord,
   UnauthorizedExitLog,
   BadLanguageLog,
+  NeighborRoomLog,
   DemeritClearanceLog,
   ConfiscatedItemRecord,
   StudentMedicalRecord,
@@ -45,6 +46,7 @@ import {
   INITIAL_GATE_PASSES,
   INITIAL_UNAUTHORIZED_EXITS,
   INITIAL_BAD_LANGUAGE,
+  INITIAL_NEIGHBOR_ROOM_LOGS,
   INITIAL_DEMERIT_CLEARANCES,
   INITIAL_CONFISCATED_ITEMS,
   INITIAL_STUDENT_MEDICALS,
@@ -70,6 +72,7 @@ import {
   curfewDrafts,
   inspectionDrafts,
   lightsOutDrafts,
+  neighborRoomDrafts,
   normalizeViolations,
   phoneDepositDrafts,
   recomputeInspection,
@@ -123,6 +126,12 @@ interface DormContextType {
   saveBadLanguageLog: (log: Omit<BadLanguageLog, 'id'>) => void;
   /** Note an apology, excuse the report, or add to it after the fact. */
   updateBadLanguageLog: (id: string, updates: Partial<Omit<BadLanguageLog, 'id'>>) => void;
+
+  /** Residents found in another resident's room without explicit permission. */
+  neighborRoomLogs: NeighborRoomLog[];
+  saveNeighborRoomLog: (log: Omit<NeighborRoomLog, 'id'>) => void;
+  /** Excuse the visit, flag it again, or add to it after the fact. */
+  updateNeighborRoomLog: (id: string, updates: Partial<Omit<NeighborRoomLog, 'id'>>) => void;
 
   /** The paper trail of redemptions, one entry per violation settled. */
   demeritClearances: DemeritClearanceLog[];
@@ -446,6 +455,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return loaded.filter(l => !TEST_LOG_IDS.has(l.id) && !TEST_USER_IDS.has(l.studentId) && !TEST_NAMES.has(l.studentName));
   });
 
+  const [neighborRoomLogs, setNeighborRoomLogs] = useState<NeighborRoomLog[]>(() => {
+    const loaded = loadFromStorage<NeighborRoomLog[]>('neighbor_room_logs', INITIAL_NEIGHBOR_ROOM_LOGS);
+    return loaded.filter(l => !TEST_LOG_IDS.has(l.id) && !TEST_USER_IDS.has(l.studentId) && !TEST_NAMES.has(l.studentName));
+  });
+
   const [demeritClearances, setDemeritClearances] = useState<DemeritClearanceLog[]>(() => {
     const loaded = loadFromStorage<DemeritClearanceLog[]>('demerit_clearances', INITIAL_DEMERIT_CLEARANCES);
     return loaded.filter(d => !TEST_LOG_IDS.has(d.id) && !TEST_USER_IDS.has(d.studentId) && !TEST_NAMES.has(d.studentName));
@@ -484,6 +498,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => saveToStorage('gate_passes', gatePasses), [gatePasses]);
   useEffect(() => saveToStorage('unauthorized_exits', unauthorizedExits), [unauthorizedExits]);
   useEffect(() => saveToStorage('bad_language', badLanguageLogs), [badLanguageLogs]);
+  useEffect(() => saveToStorage('neighbor_room_logs', neighborRoomLogs), [neighborRoomLogs]);
   useEffect(() => saveToStorage('demerit_clearances', demeritClearances), [demeritClearances]);
   useEffect(() => saveToStorage('confiscated_items', confiscatedItems), [confiscatedItems]);
   useEffect(() => saveToStorage('student_medicals', studentMedicals), [studentMedicals]);
@@ -518,6 +533,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     gatePasses,
     unauthorizedExits,
     badLanguageLogs,
+    neighborRoomLogs,
     demeritClearances,
     confiscatedItems,
     studentMedicals,
@@ -558,7 +574,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, cleaningDuties, lightsOutLogs,
         cellphones, phoneDeposits, phoneBorrows, violations, settings,
-        medicalSlips, gatePasses, unauthorizedExits, badLanguageLogs, demeritClearances, confiscatedItems, studentMedicals]);
+        medicalSlips, gatePasses, unauthorizedExits, badLanguageLogs, neighborRoomLogs, demeritClearances, confiscatedItems, studentMedicals]);
 
   // Pull the shared state on load, then poll for updates from other devices.
   // The poll itself only asks for the last-saved timestamp; the records are
@@ -622,6 +638,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.gatePasses) setGatePasses(d.gatePasses as GatePassRecord[]);
           if (d.unauthorizedExits) setUnauthorizedExits(d.unauthorizedExits as UnauthorizedExitLog[]);
           if (d.badLanguageLogs) setBadLanguageLogs(d.badLanguageLogs as BadLanguageLog[]);
+          if (d.neighborRoomLogs) setNeighborRoomLogs(d.neighborRoomLogs as NeighborRoomLog[]);
           if (d.demeritClearances) setDemeritClearances(d.demeritClearances as DemeritClearanceLog[]);
           if (d.confiscatedItems) setConfiscatedItems(d.confiscatedItems as ConfiscatedItemRecord[]);
           if (d.studentMedicals) setStudentMedicals(d.studentMedicals as StudentMedicalRecord[]);
@@ -1436,6 +1453,14 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         syncViolationsFor(next.id, badLanguageDrafts(next));
         return;
       }
+      case 'neighborRoom': {
+        const current = neighborRoomLogs.find(r => r.id === id);
+        if (!current) return;
+        const next = { ...current, ...updates, ...stamp } as NeighborRoomLog;
+        setNeighborRoomLogs(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, neighborRoomDrafts(next));
+        return;
+      }
       case 'phoneDeposit': {
         const current = phoneDeposits.find(r => r.id === id);
         if (!current) return;
@@ -1465,6 +1490,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       case 'lightsOut': setLightsOutLogs(drop); break;
       case 'unauthorizedExit': setUnauthorizedExits(drop); break;
       case 'badLanguage': setBadLanguageLogs(drop); break;
+      case 'neighborRoom': setNeighborRoomLogs(drop); break;
       case 'phoneDeposit': {
         const current = phoneDeposits.find(r => r.id === id);
         setPhoneDeposits(drop);
@@ -1500,6 +1526,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setGatePasses(kept.gatePasses as GatePassRecord[]);
     setUnauthorizedExits(kept.unauthorizedExits as UnauthorizedExitLog[]);
     setBadLanguageLogs(kept.badLanguageLogs as BadLanguageLog[]);
+    setNeighborRoomLogs(kept.neighborRoomLogs as NeighborRoomLog[]);
     setDemeritClearances(kept.demeritClearances as DemeritClearanceLog[]);
     setConfiscatedItems(kept.confiscatedItems as ConfiscatedItemRecord[]);
 
@@ -1817,6 +1844,34 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     syncViolationsFor(next.id, badLanguageDrafts(next));
   };
 
+  /**
+   * File a resident found in another resident's room without explicit
+   * permission. The record carries its demerit the moment it is filed, and
+   * withdraws it again if the Dean later excuses it — which is how the register
+   * keeps every visit on file for tracing, permitted or not.
+   */
+  const saveNeighborRoomLog = (log: Omit<NeighborRoomLog, 'id'>) => {
+    if (!canEdit) return;
+    const record: NeighborRoomLog = { ...log, id: `nb-${Date.now()}-${log.studentId}` };
+    setNeighborRoomLogs(prev => [record, ...prev]);
+    syncViolationsFor(record.id, neighborRoomDrafts(record));
+  };
+
+  /**
+   * The follow-up on a visit already on file: the room's occupant had invited
+   * the resident over after all, or the visit is back to standing as
+   * unauthorized. The demerit the record carries is re-derived from what it
+   * now says.
+   */
+  const updateNeighborRoomLog = (id: string, updates: Partial<Omit<NeighborRoomLog, 'id'>>) => {
+    if (!canEdit) return;
+    const current = neighborRoomLogs.find(l => l.id === id);
+    if (!current) return;
+    const next: NeighborRoomLog = { ...current, ...updates };
+    setNeighborRoomLogs(prev => prev.map(l => (l.id === id ? next : l)));
+    syncViolationsFor(next.id, neighborRoomDrafts(next));
+  };
+
   const saveConfiscatedItem = (item: Omit<ConfiscatedItemRecord, 'id'>) => {
     const newItem: ConfiscatedItemRecord = {
       ...item,
@@ -1897,6 +1952,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setGatePasses([]);
     setUnauthorizedExits([]);
     setBadLanguageLogs([]);
+    setNeighborRoomLogs([]);
     setDemeritClearances([]);
     setConfiscatedItems([]);
     setRooms(prev => prev.map(r => ({ ...r, occupantIds: [] })));
@@ -1922,6 +1978,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setGatePasses(INITIAL_GATE_PASSES);
     setUnauthorizedExits(INITIAL_UNAUTHORIZED_EXITS);
     setBadLanguageLogs(INITIAL_BAD_LANGUAGE);
+    setNeighborRoomLogs(INITIAL_NEIGHBOR_ROOM_LOGS);
     setDemeritClearances(INITIAL_DEMERIT_CLEARANCES);
     setConfiscatedItems(INITIAL_CONFISCATED_ITEMS);
     setStudentMedicals(INITIAL_STUDENT_MEDICALS);
@@ -1962,6 +2019,9 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         badLanguageLogs,
         saveBadLanguageLog,
         updateBadLanguageLog,
+        neighborRoomLogs,
+        saveNeighborRoomLog,
+        updateNeighborRoomLog,
         demeritClearances,
         confiscatedItems,
         saveConfiscatedItem,

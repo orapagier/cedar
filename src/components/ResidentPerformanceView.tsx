@@ -433,6 +433,7 @@ export const ResidentPerformanceView: React.FC = () => {
                     <option value="chore_neglect">Chore Neglect</option>
                     <option value="lights_out_violation">Lights-Out Violation</option>
                     <option value="cellphone_policy_breach">Cellphone Breach</option>
+                    <option value="unauthorized_room_visit">In Another Resident's Room</option>
                     <option value="other">Other Dorm Rule</option>
                   </select>
                 </div>

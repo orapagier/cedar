@@ -180,6 +180,35 @@ const FIELDS: Record<CheckKind, Field[]> = {
     { key: 'excuseReason', label: 'Reason it was excused', kind: 'text', placeholder: 'e.g. Misheard — another resident' },
     { key: 'remarks', label: 'Remarks', kind: 'text', placeholder: 'What happened' },
   ],
+  neighborRoom: [
+    { key: 'date', label: 'Date seen', kind: 'date' },
+    {
+      key: 'status',
+      label: 'Verdict',
+      kind: 'select',
+      options: [
+        ['confirmed', 'Confirmed — there without permission'],
+        ['excused', 'Excused — permission or leave cleared it'],
+      ],
+    },
+    { key: 'seenTime', label: 'Seen at', kind: 'time' },
+    { key: 'visitedRoomNumber', label: 'Room they were in', kind: 'text', placeholder: 'e.g. 204' },
+    { key: 'purpose', label: 'Why they were there', kind: 'text', placeholder: 'What they said' },
+    {
+      key: 'discoveredVia',
+      label: 'How it came to light',
+      kind: 'select',
+      options: [
+        ['staff_rounds', 'Found on staff rounds'],
+        ['room_owner', 'Reported by the room occupant'],
+        ['reported', 'Reported by someone else'],
+        ['self_admitted', 'Resident admitted it'],
+      ],
+    },
+    { key: 'hasPermission', label: 'Had explicit permission', kind: 'toggle' },
+    { key: 'excuseReason', label: 'Reason it was excused', kind: 'text', placeholder: 'e.g. Roommate had invited him' },
+    { key: 'remarks', label: 'Remarks', kind: 'text', placeholder: 'What happened' },
+  ],
   phoneDeposit: [
     {
       key: 'status',

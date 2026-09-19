@@ -279,6 +279,7 @@ export type ViolationCategory =
   | 'chore_neglect'
   | 'lights_out_violation'
   | 'cellphone_policy_breach'
+  | 'unauthorized_room_visit'
   | 'other';
 
 /** The work details a resident can be given to redeem one violation. */
@@ -467,6 +468,38 @@ export interface BadLanguageLog extends OverrideStamp {
   /** 'confirmed' — the words were said; 'excused' — it was not as reported. */
   status: 'confirmed' | 'excused';
   /** Why an excused report was cleared, e.g. "Misheard — another resident". */
+  excuseReason?: string;
+  remarks?: string;
+  loggedBy: string;
+}
+
+/**
+ * A resident found in a room that is not their own — in another resident's
+ * room, which the dormitory does not allow without explicit permission. The
+ * record is kept against the visitor so a lost or stolen item can be traced
+ * back through who was in the room and when.
+ */
+export interface NeighborRoomLog extends OverrideStamp {
+  id: string;
+  date: string; // YYYY-MM-DD — the day the resident was seen
+  studentId: string;
+  studentName: string;
+  roomNumber: string; // the resident's own room
+  /** The room they were found in, e.g. "203". */
+  visitedRoomNumber: string;
+  /** Who lives in the room they were found in, captured at filing time. */
+  visitedRoomOccupants?: string;
+  /** When they were seen, e.g. "16:20". */
+  seenTime: string;
+  /** Why they said they were there — helps a later inquiry trace what happened. */
+  purpose?: string;
+  /** How the visit came to light. */
+  discoveredVia: 'staff_rounds' | 'room_owner' | 'reported' | 'self_admitted';
+  /** Whether the resident had explicit permission to be in the room. */
+  hasPermission: boolean;
+  /** 'confirmed' — there without permission; 'excused' — permission or leave cleared it. */
+  status: 'confirmed' | 'excused';
+  /** Why an excused visit was cleared, e.g. "Roommate had invited him". */
   excuseReason?: string;
   remarks?: string;
   loggedBy: string;

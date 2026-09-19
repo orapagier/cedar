@@ -9,6 +9,7 @@ import {
   Luggage,
   Siren,
   MessageSquareWarning,
+  Footprints,
   HeartPulse,
   AlertTriangle,
   HandHeart,
@@ -91,6 +92,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
     gatePasses,
     unauthorizedExits,
     badLanguageLogs,
+    neighborRoomLogs,
     medicalSlips,
   } = useDorm();
 
@@ -340,6 +342,34 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
           ))}
           {badLanguageLogs.filter(l => l.studentId === studentId).length === 0 && (
             <Empty text="No foul language reports on file." />
+          )}
+        </Section>
+      )}
+
+      {show('conduct') && (
+        <Section icon={Footprints} title="Neighboring Rooms">
+          {neighborRoomLogs.filter(l => l.studentId === studentId).slice(0, limit).map(l => (
+            <div key={l.id} className="px-4 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-white">Visit to Room {l.visitedRoomNumber}</p>
+                <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                  l.status === 'excused' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'
+                }`}>
+                  {l.status === 'excused' ? 'permitted' : 'no permission'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {formatFullDate(l.date)} · {formatTime12h(l.seenTime)}
+                {l.visitedRoomOccupants ? ` · ${l.visitedRoomOccupants}` : ''}
+                {l.purpose ? ` · ${l.purpose}` : ''}
+              </p>
+              {l.status === 'excused' && l.excuseReason && (
+                <p className="text-[11px] text-emerald-400/90 mt-0.5">{l.excuseReason}</p>
+              )}
+            </div>
+          ))}
+          {neighborRoomLogs.filter(l => l.studentId === studentId).length === 0 && (
+            <Empty text="No room visits on file." />
           )}
         </Section>
       )}

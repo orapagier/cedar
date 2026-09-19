@@ -4,6 +4,7 @@ import {
   CleaningDutyRecord,
   CurfewRecord,
   LightsOutLog,
+  NeighborRoomLog,
   PhoneDepositLog,
   RoomInspection,
   SchoolUniformLog,
@@ -53,6 +54,7 @@ export const violationTitle = (v: Pick<Violation, 'category' | 'description'>): 
     chore_neglect: 'Missed cleaning duty',
     lights_out_violation: 'Lights-out violation',
     cellphone_policy_breach: 'Phone policy breach',
+    unauthorized_room_visit: "In another resident's room",
     other: 'Incident',
   };
   return byCategory[v.category] ?? titleCaseText(v.category);
@@ -81,7 +83,8 @@ export type CheckKind =
   | 'lightsOut'
   | 'phoneDeposit'
   | 'unauthorizedExit'
-  | 'badLanguage';
+  | 'badLanguage'
+  | 'neighborRoom';
 
 export const CHECK_LABELS: Record<CheckKind, string> = {
   inspection: 'Room inspection',
@@ -94,6 +97,7 @@ export const CHECK_LABELS: Record<CheckKind, string> = {
   phoneDeposit: 'Phone deposit',
   unauthorizedExit: 'Off-campus without pass',
   badLanguage: 'Foul language report',
+  neighborRoom: "Neighboring room visit",
 };
 
 /**
@@ -504,3 +508,39 @@ export const recomputeLightsOut = (log: LightsOutLog): LightsOutLog => ({
   ...log,
   status: log.allLightsOff && log.noiseCompliant && log.noUnauthorizedGadgets ? 'compliant' : 'violation',
 });
+
+/** How the visit came to light, as the record and the register both word it. */
+export const NEIGHBOR_DISCOVERY_LABELS: Record<NeighborRoomLog['discoveredVia'], string> = {
+  staff_rounds: 'Found on staff rounds',
+  room_owner: 'Reported by the occupant of the room',
+  reported: 'Reported by someone else',
+  self_admitted: 'Admitted by the resident',
+};
+
+/**
+ * Being in another resident's room without explicit permission is a privacy
+ * breach that keeps the dormitory honest when something goes missing, so a
+ * confirmed visit carries a demerit. A visit the Dean later excuses — the
+ * room's occupant had invited him after all — carries none.
+ */
+export const neighborRoomDrafts = (log: NeighborRoomLog): ViolationDraft[] => {
+  if (log.status !== 'confirmed') return [];
+  const at = log.visitedRoomOccupants ? ` (home of ${log.visitedRoomOccupants})` : '';
+  const why = log.purpose ? ` Said purpose: ${log.purpose}.` : '';
+  const note = log.remarks ? ` ${log.remarks}` : '';
+  return [{
+    date: log.date,
+    studentId: log.studentId,
+    studentName: log.studentName,
+    roomNumber: log.roomNumber,
+    category: 'unauthorized_room_visit',
+    severity: 'moderate',
+    description:
+      `Came into Room ${log.visitedRoomNumber}${at} without explicit permission, seen at ` +
+      `${formatTime12h(log.seenTime, log.seenTime)} ` +
+      `(${NEIGHBOR_DISCOVERY_LABELS[log.discoveredVia].toLowerCase()}).${why}${note}`,
+    demerits: VIOLATION_DEMERITS,
+    reportedBy: log.loggedBy,
+    status: 'pending_settlement',
+  }];
+};

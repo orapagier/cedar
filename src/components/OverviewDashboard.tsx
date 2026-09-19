@@ -14,6 +14,7 @@ import {
   Luggage,
   Siren,
   MessageSquareWarning,
+  Footprints,
   ChevronRight,
   Users,
   Shield,
@@ -35,6 +36,7 @@ const CHECKS: { id: string; label: string; sub: string; icon: React.ComponentTyp
   { id: 'gatepass', label: 'Gate Pass & Home Leave', sub: 'Campus exits & weekend leave', icon: Luggage },
   { id: 'offcampus', label: 'Off-Campus Without Pass', sub: 'Exits with no pass on file', icon: Siren },
   { id: 'language', label: 'Foul Language', sub: 'Cursing, swearing & foul speech', icon: MessageSquareWarning },
+  { id: 'neighbor', label: 'Neighboring Rooms', sub: 'Visits without permission', icon: Footprints },
 ];
 
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate }) => {
@@ -55,6 +57,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     gatePasses,
     unauthorizedExits,
     badLanguageLogs,
+    neighborRoomLogs,
     violations,
     settings,
   } = useDorm();
@@ -89,6 +92,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
     gatepass: `${gatePasses.filter(p => p.status === 'approved' || p.status === 'departed').length} active`,
     offcampus: `${unauthorizedExits.filter(e => e.date === today).length} logged`,
     language: `${badLanguageLogs.filter(l => l.date === today).length} logged`,
+    neighbor: `${neighborRoomLogs.filter(l => l.date === today).length} logged`,
   };
 
   // Subtitles that quote a configurable hour are built from settings, so the
