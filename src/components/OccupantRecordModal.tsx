@@ -197,27 +197,25 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap gap-1 min-w-0">
-              {TABS.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  aria-pressed={tab === t.id}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors ${
-                    tab === t.id
-                      ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
-                      : 'bg-slate-800 text-slate-300 border border-transparent hover:bg-slate-700'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+          <div className="mt-3 flex flex-wrap items-center gap-1">
+            {TABS.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                aria-pressed={tab === t.id}
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                  tab === t.id
+                    ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
+                    : 'bg-slate-800 text-slate-300 border border-transparent hover:bg-slate-700'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
             {canEdit && (
               <button
                 onClick={() => setLogging(true)}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-colors"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap bg-rose-600 hover:bg-rose-500 text-white transition-colors"
               >
                 <PlusCircle className="w-4 h-4" />
                 Log violation
