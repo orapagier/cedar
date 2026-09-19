@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Violation } from '../types/dorm';
-import { LANGUAGE_KIND_LABELS, LANGUAGE_SETTING_LABELS, demeritLabel, violationTitle } from '../utils/checkViolations';
+import { LANGUAGE_KIND_LABELS, LANGUAGE_SETTING_LABELS, demeritLabel, demeritStanding, violationTitle } from '../utils/checkViolations';
 import { formatFullDate, formatTime12h } from '../utils/date';
 
 const PASS_LABELS: Record<string, string> = {
@@ -126,7 +126,7 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-3">
             <p className="text-xs text-slate-400">Demerits owed</p>
-            <p className={`text-xl font-bold mt-0.5 ${demerits >= 8 ? 'text-rose-400' : demerits > 0 ? 'text-amber-300' : 'text-emerald-400'}`}>
+            <p className={`text-xl font-bold mt-0.5 ${demeritStanding(demerits).tone}`}>
               {demerits}
             </p>
           </div>

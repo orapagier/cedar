@@ -299,7 +299,7 @@ The record itself is five tabs rather than one long column:
 The arrows in the header (or the left/right keys) step to the next resident
 without going back to the list, so a room can be read boy after boy. Above the
 rooms: a search across name, room, email and parent name, filters for
-**With demerits** and **On notice**, and a switch to a flat A–Z list when the room
+**With demerits** and **Poor or worse**, and a switch to a flat A–Z list when the room
 is not what you are looking for.
 
 ## Installing it on a phone

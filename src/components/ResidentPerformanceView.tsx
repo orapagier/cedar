@@ -20,7 +20,7 @@ import { ResidentSearch } from './ui/ResidentSearch';
 import { residentMatches } from '../utils/residentSearch';
 import { ServiceType, Violation, ViolationCategory } from '../types/dorm';
 import { formatFullDate, manilaToday } from '../utils/date';
-import { VIOLATION_DEMERITS, demeritLabel } from '../utils/checkViolations';
+import { VIOLATION_DEMERITS, demeritLabel, demeritStanding } from '../utils/checkViolations';
 
 const SERVICE_TYPES: ServiceType[] = [
   'Grounds Beautification',
@@ -30,13 +30,6 @@ const SERVICE_TYPES: ServiceType[] = [
 ];
 
 const FIELD = 'w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white';
-
-const standingFor = (demerits: number) =>
-  demerits === 0
-    ? { label: 'Good Standing', classes: 'bg-emerald-950 text-emerald-300 border-emerald-700' }
-    : demerits < 8
-      ? { label: 'Under Notice', classes: 'bg-amber-950 text-amber-300 border-amber-700' }
-      : { label: 'Probation', classes: 'bg-rose-950 text-rose-300 border-rose-700' };
 
 export const ResidentPerformanceView: React.FC = () => {
   const {
@@ -233,7 +226,7 @@ export const ResidentPerformanceView: React.FC = () => {
               {residents.map(occ => {
                 const isOpen = expanded.has(occ.id);
                 const owed = occ.demerits || 0;
-                const standing = standingFor(owed);
+                const standing = demeritStanding(owed);
                 const activeVs = violations.filter(v => v.studentId === occ.id && v.status !== 'cleared_service');
                 const redeemedVs = violations.filter(v => v.studentId === occ.id && v.status === 'cleared_service');
                 const totalVs = violations.filter(v => v.studentId === occ.id);

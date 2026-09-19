@@ -11,15 +11,15 @@ import {
 import { useDorm } from '../context/DormContext';
 import { OccupantRecordModal } from './OccupantRecordModal';
 import { User } from '../types/dorm';
-import { demeritLabel } from '../utils/checkViolations';
+import { demeritLabel, demeritStanding } from '../utils/checkViolations';
 
 type Grouping = 'room' | 'name';
-type Filter = 'all' | 'flagged' | 'notice';
+type Filter = 'all' | 'flagged' | 'poor';
 
 const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: 'all', label: 'Everyone' },
   { id: 'flagged', label: 'With demerits' },
-  { id: 'notice', label: 'On notice' },
+  { id: 'poor', label: 'Poor or worse' },
 ];
 
 const WING_CLASSES: Record<string, string> = {
@@ -32,12 +32,7 @@ const WING_CLASSES: Record<string, string> = {
 const initials = (name: string) =>
   name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
-const demeritClasses = (demerits: number) =>
-  demerits >= 8
-    ? 'bg-rose-950 text-rose-300 border-rose-800/60'
-    : demerits > 0
-      ? 'bg-amber-950 text-amber-300 border-amber-800/60'
-      : 'bg-slate-800 text-slate-400 border-slate-700';
+const demeritClasses = (demerits: number) => demeritStanding(demerits).classes;
 
 const byRoomThenName = (a: User, b: User) =>
   String(a.roomNumber).localeCompare(String(b.roomNumber), undefined, { numeric: true }) ||
@@ -78,7 +73,7 @@ export const OccupantRecordsView: React.FC = () => {
       .filter(u => u.role === 'occupant')
       .filter(u => {
         if (filter === 'flagged') return demeritsFor(u.id) > 0;
-        if (filter === 'notice') return demeritsFor(u.id) >= 8;
+        if (filter === 'poor') return demeritsFor(u.id) >= 6;
         return true;
       })
       .filter(u =>
@@ -115,7 +110,7 @@ export const OccupantRecordsView: React.FC = () => {
     if (next) setOpenId(next.id);
   };
 
-  const onNotice = visible.filter(u => demeritsFor(u.id) >= 8).length;
+  const onPoor = visible.filter(u => demeritsFor(u.id) >= 6).length;
   const withDemerits = visible.filter(u => demeritsFor(u.id) > 0).length;
   // A search should not leave a matching name hidden inside a room the dean
   // happened to collapse earlier.
@@ -146,7 +141,7 @@ export const OccupantRecordsView: React.FC = () => {
             <div className="hidden sm:flex shrink-0 gap-2 text-center">
               <Tally label="Residents" value={visible.length} />
               <Tally label="With demerits" value={withDemerits} tone={withDemerits ? 'text-amber-300' : undefined} />
-              <Tally label="On notice" value={onNotice} tone={onNotice ? 'text-rose-400' : undefined} />
+              <Tally label="Poor or worse" value={onPoor} tone={onPoor ? 'text-rose-400' : undefined} />
             </div>
             <button
               onClick={() => setGrouping(g => (g === 'room' ? 'name' : 'room'))}

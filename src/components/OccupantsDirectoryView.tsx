@@ -24,7 +24,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { User, Room } from '../types/dorm';
-import { demeritLabel } from '../utils/checkViolations';
+import { demeritStanding } from '../utils/checkViolations';
 
 export const OccupantsDirectoryView: React.FC = () => {
   const { 
@@ -417,13 +417,14 @@ export const OccupantsDirectoryView: React.FC = () => {
                 const room = rooms.find(r => r.roomNumber === occupant.roomNumber);
                 const studentViolations = violations.filter(v => v.studentId === occupant.id);
                 const phoneRecord = cellphones.find(c => c.studentId === occupant.id);
-                const isProbation = (occupant.demerits || 0) >= 8;
+                const standing = demeritStanding(occupant.demerits || 0);
+                const needsReferral = (occupant.demerits || 0) >= 11;
 
                 return (
                   <div 
                     key={occupant.id}
                     className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col justify-between ${
-                      isProbation ? 'bg-slate-900 border-rose-600/60 shadow-rose-950/20 shadow-lg' : 'bg-slate-900 border-slate-800'
+                      needsReferral ? 'bg-slate-900 border-rose-600/60 shadow-rose-950/20 shadow-lg' : 'bg-slate-900 border-slate-800'
                     }`}
                   >
                     <div>
@@ -433,12 +434,8 @@ export const OccupantsDirectoryView: React.FC = () => {
                           <h3 className="font-bold text-white text-base leading-snug">{occupant.name}</h3>
                           <div className="text-xs text-slate-400 font-mono truncate">{occupant.email}</div>
                         </div>
-                        <span className={`shrink-0 whitespace-nowrap text-xs font-bold px-2.5 py-1 rounded-full ${
-                          isProbation ? 'bg-rose-950 text-rose-300 border border-rose-700' :
-                          occupant.demerits > 0 ? 'bg-amber-950 text-amber-300 border border-amber-700' :
-                          'bg-emerald-950 text-emerald-300 border border-emerald-700'
-                        }`}>
-                          {demeritLabel(occupant.demerits)}
+                        <span className={`shrink-0 whitespace-nowrap text-xs font-bold px-2.5 py-1 rounded-full border ${standing.classes}`}>
+                          {standing.label}
                         </span>
                       </div>
 

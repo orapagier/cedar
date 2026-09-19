@@ -28,7 +28,7 @@ import { Modal } from './ui/Modal';
 import { OccupantRecordsPanel, RecordGroup } from './OccupantRecordsPanel';
 import { buildOccupantTimeline, EventKind, EventMark, EventTone } from '../utils/occupantTimeline';
 import { formatFullDate, formatTime12h } from '../utils/date';
-import { demeritLabel } from '../utils/checkViolations';
+import { demeritLabel, demeritStanding } from '../utils/checkViolations';
 
 type Tab = 'overview' | RecordGroup;
 
@@ -137,18 +137,13 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
     u => u.role === 'occupant' && u.roomNumber === occupant.roomNumber && u.id !== occupant.id
   );
 
-  const standing =
-    demerits >= 8
-      ? { label: 'Probation', classes: 'bg-rose-950 text-rose-300 border-rose-700/60' }
-      : demerits > 0
-        ? { label: 'Under Notice', classes: 'bg-amber-950 text-amber-300 border-amber-700/60' }
-        : { label: 'Good Standing', classes: 'bg-emerald-950 text-emerald-300 border-emerald-700/60' };
+  const standing = demeritStanding(demerits);
 
   const stats: Array<{ label: string; value: string; tone?: string }> = [
     {
       label: 'Demerits',
       value: String(demerits),
-      tone: demerits >= 8 ? 'text-rose-400' : demerits > 0 ? 'text-amber-300' : 'text-emerald-400',
+      tone: standing.tone,
     },
     { label: 'Open Violations', value: String(activeViolations.length) },
     { label: 'Worship Kept', value: worshipRate === null ? '—' : `${worshipRate}%` },

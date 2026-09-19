@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { OccupantRecordsPanel } from './OccupantRecordsPanel';
+import { demeritStanding } from '../utils/checkViolations';
 
 const WING = {
   North: 'bg-sky-950 text-sky-300 border border-sky-700/50',
@@ -51,12 +52,10 @@ export const ParentView: React.FC = () => {
                 {room.wing}
               </span>
             )}
-            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-              child.status === 'probation' ? 'bg-rose-950 text-rose-300 border border-rose-700/50' :
-              child.status === 'active' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50' :
-              'bg-sky-950 text-sky-300 border border-sky-700/50'
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
+              child.status === 'excused_leave' ? 'bg-sky-950 text-sky-300 border-sky-700/50' : demeritStanding(child.demerits).classes
             }`}>
-              {child.status === 'probation' ? 'On Notice' : child.status === 'active' ? 'Good Standing' : 'Excused Leave'}
+              {child.status === 'excused_leave' ? 'Excused Leave' : demeritStanding(child.demerits).label}
             </span>
           </div>
         </div>

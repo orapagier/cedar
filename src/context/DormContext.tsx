@@ -682,7 +682,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           ...user,
           demerits: totalDemerits,
-          status: onRoll ? (totalDemerits >= 8 ? 'probation' : 'active') : user.status,
+          status: onRoll ? (totalDemerits >= 11 ? 'probation' : 'active') : user.status,
         };
       })
     );

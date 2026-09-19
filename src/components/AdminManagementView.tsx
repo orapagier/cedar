@@ -18,7 +18,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { UserRole } from '../types/dorm';
-import { demeritLabel } from '../utils/checkViolations';
+import { demeritLabel, demeritStanding } from '../utils/checkViolations';
 
 export const AdminManagementView: React.FC = () => {
   const { users, currentUser, updateUserRole, addAdminUser, removeAdminUser, isSuperAdmin } = useDorm();
@@ -235,7 +235,7 @@ export const AdminManagementView: React.FC = () => {
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
                   {user.roomNumber ? `Room ${user.roomNumber}` : 'Faculty / Staff'} ·{' '}
-                  <span className={`font-bold ${user.demerits > 5 ? 'text-rose-400' : 'text-slate-300'}`}>
+                  <span className={`font-bold ${demeritStanding(user.demerits).tone}`}>
                     {demeritLabel(user.demerits)}
                   </span>
                 </p>
@@ -316,7 +316,7 @@ export const AdminManagementView: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-3.5">
-                      <span className={`font-bold ${user.demerits > 5 ? 'text-rose-400' : 'text-slate-300'}`}>
+                      <span className={`font-bold ${demeritStanding(user.demerits).tone}`}>
                         {demeritLabel(user.demerits)}
                       </span>
                     </td>

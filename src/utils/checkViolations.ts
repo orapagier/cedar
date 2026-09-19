@@ -25,6 +25,22 @@ export const VIOLATION_DEMERITS = 1;
 /** "1 demerit" / "3 demerits" — never "pts": these are owed, not scored. */
 export const demeritLabel = (n: number) => `${n} demerit${n === 1 ? '' : 's'}`;
 
+/**
+ * How a resident's open demerits read as a standing. Every violation is a
+ * single demerit, so the total is a count of rules broken and work owed: 0-2 is
+ * a clean record, 3-5 a wobble, 6-10 a bad spell, and 11+ is past what the
+ * dormitory alone should carry and goes to the guidance counselor. Returns the
+ * badge classes too, so every screen wears the same colors.
+ */
+export const demeritStanding = (demerits: number) =>
+  demerits >= 11
+    ? { label: 'Refer to Guidance Counselor', classes: 'bg-rose-950 text-rose-300 border-rose-700', tone: 'text-rose-400' }
+    : demerits >= 6
+      ? { label: 'Poor', classes: 'bg-amber-950 text-amber-300 border-amber-700', tone: 'text-amber-400' }
+      : demerits >= 3
+        ? { label: 'Acceptable', classes: 'bg-sky-950 text-sky-300 border-sky-700', tone: 'text-sky-400' }
+        : { label: 'Excellent', classes: 'bg-emerald-950 text-emerald-300 border-emerald-700', tone: 'text-emerald-400' };
+
 const titleCaseText = (value: string) =>
   value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
