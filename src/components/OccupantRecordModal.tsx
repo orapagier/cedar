@@ -197,8 +197,8 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-3">
-            <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 flex-1 min-w-0">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-1 min-w-0">
               {TABS.map(t => (
                 <button
                   key={t.id}
