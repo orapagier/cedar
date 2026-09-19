@@ -18,6 +18,31 @@
     overscroll-behavior-y: none;
   }
 
+  /* Every scrollbar wears the thin, quiet slate thumb the navigation drawer
+     uses. Touch screens never paint an overlay thumb, so this only shows on
+     mice; the .no-scrollbar utility still wins where a row should never
+     scroll. */
+  @media (pointer: fine) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+    }
+    *::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    *::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.45);
+      border-radius: 9999px;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.6);
+    }
+    *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  }
+
   /* iOS Safari zooms in on form controls below 16px. */
   @media (max-width: 640px) {
     input,
