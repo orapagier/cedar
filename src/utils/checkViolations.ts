@@ -20,9 +20,25 @@ import { formatTime12h } from './date';
 // a resident's total reads as "how many rules were broken" and nothing else. A
 // demerit is not a score a resident holds; it is work owed until it is redeemed.
 
+/** Every moderate or major violation is worth the same single demerit. */
 export const VIOLATION_DEMERITS = 1;
 
-/** "1 demerit" / "3 demerits" — never "pts": these are owed, not scored. */
+/**
+ * A minor offense — being late, sitting down without a Bible, coming to worship
+ * without proper attire or shoes — is half a demerit, so a boy needs two of
+ * them before the same single demerit his moderate and major slips put on him.
+ */
+export const MINOR_VIOLATION_DEMERITS = 0.5;
+
+/**
+ * What a violation of a given grade weighs before it is filed. Minor slips
+ * count half, because two of them read as one; everything else keeps the full
+ * single demerit.
+ */
+export const demeritsForSeverity = (severity: Violation['severity']): number =>
+  severity === 'minor' ? MINOR_VIOLATION_DEMERITS : VIOLATION_DEMERITS;
+
+/** "1 demerit" / "1.5 demerits" — never "pts": these are owed, not scored. */
 export const demeritLabel = (n: number) => `${n} demerit${n === 1 ? '' : 's'}`;
 
 /**
@@ -196,7 +212,7 @@ export const inspectionDrafts = (insp: RoomInspection, occupants: RoomMember[]):
     category: 'cleanliness',
     severity: 'moderate',
     description: `Room ${insp.roomNumber} failed daily inspection score (${insp.score}/100): ${insp.remarks || 'Sanitation issues'}`,
-    demerits: VIOLATION_DEMERITS,
+    demerits: demeritsForSeverity('moderate'),
     reportedBy: insp.inspectorName,
     status: 'pending_settlement',
   }));
@@ -209,7 +225,6 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
     studentId: rec.studentId,
     studentName: rec.studentName,
     roomNumber: rec.roomNumber,
-    demerits: VIOLATION_DEMERITS,
     reportedBy: rec.recordedBy,
     status: 'pending_settlement' as const,
   };
@@ -219,6 +234,7 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
       ...base,
       category: 'worship_absence',
       severity: 'moderate',
+      demerits: demeritsForSeverity('moderate'),
       description: `Unexcused absence from ${session}.`,
     }];
   }
@@ -231,6 +247,7 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
       category: 'no_bible',
       severity: 'minor',
       description: `Failed to bring personal physical Bible to ${session}.`,
+      demerits: demeritsForSeverity('minor'),
     });
   }
   if (rec.properAttire === false) {
@@ -239,6 +256,7 @@ export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
       category: 'improper_worship_attire',
       severity: 'minor',
       description: `Improper worship attire at ${session}.`,
+      demerits: demeritsForSeverity('minor'),
     });
   }
   return drafts;
@@ -272,7 +290,7 @@ export const uniformDrafts = (log: SchoolUniformLog): ViolationDraft[] => {
     category: !log.isDepartureOnSchedule ? 'irregular_school_departure' : 'uniform_violation',
     severity: 'minor',
     description: `School departure gate inspection issue: ${log.remarks || 'Uniform/Grooming non-compliant or departed off-schedule'}.`,
-    demerits: VIOLATION_DEMERITS,
+    demerits: demeritsForSeverity('minor'),
     reportedBy: log.inspectedBy,
     status: 'pending_settlement',
   }];
@@ -288,7 +306,7 @@ export const studyDrafts = (log: StudyHoursLog): ViolationDraft[] => {
     category: 'study_hour_skipping',
     severity: 'minor',
     description: `Study hours infraction: ${log.status === 'absent' ? 'Absent from study period' : 'Noise during quiet study'}.`,
-    demerits: VIOLATION_DEMERITS,
+    demerits: demeritsForSeverity('minor'),
     reportedBy: log.recordedBy,
     status: 'pending_settlement',
   }];
@@ -326,7 +344,7 @@ export const cleaningDrafts = (duty: CleaningDutyRecord): ViolationDraft[] => {
       category: 'chore_neglect',
       severity: 'minor',
       description: `Did not help with Room ${duty.roomNumber}'s dorm cleaning duty.${note}`,
-      demerits: VIOLATION_DEMERITS,
+      demerits: demeritsForSeverity('minor'),
       reportedBy: reporter,
       status: 'pending_settlement',
     }));
@@ -345,7 +363,7 @@ export const cleaningDrafts = (duty: CleaningDutyRecord): ViolationDraft[] => {
       category: 'cleanliness',
       severity: 'minor',
       description: `Dorm cleaning duty below standard (${reason}).${note}`,
-      demerits: VIOLATION_DEMERITS,
+      demerits: demeritsForSeverity('minor'),
       reportedBy: reporter,
       status: 'pending_settlement',
     }));
@@ -446,7 +464,7 @@ export const badLanguageDrafts = (log: BadLanguageLog): ViolationDraft[] => {
       `${LANGUAGE_KIND_LABELS[log.kind]}${at} — ${LANGUAGE_SETTING_LABELS[log.setting].toLowerCase()}, ` +
       `${formatTime12h(log.heardTime, log.heardTime)} ` +
       `(${LANGUAGE_DISCOVERY_LABELS[log.discoveredVia].toLowerCase()}).${said}${note}`,
-    demerits: VIOLATION_DEMERITS,
+    demerits: demeritsForSeverity(LANGUAGE_SEVERITY[log.kind]),
     reportedBy: log.loggedBy,
     status: 'pending_settlement',
   }];
@@ -465,7 +483,7 @@ export const phoneDepositDrafts = (rec: PhoneDepositLog, dueLabel: string): Viol
     description: rec.status === 'late'
       ? `Late phone deposit at ${formatTime12h(rec.depositTime, rec.depositTime)} — due ${dueLabel}.${note}`
       : `Did not deposit phone for the cycle due ${dueLabel}.${note}`,
-    demerits: VIOLATION_DEMERITS,
+    demerits: demeritsForSeverity(rec.status === 'late' ? 'minor' : 'moderate'),
     reportedBy: rec.recordedBy,
     status: 'pending_settlement',
   }];

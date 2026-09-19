@@ -20,7 +20,7 @@ import { ResidentSearch } from './ui/ResidentSearch';
 import { residentMatches } from '../utils/residentSearch';
 import { ServiceType, Violation, ViolationCategory } from '../types/dorm';
 import { formatFullDate, manilaToday } from '../utils/date';
-import { VIOLATION_DEMERITS, demeritLabel, demeritStanding } from '../utils/checkViolations';
+import { demeritsForSeverity, demeritLabel, demeritStanding } from '../utils/checkViolations';
 
 const SERVICE_TYPES: ServiceType[] = [
   'Grounds Beautification',
@@ -142,7 +142,7 @@ export const ResidentPerformanceView: React.FC = () => {
       category,
       severity,
       description,
-      demerits: VIOLATION_DEMERITS,
+      demerits: demeritsForSeverity(severity),
       reportedBy: currentUser.name,
       status: 'pending_settlement',
       assignedRedemption: newRedemption.trim() || undefined,
