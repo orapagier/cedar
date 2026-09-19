@@ -1,21 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   ChevronLeft,
   ChevronRight,
-  Church,
-  BookOpen,
-  Moon,
-  UserCheck,
-  Brush,
   Smartphone,
-  Luggage,
-  Siren,
-  MessageSquareWarning,
-  HeartPulse,
-  AlertTriangle,
-  HandHeart,
-  Activity,
   Phone,
   Mail,
   Users,
@@ -26,8 +14,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { OccupantRecordsPanel, RecordGroup } from './OccupantRecordsPanel';
-import { buildOccupantTimeline, EventKind, EventMark, EventTone } from '../utils/occupantTimeline';
-import { formatFullDate, formatTime12h } from '../utils/date';
+import { ViolationsPanel } from './ViolationsPanel';
 import { demeritLabel, demeritStanding } from '../utils/checkViolations';
 
 type Tab = 'overview' | RecordGroup;
@@ -39,28 +26,6 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'daily', label: 'Daily' },
   { id: 'away', label: 'Away & Health' },
 ];
-
-const EVENT_ICONS: Record<EventKind, React.ComponentType<{ className?: string }>> = {
-  worship: Church,
-  study: BookOpen,
-  curfew: Moon,
-  departure: UserCheck,
-  cleaning: Brush,
-  phone: Smartphone,
-  gatepass: Luggage,
-  offcampus: Siren,
-  language: MessageSquareWarning,
-  medical: HeartPulse,
-  violation: AlertTriangle,
-  redemption: HandHeart,
-};
-
-const TONE_CLASSES: Record<EventTone, string> = {
-  good: 'bg-emerald-950 text-emerald-300 border-emerald-800/60',
-  warn: 'bg-amber-950 text-amber-300 border-amber-800/60',
-  bad: 'bg-rose-950 text-rose-300 border-rose-800/60',
-  info: 'bg-sky-950 text-sky-300 border-sky-800/60',
-};
 
 const initials = (name: string) =>
   name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
@@ -81,7 +46,7 @@ interface OccupantRecordModalProps {
  *
  * The twelve record sections are too much to read in one column, so they sit
  * behind five tabs and the popup opens on an Overview: the numbers that decide
- * a standing, then every module's entries merged into one dated feed. The
+ * a standing, then the boy's current violations. The
  * arrows step through the room without going back to the list, which is how a
  * dean actually reads these — one room at a time, boy after boy.
  */
@@ -117,8 +82,6 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onStep, hasPrev, hasNext]);
-
-  const timeline = useMemo(() => buildOccupantTimeline(studentId, dorm), [studentId, dorm]);
 
   if (!occupant) return null;
 
@@ -281,56 +244,7 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
                 {room?.captainName && <Fact icon={BadgeCheck} label="Room captain" value={room.captainName} />}
               </div>
 
-              <div>
-                <h3 className="flex items-center gap-1.5 text-sm font-bold text-white mb-2">
-                  <Activity className="w-4 h-4 text-amber-400" /> Recent Activity
-                </h3>
-                {timeline.length === 0 ? (
-                  <p className="bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-6 text-center text-xs text-slate-500">
-                    Nothing on file yet — records appear here as staff log them.
-                  </p>
-                ) : (
-                  <ol className="space-y-1.5">
-                    {timeline.slice(0, 15).map(event => {
-                      const Icon = EVENT_ICONS[event.kind];
-                      return (
-                        <li
-                          key={event.id}
-                          className="flex items-start gap-2.5 bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2.5"
-                        >
-                          <span
-                            className={`shrink-0 w-7 h-7 rounded-lg border flex items-center justify-center ${TONE_CLASSES[event.tone]}`}
-                          >
-                            <Icon className="w-3.5 h-3.5" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-white">{event.title}</p>
-                            {event.detail && (
-                              <p className="text-[11px] text-slate-400 line-clamp-2">{event.detail}</p>
-                            )}
-                            {event.marks && event.marks.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {event.marks.map((mark, i) => (
-                                  <Mark key={i} mark={mark} />
-                                ))}
-                              </div>
-                            )}
-                            <p className="text-[10px] text-slate-500 mt-0.5">
-                              {formatFullDate(event.date)}
-                              {event.time ? ` · ${formatTime12h(event.time)}` : ''}
-                            </p>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                )}
-                {timeline.length > 15 && (
-                  <p className="text-[11px] text-slate-500 text-center mt-2">
-                    Showing the 15 most recent of {timeline.length} entries — open a tab for the full log.
-                  </p>
-                )}
-              </div>
+              <ViolationsPanel studentId={studentId} />
             </div>
           ) : (
             <OccupantRecordsPanel studentId={studentId} group={tab} limit={12} showStats={false} />
@@ -340,28 +254,6 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
     </Modal>
   );
 };
-
-/**
- * What one entry cost the resident, shown on the entry that cost it. A check
- * and the demerit it raised are one thing that happened, so they read as one
- * line rather than two.
- */
-function Mark({ mark }: { mark: EventMark }) {
-  const owed = `+${demeritLabel(mark.demerits)}`;
-  return (
-    <span
-      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-        mark.redeemed
-          ? 'bg-emerald-950 text-emerald-300 border-emerald-800/60'
-          : 'bg-rose-950 text-rose-300 border-rose-800/60'
-      }`}
-    >
-      {mark.label ? `${mark.label} · ` : ''}
-      {owed}
-      {mark.redeemed ? ' · redeemed' : ''}
-    </span>
-  );
-}
 
 function Fact({
   icon: Icon,
