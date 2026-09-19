@@ -320,12 +320,6 @@ export const ResidentPerformanceView: React.FC = () => {
                                         +{demeritLabel(v.demerits)}
                                       </span>
                                       <span className="text-[11px] text-slate-400 capitalize">{v.category.replace(/_/g, ' ')}</span>
-                                      <span className={`shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
-                                        v.status === 'confirmed' ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50' :
-                                        'bg-amber-900/40 text-amber-300 border border-amber-700/50'
-                                      }`}>
-                                        {v.status.replace('_', ' ')}
-                                      </span>
                                     </div>
                                     <p className="text-[11px] text-slate-300 mt-1">{v.description}</p>
                                     {v.assignedRedemption ? (
