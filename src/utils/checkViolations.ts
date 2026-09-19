@@ -92,6 +92,34 @@ export const violationTitle = (v: Pick<Violation, 'category' | 'description'>): 
   return byCategory[v.category] ?? titleCaseText(v.category);
 };
 
+/**
+ * A one- or two-word stand-in for a violation category, for tight rows where a
+ * full headline would wrap. The Resident Performance page shows the full
+ * description beneath it, so the short form only needs to point at the rule.
+ */
+export const violationShortLabel = (category: ViolationCategory): string => {
+  const short: Record<ViolationCategory, string> = {
+    cleanliness: 'Cleanliness',
+    worship_absence: 'No Worship',
+    worship_late: 'Late',
+    no_bible: 'No Bible',
+    improper_worship_attire: 'Attire',
+    curfew_breach: 'Curfew',
+    uniform_violation: 'Uniform',
+    church_absence: 'No Church',
+    irregular_school_departure: 'Departure',
+    unauthorized_campus_exit: 'Off-Campus',
+    foul_language: 'Foul Language',
+    study_hour_skipping: 'Study Skip',
+    chore_neglect: 'Chores',
+    lights_out_violation: 'Lights Out',
+    cellphone_policy_breach: 'Phone Breach',
+    unauthorized_room_visit: 'Room Visit',
+    other: 'Incident',
+  };
+  return short[category];
+};
+
 /** A violation a check record implies, before it is given an id and filed. */
 export type ViolationDraft = Omit<Violation, 'id' | 'createdAt' | 'sourceId'>;
 

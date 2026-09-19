@@ -20,7 +20,7 @@ import { ResidentSearch } from './ui/ResidentSearch';
 import { residentMatches } from '../utils/residentSearch';
 import { ServiceType, Violation, ViolationCategory } from '../types/dorm';
 import { formatFullDate, manilaToday } from '../utils/date';
-import { demeritsForSeverity, demeritLabel, demeritStanding } from '../utils/checkViolations';
+import { demeritsForSeverity, demeritLabel, demeritStanding, violationShortLabel } from '../utils/checkViolations';
 import { ViolationActions } from './ViolationActions';
 
 const SERVICE_TYPES: ServiceType[] = [
@@ -319,7 +319,7 @@ export const ResidentPerformanceView: React.FC = () => {
                                       }`}>
                                         +{demeritLabel(v.demerits)}
                                       </span>
-                                      <span className="text-[11px] text-slate-400 capitalize">{v.category.replace(/_/g, ' ')}</span>
+                                      <span className="shrink-0 text-[11px] text-slate-400">{violationShortLabel(v.category)}</span>
                                     </div>
                                     <p className="text-[11px] text-slate-300 mt-1">{v.description}</p>
                                     {v.assignedRedemption ? (
@@ -369,8 +369,8 @@ export const ResidentPerformanceView: React.FC = () => {
                                           : <HandHeart className="w-3 h-3 shrink-0" />}
                                         <span className="truncate">{redemptionLabel(v)}</span>
                                       </div>
-                                      <p className="text-[11px] text-slate-400 mt-0.5 capitalize">
-                                        {v.category.replace(/_/g, ' ')} · {formatFullDate(v.date)}
+                                      <p className="text-[11px] text-slate-400 mt-0.5">
+                                        {violationShortLabel(v.category)} · {formatFullDate(v.date)}
                                       </p>
                                       {v.redemption && (
                                         <p className="text-[10px] text-slate-500 mt-0.5">
@@ -500,8 +500,8 @@ export const ResidentPerformanceView: React.FC = () => {
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <h3 className="text-base font-bold text-white truncate">Set redemption — {assigning.studentName}</h3>
-                <p className="text-xs text-slate-400 capitalize">
-                  {assigning.category.replace(/_/g, ' ')} · {formatFullDate(assigning.date)} · {demeritLabel(assigning.demerits)}
+                <p className="text-xs text-slate-400">
+                  {violationShortLabel(assigning.category)} · {formatFullDate(assigning.date)} · {demeritLabel(assigning.demerits)}
                 </p>
               </div>
               <button onClick={() => setAssigning(null)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2 shrink-0">
@@ -542,8 +542,8 @@ export const ResidentPerformanceView: React.FC = () => {
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <h3 className="text-base font-bold text-white truncate">Redeem — {redeeming.studentName}</h3>
-                <p className="text-xs text-slate-400 capitalize">
-                  {redeeming.category.replace(/_/g, ' ')} · {formatFullDate(redeeming.date)} · {demeritLabel(redeeming.demerits)}
+                <p className="text-xs text-slate-400">
+                  {violationShortLabel(redeeming.category)} · {formatFullDate(redeeming.date)} · {demeritLabel(redeeming.demerits)}
                 </p>
               </div>
               <button onClick={() => setRedeeming(null)} className="text-slate-400 hover:text-white min-w-touch min-h-touch flex items-center justify-center -mr-2 shrink-0">
