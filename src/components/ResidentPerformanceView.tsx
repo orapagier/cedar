@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
+import { ResidentSearch } from './ui/ResidentSearch';
+import { residentMatches } from '../utils/residentSearch';
 import { ServiceType, Violation, ViolationCategory } from '../types/dorm';
 import { formatFullDate, manilaToday } from '../utils/date';
 import { VIOLATION_DEMERITS, demeritLabel } from '../utils/checkViolations';
@@ -44,6 +46,7 @@ export const ResidentPerformanceView: React.FC = () => {
   const occupants = users.filter(u => u.role === 'occupant');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showAddModal, setShowAddModal] = useState(false);
+  const [search, setSearch] = useState('');
 
   const [studentId, setStudentId] = useState('');
   const [category, setCategory] = useState<ViolationCategory>('curfew_breach');
@@ -120,6 +123,11 @@ export const ResidentPerformanceView: React.FC = () => {
 
   const roomNumbers = Array.from(new Set(occupants.map(o => o.roomNumber).filter(Boolean) as string[])).sort();
 
+  // A name search runs across the whole dormitory and steps in front of the
+  // room groupings while it has something typed, the same way every check does.
+  const searching = search.trim().length > 0;
+  const matches = searching ? occupants.filter(o => residentMatches(o, search)).length : occupants.length;
+
   const toggle = (id: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -176,6 +184,14 @@ export const ResidentPerformanceView: React.FC = () => {
             </button>
           )}
         </div>
+        <div className="mt-3 pt-3 border-t border-slate-800">
+          <ResidentSearch
+            value={search}
+            onChange={setSearch}
+            matches={matches}
+            placeholder="Search a name or room…"
+          />
+        </div>
       </div>
 
       {occupants.length === 0 && (
@@ -188,9 +204,20 @@ export const ResidentPerformanceView: React.FC = () => {
         </div>
       )}
 
+      {searching && matches === 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
+          <Users className="w-8 h-8 text-slate-500 mx-auto" />
+          <p className="text-sm font-semibold text-white mt-3">Nobody by that name</p>
+          <p className="text-xs text-slate-400 mt-1">No resident in the dormitory matches "{search.trim()}".</p>
+        </div>
+      )}
+
       {roomNumbers.map(roomNumber => {
         const roomMeta = rooms.find(r => r.roomNumber === roomNumber);
-        const residents = occupants.filter(o => o.roomNumber === roomNumber);
+        const residents = occupants.filter(
+          o => o.roomNumber === roomNumber && (!searching || residentMatches(o, search))
+        );
+        if (searching && residents.length === 0) return null;
         return (
           <div key={roomNumber} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
