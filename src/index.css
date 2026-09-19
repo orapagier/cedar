@@ -61,13 +61,20 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+  }
   .scrollbar-thin::-webkit-scrollbar {
     height: 6px;
     width: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.5);
+    background: rgba(100, 116, 139, 0.45);
     border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6);
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;

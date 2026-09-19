@@ -233,7 +233,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenP
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4 space-y-6">
+            <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin px-3 py-4 space-y-6">
               {MENU_GROUPS.map(group => {
                 const items = visibleItems.filter(i => i.group === group.id);
                 if (!items.length) return null;

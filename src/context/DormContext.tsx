@@ -436,6 +436,14 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ...loadFromStorage<Partial<DormSettings>>('settings', {}),
   }));
 
+  // Violations the Dean struck off a resident's record. Once struck, no record
+  // is allowed to file that violation again — correcting the check behind it or
+  // the hourly vault sweep re-files what a check implies, and a struck violation
+  // has to stay off every page, not come back the next time that record is saved.
+  const [struckViolationIds, setStruckViolationIds] = useState<string[]>(() =>
+    loadFromStorage<string[]>('struck_violations', [])
+  );
+
   const updateSettings = (updates: Partial<DormSettings>) => setSettings(prev => ({ ...prev, ...updates }));
 
   // Operational Checklist Modules
@@ -498,6 +506,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => saveToStorage('phone_deposits', phoneDeposits), [phoneDeposits]);
   useEffect(() => saveToStorage('phone_borrows', phoneBorrows), [phoneBorrows]);
   useEffect(() => saveToStorage('violations', violations), [violations]);
+  useEffect(() => saveToStorage('struck_violations', struckViolationIds), [struckViolationIds]);
   useEffect(() => saveToStorage('medical_slips', medicalSlips), [medicalSlips]);
   useEffect(() => saveToStorage('gate_passes', gatePasses), [gatePasses]);
   useEffect(() => saveToStorage('unauthorized_exits', unauthorizedExits), [unauthorizedExits]);
@@ -533,6 +542,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phoneDeposits,
     phoneBorrows,
     violations,
+    struckViolationIds,
     medicalSlips,
     gatePasses,
     unauthorizedExits,
@@ -577,7 +587,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
     };
   }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, cleaningDuties, lightsOutLogs,
-        cellphones, phoneDeposits, phoneBorrows, violations, settings,
+        cellphones, phoneDeposits, phoneBorrows, violations, struckViolationIds, settings,
         medicalSlips, gatePasses, unauthorizedExits, badLanguageLogs, neighborRoomLogs, demeritClearances, confiscatedItems, studentMedicals]);
 
   // Pull the shared state on load, then poll for updates from other devices.
@@ -638,6 +648,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.phoneDeposits) setPhoneDeposits(d.phoneDeposits as PhoneDepositLog[]);
           if (d.phoneBorrows) setPhoneBorrows(d.phoneBorrows as PhoneBorrowLog[]);
           if (d.violations) setViolations(normalizeViolations(d.violations as Violation[]));
+          if (Array.isArray(d.struckViolationIds)) setStruckViolationIds(d.struckViolationIds as string[]);
           if (d.medicalSlips) setMedicalSlips(d.medicalSlips as MedicalExcuseSlip[]);
           if (d.gatePasses) setGatePasses(d.gatePasses as GatePassRecord[]);
           if (d.unauthorizedExits) setUnauthorizedExits(d.unauthorizedExits as UnauthorizedExitLog[]);
@@ -799,14 +810,21 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const syncViolationsFor = (sourceId: string, drafts: ViolationDraft[]) => {
     const stamp = manilaTime();
     const key = (v: { studentId: string; category: Violation['category'] }) => `${v.studentId}|${v.category}`;
-    const surviving = new Set(drafts.map(key));
+    // A violation the Dean struck stays struck: no record may file it again. The
+    // ids are derived here, so the struck id a deletion records matches the one
+    // a re-saved check would file — it is skipped before it ever lands.
+    const struck = new Set(struckViolationIds);
+    const toFile = drafts.filter(
+      d => !struck.has(`viol-${sourceId}-${d.studentId}-${d.category}`)
+    );
+    const surviving = new Set(toFile.map(key));
     const droppedIds = violations
       .filter(v => v.sourceId === sourceId && !surviving.has(key(v)))
       .map(v => v.id);
 
     setViolations(prev => {
       const priorByKey = new Map<string, Violation>(prev.filter(v => v.sourceId === sourceId).map(v => [key(v), v]));
-      const filed = drafts.map<Violation>(draft => {
+      const filed = toFile.map<Violation>(draft => {
         const prior = priorByKey.get(key(draft));
         const redeemed = prior?.status === 'cleared_service' ? prior : undefined;
         return {
@@ -1518,10 +1536,12 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   /**
    * Super Admin only: strike one violation off a resident's record entirely.
    * Whatever it owed leaves the standing, and the clearance that settled it
-   * goes with it.
+   * goes with it. The strike is remembered, so no check behind the violation
+   * can re-file it when it is next saved.
    */
   const deleteViolation = (id: string) => {
     if (!isSuperAdmin) return;
+    setStruckViolationIds(prev => (prev.includes(id) ? prev : [...prev, id]));
     setViolations(prev => prev.filter(v => v.id !== id));
     setDemeritClearances(prev => prev.filter(c => c.violationId !== id));
   };
@@ -1573,6 +1593,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPhoneDeposits(INITIAL_PHONE_DEPOSITS);
     setPhoneBorrows(INITIAL_PHONE_BORROWS);
     setViolations(INITIAL_VIOLATIONS);
+    setStruckViolationIds([]);
     localStorage.clear();
   };
 
@@ -1973,6 +1994,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPhoneDeposits([]);
     setPhoneBorrows([]);
     setViolations([]);
+    setStruckViolationIds([]);
     setMedicalSlips([]);
     setGatePasses([]);
     setUnauthorizedExits([]);
@@ -1999,6 +2021,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPhoneDeposits(INITIAL_PHONE_DEPOSITS);
     setPhoneBorrows(INITIAL_PHONE_BORROWS);
     setViolations(INITIAL_VIOLATIONS);
+    setStruckViolationIds([]);
     setMedicalSlips(INITIAL_MEDICAL_SLIPS);
     setGatePasses(INITIAL_GATE_PASSES);
     setUnauthorizedExits(INITIAL_UNAUTHORIZED_EXITS);

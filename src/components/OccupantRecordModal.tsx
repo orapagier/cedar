@@ -10,11 +10,13 @@ import {
   ShieldAlert,
   BadgeCheck,
   Home,
+  PlusCircle,
 } from 'lucide-react';
 import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { OccupantRecordsPanel, RecordGroup } from './OccupantRecordsPanel';
 import { ViolationsPanel } from './ViolationsPanel';
+import { LogViolationModal } from './LogViolationModal';
 import { demeritLabel, demeritStanding } from '../utils/checkViolations';
 
 type Tab = 'overview' | RecordGroup;
@@ -60,9 +62,10 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
 }) => {
   const dorm = useDorm();
   const {
-    users, rooms, inspections, violations, attendance, cellphones,
+    users, rooms, inspections, violations, attendance, cellphones, canEdit,
   } = dorm;
   const [tab, setTab] = useState<Tab>('overview');
+  const [logging, setLogging] = useState(false);
 
   const occupant = users.find(u => u.id === studentId);
   const room = rooms.find(r => r.roomNumber === occupant?.roomNumber);
@@ -114,7 +117,8 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
   ];
 
   return (
-    <Modal onClose={onClose} padding="p-0 sm:p-4" label={`Records for ${occupant.name}`}>
+    <>
+      <Modal onClose={onClose} padding="p-0 sm:p-4" label={`Records for ${occupant.name}`}>
       <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] text-slate-100">
         {/* Header — stays put while the record scrolls under it. */}
         <div className="shrink-0 border-b border-slate-800 px-4 pt-4 pb-3 sm:px-5">
@@ -193,21 +197,32 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
             )}
           </div>
 
-          <div className="flex gap-1 mt-3 overflow-x-auto no-scrollbar -mx-1 px-1">
-            {TABS.map(t => (
+          <div className="flex items-center gap-2 mt-3">
+            <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 flex-1 min-w-0">
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  aria-pressed={tab === t.id}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                    tab === t.id
+                      ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
+                      : 'bg-slate-800 text-slate-300 border border-transparent hover:bg-slate-700'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {canEdit && (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                aria-pressed={tab === t.id}
-                className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors ${
-                  tab === t.id
-                    ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
-                    : 'bg-slate-800 text-slate-300 border border-transparent hover:bg-slate-700'
-                }`}
+                onClick={() => setLogging(true)}
+                className="shrink-0 min-w-touch min-h-touch flex items-center gap-1.5 px-3 rounded-lg text-[11px] font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-colors"
               >
-                {t.label}
+                <PlusCircle className="w-4 h-4" />
+                Log violation
               </button>
-            ))}
+            )}
           </div>
         </div>
 
@@ -251,7 +266,10 @@ export const OccupantRecordModal: React.FC<OccupantRecordModalProps> = ({
           )}
         </div>
       </div>
-    </Modal>
+      </Modal>
+
+      {logging && <LogViolationModal studentId={studentId} onClose={() => setLogging(false)} />}
+    </>
   );
 };
 
