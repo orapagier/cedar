@@ -311,8 +311,8 @@ export const ResidentPerformanceView: React.FC = () => {
                             {activeVs.map(v => (
                               <div key={v.id} className="bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2">
                                 <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                       <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                         v.severity === 'major' ? 'bg-rose-950 text-rose-300' :
                                         v.severity === 'moderate' ? 'bg-amber-950 text-amber-300' : 'bg-blue-950 text-blue-300'
@@ -320,20 +320,20 @@ export const ResidentPerformanceView: React.FC = () => {
                                         +{demeritLabel(v.demerits)}
                                       </span>
                                       <span className="text-[11px] text-slate-400 capitalize">{v.category.replace(/_/g, ' ')}</span>
+                                      <span className={`shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
+                                        v.status === 'confirmed' ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50' :
+                                        'bg-amber-900/40 text-amber-300 border border-amber-700/50'
+                                      }`}>
+                                        {v.status.replace('_', ' ')}
+                                      </span>
                                     </div>
-                                    <p className="text-[11px] text-slate-300 mt-1 line-clamp-2">{v.description}</p>
+                                    <p className="text-[11px] text-slate-300 mt-1">{v.description}</p>
                                     {v.assignedRedemption ? (
                                       <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.assignedRedemption}</p>
                                     ) : (
                                       <p className="text-[10px] text-slate-500 mt-0.5">Redemption not set yet.</p>
                                     )}
                                   </div>
-                                  <span className={`shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
-                                    v.status === 'confirmed' ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50' :
-                                    'bg-amber-900/40 text-amber-300 border border-amber-700/50'
-                                  }`}>
-                                    {v.status.replace('_', ' ')}
-                                  </span>
                                   <ViolationActions violation={v} />
                                 </div>
                                 {canEdit && (
