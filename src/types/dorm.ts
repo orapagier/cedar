@@ -82,7 +82,8 @@ export interface IndividualInspectionRecord extends OverrideStamp {
   lockersOk: boolean;
   personalThingsOk: boolean;
   score: number; // 0 to 100, from the resident's three items alone
-  status: 'pass' | 'warning' | 'fail';
+  /** 'excused' — the resident was out (leave, medical), so no rating applies. */
+  status: 'pass' | 'warning' | 'fail' | 'excused';
   recordedBy: string;
   timestamp: string;
 }

@@ -606,9 +606,12 @@ export const recomputeInspection = (insp: RoomInspection): RoomInspection => {
 
 /**
  * Re-score one resident's own inspection: his bed, locker and personal things
- * count equally, graded with the same thresholds the room's walk uses.
+ * count equally, graded with the same thresholds the room's walk uses. A
+ * resident excused from the day's check — on leave or medical rest — keeps his
+ * excused verdict; there is nothing to re-grade.
  */
 export const recomputeIndividualInspection = (rec: IndividualInspectionRecord): IndividualInspectionRecord => {
+  if (rec.status === 'excused') return rec;
   const passed = Number(rec.bedsOk) + Number(rec.lockersOk) + Number(rec.personalThingsOk);
   const score = Math.round((passed / 3) * 100);
   return { ...rec, score, status: inspectionStatus(score) };
