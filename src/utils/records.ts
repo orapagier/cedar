@@ -21,6 +21,7 @@ export interface LogCollection {
 
 export const LOG_COLLECTIONS: LogCollection[] = [
   { key: 'inspections', label: 'Room inspections', dateField: 'date' },
+  { key: 'individualInspections', label: 'Individual inspection ratings', dateField: 'date' },
   { key: 'attendance', label: 'Worship roll calls', dateField: 'date' },
   { key: 'curfewRecords', label: 'Curfew checks', dateField: 'date' },
   { key: 'uniformLogs', label: 'Departure & uniform checks', dateField: 'date' },

@@ -32,6 +32,12 @@ const FIELDS: Record<CheckKind, Field[]> = {
     { key: 'overallFloorOk', label: 'Floor & dust', kind: 'toggle' },
     { key: 'remarks', label: 'Remarks', kind: 'text', placeholder: 'Inspector remarks' },
   ],
+  individualInspection: [
+    { key: 'date', label: 'Date', kind: 'date' },
+    { key: 'bedsOk', label: 'Bed & bedding', kind: 'toggle' },
+    { key: 'lockersOk', label: 'Locker & closet', kind: 'toggle' },
+    { key: 'personalThingsOk', label: 'Things & desk', kind: 'toggle' },
+  ],
   attendance: [
     { key: 'date', label: 'Date', kind: 'date' },
     {

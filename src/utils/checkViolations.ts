@@ -3,6 +3,7 @@ import {
   BadLanguageLog,
   CleaningDutyRecord,
   CurfewRecord,
+  IndividualInspectionRecord,
   LightsOutLog,
   NeighborRoomLog,
   PhoneDepositLog,
@@ -143,6 +144,7 @@ export interface RoomMember {
  */
 export type CheckKind =
   | 'inspection'
+  | 'individualInspection'
   | 'attendance'
   | 'curfew'
   | 'uniform'
@@ -156,6 +158,7 @@ export type CheckKind =
 
 export const CHECK_LABELS: Record<CheckKind, string> = {
   inspection: 'Room inspection',
+  individualInspection: 'Individual inspection rating',
   attendance: 'Worship attendance',
   curfew: 'Curfew check-in',
   uniform: 'Departure & uniform',
@@ -599,6 +602,16 @@ export const recomputeInspection = (insp: RoomInspection): RoomInspection => {
     score,
     status: inspectionStatus(score),
   };
+};
+
+/**
+ * Re-score one resident's own inspection: his bed, locker and personal things
+ * count equally, graded with the same thresholds the room's walk uses.
+ */
+export const recomputeIndividualInspection = (rec: IndividualInspectionRecord): IndividualInspectionRecord => {
+  const passed = Number(rec.bedsOk) + Number(rec.lockersOk) + Number(rec.personalThingsOk);
+  const score = Math.round((passed / 3) * 100);
+  return { ...rec, score, status: inspectionStatus(score) };
 };
 
 /** A gate clearance holds only if every item passed and the run was on time. */

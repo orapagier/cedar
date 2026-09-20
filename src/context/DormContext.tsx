@@ -4,6 +4,7 @@ import {
   UserRole,
   Room,
   RoomInspection,
+  IndividualInspectionRecord,
   AttendanceRecord,
   WorshipType,
   CurfewRecord,
@@ -75,6 +76,7 @@ import {
   neighborRoomDrafts,
   normalizeViolations,
   phoneDepositDrafts,
+  recomputeIndividualInspection,
   recomputeInspection,
   recomputeLightsOut,
   recomputeUniform,
@@ -93,6 +95,8 @@ interface DormContextType {
   users: User[];
   rooms: Room[];
   inspections: RoomInspection[];
+  /** Per-resident ratings, filed one resident at a time (see saveIndividualInspection). */
+  individualInspections: IndividualInspectionRecord[];
   attendance: AttendanceRecord[];
   curfewRecords: CurfewRecord[];
   uniformLogs: SchoolUniformLog[];
@@ -193,6 +197,8 @@ interface DormContextType {
   loginWithGoogle: (session: { email: string; name: string; avatar?: string }) => void;
   updateUserRole: (userId: string, newRole: UserRole) => { success: boolean; message: string };
   addInspection: (insp: Omit<RoomInspection, 'id' | 'timestamp'>) => CheckSaveResult;
+  /** File one resident's own inspection rating on its own (one per resident per day). */
+  saveIndividualInspection: (rec: Omit<IndividualInspectionRecord, 'id' | 'timestamp'>) => CheckSaveResult;
   saveAttendanceBatch: (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]) => CheckSaveResult;
   saveCurfewRecord: (rec: Omit<CurfewRecord, 'id'>) => CheckSaveResult;
   saveUniformLog: (log: Omit<SchoolUniformLog, 'id'>) => CheckSaveResult;
@@ -382,6 +388,11 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return loaded.filter(i => !TEST_LOG_IDS.has(i.id) && !TEST_NAMES.has(i.inspectorName) && i.inspectorId !== 'user-admin-1');
   });
 
+  const [individualInspections, setIndividualInspections] = useState<IndividualInspectionRecord[]>(() => {
+    const loaded = loadFromStorage<IndividualInspectionRecord[]>('individualInspections', []);
+    return loaded.filter(i => !TEST_LOG_IDS.has(i.id) && !TEST_USER_IDS.has(i.studentId) && !TEST_NAMES.has(i.studentName));
+  });
+
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => {
     const loaded = loadFromStorage<AttendanceRecord[]>('attendance', INITIAL_ATTENDANCE);
     return loaded.filter(a => !TEST_LOG_IDS.has(a.id) && !TEST_USER_IDS.has(a.studentId) && !TEST_NAMES.has(a.studentName));
@@ -496,6 +507,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
   useEffect(() => saveToStorage('isAuthenticated', isAuthenticated), [isAuthenticated]);
   useEffect(() => saveToStorage('inspections', inspections), [inspections]);
+  useEffect(() => saveToStorage('individual_inspections', individualInspections), [individualInspections]);
   useEffect(() => saveToStorage('attendance', attendance), [attendance]);
   useEffect(() => saveToStorage('curfew', curfewRecords), [curfewRecords]);
   useEffect(() => saveToStorage('uniform', uniformLogs), [uniformLogs]);
@@ -532,6 +544,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     users,
     rooms,
     inspections,
+    individualInspections,
     attendance,
     curfewRecords,
     uniformLogs,
@@ -586,7 +599,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
     };
-  }, [users, rooms, inspections, attendance, curfewRecords, uniformLogs, studyLogs, cleaningDuties, lightsOutLogs,
+  }, [users, rooms, inspections, individualInspections, attendance, curfewRecords, uniformLogs, studyLogs, cleaningDuties, lightsOutLogs,
         cellphones, phoneDeposits, phoneBorrows, violations, struckViolationIds, settings,
         medicalSlips, gatePasses, unauthorizedExits, badLanguageLogs, neighborRoomLogs, demeritClearances, confiscatedItems, studentMedicals]);
 
@@ -638,6 +651,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (d.users) setUsers(d.users as User[]);
           if (d.rooms) setRooms(d.rooms as Room[]);
           if (d.inspections) setInspections(d.inspections as RoomInspection[]);
+          if (d.individualInspections) setIndividualInspections(d.individualInspections as IndividualInspectionRecord[]);
           if (d.attendance) setAttendance(d.attendance as AttendanceRecord[]);
           if (d.curfewRecords) setCurfewRecords(d.curfewRecords as CurfewRecord[]);
           if (d.uniformLogs) setUniformLogs(d.uniformLogs as SchoolUniformLog[]);
@@ -862,6 +876,24 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     setInspections(prev => [record, ...prev]);
     syncViolationsFor(record.id, inspectionDrafts(record, roomMembers(record.roomNumber)));
+    return { filed: 1, kept: 0 };
+  };
+
+  // One individual rating per resident per day, held separately from the room's
+  // record so a dean can score a single resident on his own, as he checks him.
+  // The room's walk stays the daily authoritative record for demerits; this log
+  // is per-person, and a resident already rated today keeps the rating he got.
+  const saveIndividualInspection = (rec: Omit<IndividualInspectionRecord, 'id' | 'timestamp'>): CheckSaveResult => {
+    if (!canEdit) return NOTHING_SAVED;
+    if (individualInspections.some(i => i.studentId === rec.studentId && i.date === rec.date)) {
+      return { filed: 0, kept: 1 };
+    }
+    const rating: IndividualInspectionRecord = {
+      ...rec,
+      id: `iinsp-${rec.date}-${rec.studentId}`,
+      timestamp: manilaTime(),
+    };
+    setIndividualInspections(prev => [rating, ...prev]);
     return { filed: 1, kept: 0 };
   };
 
@@ -1411,6 +1443,13 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         syncViolationsFor(next.id, inspectionDrafts(next, roomMembers(next.roomNumber)));
         return;
       }
+      case 'individualInspection': {
+        const current = individualInspections.find(r => r.id === id);
+        if (!current) return;
+        const next = recomputeIndividualInspection({ ...current, ...updates, ...stamp } as IndividualInspectionRecord);
+        setIndividualInspections(prev => prev.map(r => (r.id === id ? next : r)));
+        return;
+      }
       case 'attendance': {
         const current = attendance.find(r => r.id === id);
         if (!current) return;
@@ -1504,6 +1543,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     switch (kind) {
       case 'inspection': setInspections(drop); break;
+      case 'individualInspection': setIndividualInspections(drop); break;
       case 'attendance': setAttendance(drop); break;
       case 'curfew': setCurfewRecords(drop); break;
       case 'uniform': setUniformLogs(drop); break;
@@ -1558,6 +1598,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (archivedCount === 0) return { archive: archived, archivedCount: 0 };
 
     setInspections(kept.inspections as RoomInspection[]);
+    setIndividualInspections(kept.individualInspections as IndividualInspectionRecord[]);
     setAttendance(kept.attendance as AttendanceRecord[]);
     setCurfewRecords(kept.curfewRecords as CurfewRecord[]);
     setUniformLogs(kept.uniformLogs as SchoolUniformLog[]);
@@ -1583,6 +1624,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(INITIAL_USERS[0]);
     setRooms(INITIAL_ROOMS);
     setInspections(INITIAL_INSPECTIONS);
+    setIndividualInspections([]);
     setAttendance(INITIAL_ATTENDANCE);
     setCurfewRecords(INITIAL_CURFEW);
     setUniformLogs(INITIAL_UNIFORM_LOGS);
@@ -1984,6 +2026,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearDemoStudents = () => {
     setUsers(prev => prev.filter(u => u.role !== 'occupant'));
     setInspections([]);
+    setIndividualInspections([]);
     setAttendance([]);
     setCurfewRecords([]);
     setUniformLogs([]);
@@ -2011,6 +2054,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(true);
     setRooms(INITIAL_ROOMS);
     setInspections(INITIAL_INSPECTIONS);
+    setIndividualInspections([]);
     setAttendance(INITIAL_ATTENDANCE);
     setCurfewRecords(INITIAL_CURFEW);
     setUniformLogs(INITIAL_UNIFORM_LOGS);
@@ -2043,6 +2087,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         users,
         rooms,
         inspections,
+        individualInspections,
         attendance,
         curfewRecords,
         uniformLogs,
@@ -2088,6 +2133,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithGoogle,
         updateUserRole,
         addInspection,
+        saveIndividualInspection,
         saveAttendanceBatch,
         saveCurfewRecord,
         saveUniformLog,

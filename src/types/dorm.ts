@@ -65,6 +65,28 @@ export interface RoomInspection extends OverrideStamp {
   occupantChecks?: OccupantInspectionCheck[];
 }
 
+/**
+ * One resident's own rating for a day's room inspection — bed, locker and
+ * personal things scored on his own, filed separately from the room's record.
+ * A dean can save a single resident as he checks him, and the whole room keeps
+ * its own walk as well. The room's record is what raises the 1-demerit
+ * cleanliness violations on a failed day; these are his per-person log.
+ */
+export interface IndividualInspectionRecord extends OverrideStamp {
+  id: string;
+  date: string; // YYYY-MM-DD
+  studentId: string;
+  studentName: string;
+  roomNumber: string;
+  bedsOk: boolean;
+  lockersOk: boolean;
+  personalThingsOk: boolean;
+  score: number; // 0 to 100, from the resident's three items alone
+  status: 'pass' | 'warning' | 'fail';
+  recordedBy: string;
+  timestamp: string;
+}
+
 /** Admin-tunable dormitory schedules (times are 24-hour "HH:MM"). */
 export interface DormSettings {
   worshipMorning: string;    // e.g. "05:30"
