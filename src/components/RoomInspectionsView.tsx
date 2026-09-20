@@ -559,6 +559,10 @@ export const RoomInspectionsView: React.FC = () => {
                 <span className="font-semibold text-slate-400 uppercase tracking-wider block text-[10px] mb-2">
                   Individual Rating — per resident (bed, locker, personal things)
                 </span>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  Saving a resident with an item unchecked files his own cleanliness violation: 0.5 demerit (minor)
+                  for fewer than 3/3, 1 demerit (moderate) if all three items fail — on top of the room's own fail.
+                </p>
                 {roomOccupants.length === 0 && (
                   <div className="bg-slate-950/60 border border-dashed border-slate-700 rounded-xl p-4 text-center text-[11px] text-slate-500">
                     No residents assigned to this room — only the room-level checks will be scored.

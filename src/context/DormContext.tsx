@@ -71,6 +71,7 @@ import {
   badLanguageDrafts,
   cleaningDrafts,
   curfewDrafts,
+  individualInspectionDrafts,
   inspectionDrafts,
   lightsOutDrafts,
   neighborRoomDrafts,
@@ -883,6 +884,8 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // record so a dean can score a single resident on his own, as he checks him.
   // The room's walk stays the daily authoritative record for demerits; this log
   // is per-person, and a resident already rated today keeps the rating he got.
+  // A resident short of a perfect 3/3 picks up his own cleanliness violation —
+  // minor for a single failed item, moderate for failing all three.
   const saveIndividualInspection = (rec: Omit<IndividualInspectionRecord, 'id' | 'timestamp'>): CheckSaveResult => {
     if (!canEdit) return NOTHING_SAVED;
     if (individualInspections.some(i => i.studentId === rec.studentId && i.date === rec.date)) {
@@ -894,6 +897,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       timestamp: manilaTime(),
     };
     setIndividualInspections(prev => [rating, ...prev]);
+    syncViolationsFor(rating.id, individualInspectionDrafts(rating));
     return { filed: 1, kept: 0 };
   };
 
@@ -1448,6 +1452,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!current) return;
         const next = recomputeIndividualInspection({ ...current, ...updates, ...stamp } as IndividualInspectionRecord);
         setIndividualInspections(prev => prev.map(r => (r.id === id ? next : r)));
+        syncViolationsFor(next.id, individualInspectionDrafts(next));
         return;
       }
       case 'attendance': {

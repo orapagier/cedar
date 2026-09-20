@@ -257,6 +257,41 @@ export const inspectionDrafts = (insp: RoomInspection, occupants: RoomMember[]):
   }));
 };
 
+const INDIVIDUAL_ITEM_LABELS: [keyof Pick<IndividualInspectionRecord, 'bedsOk' | 'lockersOk' | 'personalThingsOk'>, string][] = [
+  ['bedsOk', 'bed'],
+  ['lockersOk', 'locker'],
+  ['personalThingsOk', 'things/desk'],
+];
+
+/**
+ * What a resident's own rating costs him. A perfect 3/3 earns nothing; a miss
+ * on any one of his three items — bed, locker or personal things — is the
+ * minor slip (half a demerit); failing all three outright is the moderate
+ * offense (one full demerit). This sits apart from the room's own fail, which
+ * lands equally on every occupant for the failed day.
+ */
+export const individualInspectionDrafts = (rec: IndividualInspectionRecord): ViolationDraft[] => {
+  if (rec.status === 'excused') return [];
+  const passed = Number(rec.bedsOk) + Number(rec.lockersOk) + Number(rec.personalThingsOk);
+  if (passed === 3) return [];
+  const severity: ViolationDraft['severity'] = passed === 0 ? 'moderate' : 'minor';
+  const failed = INDIVIDUAL_ITEM_LABELS
+    .filter(([key]) => !rec[key])
+    .map(([, label]) => label);
+  return [{
+    date: rec.date,
+    studentId: rec.studentId,
+    studentName: rec.studentName,
+    roomNumber: rec.roomNumber,
+    category: 'cleanliness',
+    severity,
+    description: `Individual room check failed — ${passed}/3 items passed (${failed.join(' and ')} not in order)`,
+    demerits: demeritsForSeverity(severity),
+    reportedBy: rec.recordedBy,
+    status: 'pending_settlement',
+  }];
+};
+
 export const attendanceDrafts = (rec: AttendanceRecord): ViolationDraft[] => {
   const session = worshipLabel(rec.type);
   const base = {
