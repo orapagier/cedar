@@ -60,6 +60,7 @@ export interface RoomInspection extends OverrideStamp {
   score: number; // 0 to 100
   status: 'pass' | 'warning' | 'fail';
   remarks?: string;
+  /** When the walk happened — "HH:MM" in Asia/Manila, beside the date above. */
   timestamp: string;
   /** Per-occupant ratings for the first three criteria (introduced later). */
   occupantChecks?: OccupantInspectionCheck[];
@@ -85,6 +86,7 @@ export interface IndividualInspectionRecord extends OverrideStamp {
   /** 'excused' — the resident was out (leave, medical), so no rating applies. */
   status: 'pass' | 'warning' | 'fail' | 'excused';
   recordedBy: string;
+  /** When the rating was taken — "HH:MM" in Asia/Manila. */
   timestamp: string;
 }
 
@@ -141,6 +143,7 @@ export interface AttendanceRecord extends OverrideStamp {
   properAttire?: boolean;
   notes?: string;
   recordedBy: string;
+  /** When the roll call was taken — "HH:MM" in Asia/Manila. */
   timestamp: string;
 }
 
@@ -215,6 +218,7 @@ export interface CleaningDutyRecord extends OverrideStamp {
   remarks?: string;
   assignedBy: string;
   recordedBy?: string;
+  /** When the day was rostered or last checked — "HH:MM" in Asia/Manila. */
   timestamp: string;
 }
 

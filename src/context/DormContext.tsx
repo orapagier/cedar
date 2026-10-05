@@ -873,7 +873,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const record: RoomInspection = {
       ...insp,
       id: `insp-${insp.date}-${insp.roomNumber}`,
-      timestamp: manilaTime(),
+      timestamp: manilaTimeValue(),
     };
     setInspections(prev => [record, ...prev]);
     syncViolationsFor(record.id, inspectionDrafts(record, roomMembers(record.roomNumber)));
@@ -894,7 +894,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const rating: IndividualInspectionRecord = {
       ...rec,
       id: `iinsp-${rec.date}-${rec.studentId}`,
-      timestamp: manilaTime(),
+      timestamp: manilaTimeValue(),
     };
     setIndividualInspections(prev => [rating, ...prev]);
     syncViolationsFor(rating.id, individualInspectionDrafts(rating));
@@ -909,7 +909,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // lands on one record rather than two.
   const saveAttendanceBatch = (records: Omit<AttendanceRecord, 'id' | 'timestamp'>[]): CheckSaveResult => {
     if (!canEdit) return NOTHING_SAVED;
-    const timeStr = manilaTime();
+    const timeStr = manilaTimeValue();
     const onFile = new Set(attendance.map(a => `${a.date}|${a.type}|${a.studentId}`));
     const formatted: AttendanceRecord[] = [];
     let kept = 0;
@@ -996,7 +996,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 remarks: undefined,
                 recordedBy: undefined,
                 assignedBy: currentUser.name,
-                timestamp: manilaTime(),
+                timestamp: manilaTimeValue(),
               }
             : d
         )
@@ -1013,7 +1013,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       garbageDisposed: true,
       status: 'assigned',
       assignedBy: currentUser.name,
-      timestamp: manilaTime(),
+      timestamp: manilaTimeValue(),
     };
     setCleaningDuties(prev => [record, ...prev]);
   };
@@ -1045,7 +1045,7 @@ export const DormProvider: React.FC<{ children: React.ReactNode }> = ({ children
       remarks: entry.remarks,
       assignedBy: existing?.assignedBy ?? currentUser.name,
       recordedBy: currentUser.name,
-      timestamp: manilaTime(),
+      timestamp: manilaTimeValue(),
     };
     setCleaningDuties(prev =>
       prev.some(d => d.id === dutyId) ? prev.map(d => (d.id === dutyId ? completed : d)) : [completed, ...prev]

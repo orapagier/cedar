@@ -310,7 +310,7 @@ export const WorshipAttendanceView: React.FC = () => {
                     {filed && (
                       <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_META[filed.status].chip}`}>
                         <Check className="w-3 h-3" />
-                        {STATUS_META[filed.status].label} · {filed.timestamp}
+                        {STATUS_META[filed.status].label} · {formatTime12h(filed.timestamp)}
                       </span>
                     )}
                   </div>
@@ -464,7 +464,7 @@ export const WorshipAttendanceView: React.FC = () => {
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${meta.chip}`}>{meta.label}</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Room {item.roomNumber} · {formatFullDate(item.date)} {item.timestamp} · by {item.recordedBy}
+                      Room {item.roomNumber} · {formatFullDate(item.date)} · {formatTime12h(item.timestamp)} · by {item.recordedBy}
                       {item.overriddenBy && (
                         <span className="text-amber-300/90"> · overridden by {item.overriddenBy}</span>
                       )}

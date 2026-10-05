@@ -3,7 +3,7 @@ import { PenLine, Trash2, ShieldCheck, X, CheckCircle2, XCircle } from 'lucide-r
 import { useDorm } from '../context/DormContext';
 import { CheckKind, CHECK_LABELS } from '../utils/checkViolations';
 import { OccupantInspectionCheck, CleaningHelperCheck } from '../types/dorm';
-import { formatFullDate } from '../utils/date';
+import { formatFullDate, formatTime12h, recordTime } from '../utils/date';
 import { Modal } from './ui/Modal';
 
 /** Anything on file that carries a verdict, seen loosely so one form fits all. */
@@ -240,6 +240,12 @@ const filedBy = (record: CheckRow) =>
 const headingFor = (record: CheckRow) =>
   record.studentName || (record.roomNumber ? `Room ${record.roomNumber}` : 'Record');
 
+/** When a check was taken, for the checks that keep the time of their own. */
+const takenAt = (record: CheckRow) => {
+  const clock = recordTime(record.timestamp);
+  return clock ? ` · ${formatTime12h(clock)}` : '';
+};
+
 const FIELD_CLASS =
   'w-full min-h-touch bg-slate-800 border border-slate-700 rounded-xl px-3 text-sm text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40';
 
@@ -362,7 +368,8 @@ export const RecordOverrideControls: React.FC<{ kind: CheckKind; record: CheckRo
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {CHECK_LABELS[kind]}
-                  {record.date ? ` · ${formatFullDate(record.date)}` : ''} · filed by {filedBy(record)}
+                  {record.date ? ` · ${formatFullDate(record.date)}` : ''}
+                  {record.date ? takenAt(record) : ''} · filed by {filedBy(record)}
                 </p>
               </div>
               <button

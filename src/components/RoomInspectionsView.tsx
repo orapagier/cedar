@@ -20,7 +20,7 @@ import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { RoomInspection, OccupantInspectionCheck } from '../types/dorm';
-import { formatFullDate } from '../utils/date';
+import { formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 
 const INDIVIDUAL_ITEMS: { key: 'bedsOk' | 'lockersOk' | 'personalThingsOk'; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -322,7 +322,7 @@ export const RoomInspectionsView: React.FC = () => {
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
                     <span>Inspected by {latestInsp.inspectorName}</span>
-                    <span>{latestInsp.timestamp}</span>
+                    <span>{formatTime12h(latestInsp.timestamp)}</span>
                   </div>
                 </div>
               )}
@@ -355,7 +355,7 @@ export const RoomInspectionsView: React.FC = () => {
                     {insp.score}%
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 text-right">{formatFullDate(insp.date)}<br />{insp.timestamp}</span>
+                <span className="text-[11px] text-slate-400 text-right">{formatFullDate(insp.date)}<br />{formatTime12h(insp.timestamp)}</span>
               </div>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {[
@@ -414,7 +414,7 @@ export const RoomInspectionsView: React.FC = () => {
                 <tr key={insp.id} className="hover:bg-slate-800/40 align-top">
                   <td className="px-3 py-3 text-slate-400">
                     {formatFullDate(insp.date)}
-                    <span className="block font-mono text-[11px] text-slate-500">{insp.timestamp}</span>
+                    <span className="block font-mono text-[11px] text-slate-500">{formatTime12h(insp.timestamp)}</span>
                   </td>
                   <td className="px-3 py-3 font-bold text-white">Room {insp.roomNumber}</td>
                   <td className="px-3 py-3">
@@ -515,7 +515,7 @@ export const RoomInspectionsView: React.FC = () => {
               )}
               <div className="flex items-center justify-between gap-2 mt-1">
                 <p className="text-[11px] text-slate-500 truncate">
-                  {formatFullDate(rec.date)} · by {rec.recordedBy}
+                  {formatFullDate(rec.date)} · {formatTime12h(rec.timestamp)} · by {rec.recordedBy}
                   {rec.overriddenBy && <span className="text-amber-300/90"> · overridden by {rec.overriddenBy}</span>}
                 </p>
                 <RecordOverrideControls kind="individualInspection" record={rec} />

@@ -14,7 +14,7 @@ import {
 import { useDorm } from '../context/DormContext';
 import { RecordOverrideControls } from './RecordOverrideControls';
 import { CleaningHelperCheck } from '../types/dorm';
-import { formatFullDate } from '../utils/date';
+import { formatFullDate, formatTime12h } from '../utils/date';
 import { useManilaToday } from '../hooks/useManilaToday';
 
 const FIELD =
@@ -410,7 +410,7 @@ export const CleaningDutyView: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-slate-400 shrink-0 text-right">{formatFullDate(record.date)}</span>
+                  <span className="text-[11px] text-slate-400 shrink-0 text-right">{formatFullDate(record.date)}<br />{formatTime12h(record.timestamp)}</span>
                 </div>
                 {record.status === 'completed' && (
                   <p className="text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-3">

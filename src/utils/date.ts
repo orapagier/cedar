@@ -85,15 +85,38 @@ export const formatFullDate = (value: string | Date = new Date()) => {
 };
 
 /**
+ * The clock time inside a stored time, as the 24-hour "HH:MM" the schedules
+ * keep — whichever way it was written. Records save their times in 24h so they
+ * sort and compare as strings, but the ones logged before that carried an
+ * already-formatted "07:45 PM"; both read the same here, so a check filed by an
+ * older build still orders correctly beside the rest.
+ */
+const clock24h = (value?: string): string | null => {
+  if (!value) return null;
+  const meridiem = value.match(/([AP])\.?M\.?$/i)?.[1]?.toUpperCase();
+  const [h, m] = value.replace(/\s*[AP]\.?M\.?$/i, '').split(':');
+  const hour = Number(h);
+  if (m === undefined || Number.isNaN(hour)) return null;
+  const on24 = meridiem ? (hour % 12) + (meridiem === 'P' ? 12 : 0) : hour;
+  return `${String(on24 % 24).padStart(2, '0')}:${m}`;
+};
+
+/**
+ * The 24-hour clock time a record carries, or undefined when it carries none —
+ * what the record feed sorts a day's entries by.
+ */
+export const recordTime = (value?: string) => clock24h(value) ?? undefined;
+
+/**
  * A stored "HH:mm" as a 12-hour clock label: "21:45" → "9:45 PM".
- * Schedule times live in 24h so they sort and compare as strings; this is the
+ * Times live in 24h so they sort and compare as strings; this is the
  * one way they are shown to users.
  */
 export const formatTime12h = (value?: string, fallback = '—') => {
-  if (!value) return fallback;
-  const [h, m] = value.split(':');
+  const clock = clock24h(value);
+  if (!clock) return value ? value : fallback;
+  const [h, m] = clock.split(':');
   const hour = Number(h);
-  if (m === undefined || Number.isNaN(hour)) return value;
   return `${hour % 12 === 0 ? 12 : hour % 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
 };
 

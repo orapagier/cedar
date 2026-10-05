@@ -262,6 +262,11 @@ This holds for every scheduled check:
 | Lights-out round | room · night |
 | Cleaning duty | day |
 
+Every record carries the **date and the time the check was taken** — on the row
+in the register, in the roll call it was taken on, and in the resident's own
+file and record feed. A day of checks therefore reads back in the order they
+happened, not just the order of the days.
+
 Incident registers are **not** scheduled checks and are unaffected — a resident
 can be booked for foul language twice in a day, because those are two separate
 things that happened.

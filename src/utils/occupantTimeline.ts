@@ -28,7 +28,7 @@ import {
   Violation,
 } from '../types/dorm';
 import { LANGUAGE_KIND_LABELS, violationSourceId, violationTitle } from './checkViolations';
-import { formatTime12h } from './date';
+import { formatTime12h, recordTime } from './date';
 
 /** How an entry reads at a glance: kept, slipped, broken, or just noted. */
 export type EventTone = 'good' | 'warn' | 'bad' | 'info';
@@ -158,6 +158,7 @@ export function buildOccupantTimeline(studentId: string, src: TimelineSource): R
       id: `worship-${a.id}`,
       kind: 'worship',
       date: a.date,
+      time: recordTime(a.timestamp),
       title: titleCase(a.type),
       detail: line(
         WORSHIP_STATUS[a.status],
@@ -239,6 +240,7 @@ export function buildOccupantTimeline(studentId: string, src: TimelineSource): R
       id: `cleaning-${duty.id}`,
       kind: 'cleaning',
       date: duty.date,
+      time: recordTime(duty.timestamp),
       title: `Room ${duty.roomNumber} cleaning day`,
       detail: line(
         helper.helped ? 'Helped' : 'Did not help',

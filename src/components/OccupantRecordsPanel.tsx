@@ -154,7 +154,10 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
             <div key={a.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-white">{a.type.replace(/_/g, ' ')}</p>
-                <p className="text-[11px] text-slate-400">{formatFullDate(a.date)} · Bible {a.broughtBible ? '✓' : '✗'} · Attire {a.properAttire === false ? '✗' : '✓'}</p>
+                <p className="text-[11px] text-slate-400">
+                  {formatFullDate(a.date)} · {formatTime12h(a.timestamp)} · Bible {a.broughtBible ? '✓' : '✗'} · Attire{' '}
+                  {a.properAttire === false ? '✗' : '✓'}
+                </p>
               </div>
               <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusChip(a.status)}`}>{a.status}</span>
             </div>
@@ -229,7 +232,8 @@ export const OccupantRecordsPanel: React.FC<OccupantRecordsPanelProps> = ({
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-white">Room {duty.roomNumber} cleaning day</p>
                 <p className="text-[11px] text-slate-400">
-                  {formatFullDate(duty.date)} · rated {duty.rating}/5 · garbage {duty.garbageDisposed ? '✓' : '✗'}
+                  {formatFullDate(duty.date)} · {formatTime12h(duty.timestamp)} · rated {duty.rating}/5 · garbage{' '}
+                  {duty.garbageDisposed ? '✓' : '✗'}
                 </p>
               </div>
               <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
