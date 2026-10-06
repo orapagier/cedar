@@ -121,6 +121,17 @@ export const formatTime12h = (value?: string, fallback = '—') => {
 };
 
 /**
+ * The calendar date with no weekday: "September 18, 2026". For the places that
+ * name the day and then say something about it, where the day of the week is
+ * not the point.
+ */
+export const formatDateOnly = (value: string | Date = new Date()) => {
+  const date = asDate(value);
+  if (Number.isNaN(date.getTime())) return typeof value === 'string' ? value : '';
+  return longDateFormatter.format(date);
+};
+
+/**
  * The next occurrence of a weekday (0 = Sunday) on or after a stored date —
  * so a pass issued on the Sunday itself still returns that same Sunday.
  */

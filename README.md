@@ -108,6 +108,13 @@ weighs follows the grade of the offense:
 Each one is redeemed on its own; there is no clearing a resident's record in a
 lump.
 
+**A violation reads as a sentence about a day, so it opens with the day.**
+"October 6, 2026 — Did not help with Room 305's dorm cleaning duty." Wherever a
+violation is listed — Resident Performance, the dashboard, Occupant Records, a
+parent's view of their son — the date leads the description, so a column of them
+can be read without checking which check each one came from. The date stays its
+own editable field on the violation: correcting it re-dates the line everywhere.
+
 **What a resident must do to work a violation off is the Dean's to say.** A
 check records what was broken and what it cost — never what to do about it. Each
 pending violation shows *Redemption not set* until he sets it, and **Set

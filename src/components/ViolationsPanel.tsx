@@ -11,7 +11,7 @@ import { useDorm } from '../context/DormContext';
 import { Modal } from './ui/Modal';
 import { ServiceType, Violation } from '../types/dorm';
 import { formatFullDate, manilaToday } from '../utils/date';
-import { demeritLabel, violationShortLabel } from '../utils/checkViolations';
+import { demeritLabel, violationDescription, violationShortLabel } from '../utils/checkViolations';
 import { ViolationActions } from './ViolationActions';
 
 const SERVICE_TYPES: ServiceType[] = [
@@ -133,7 +133,7 @@ export const ViolationsPanel: React.FC<{ studentId: string }> = ({ studentId }) 
                     </span>
                     <span className="shrink-0 text-[11px] text-slate-400">{violationShortLabel(v.category)}</span>
                   </div>
-                  <p className="text-[11px] text-slate-300 mt-1">{v.description}</p>
+                  <p className="text-[11px] text-slate-300 mt-1">{violationDescription(v)}</p>
                   {v.assignedRedemption ? (
                     <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.assignedRedemption}</p>
                   ) : (

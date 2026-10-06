@@ -23,7 +23,7 @@ import { useDorm } from '../context/DormContext';
 import { User } from '../types/dorm';
 import { buildOccupantTimeline, EventKind, EventMark, EventTone } from '../utils/occupantTimeline';
 import { formatFullDate, formatTime12h } from '../utils/date';
-import { demeritLabel, demeritStanding, violationTitle } from '../utils/checkViolations';
+import { demeritLabel, demeritStanding, violationDescription, violationTitle } from '../utils/checkViolations';
 import { OccupantRecordsPanel } from './OccupantRecordsPanel';
 import { ViolationActions } from './ViolationActions';
 
@@ -341,7 +341,7 @@ const ResidentProfile: React.FC<{ user: User; visibility?: Visibility }> = ({ us
                 <div key={v.id} className="px-4 py-2.5 flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-white">{violationTitle(v)}</p>
-                    <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
+                    <p className="text-[11px] text-slate-400 line-clamp-2">{violationDescription(v)}</p>
                     {v.assignedRedemption && (
                       <p className="text-[10px] text-amber-300/90 mt-0.5">To redeem: {v.assignedRedemption}</p>
                     )}

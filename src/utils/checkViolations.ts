@@ -15,7 +15,7 @@ import {
   ViolationCategory,
 } from '../types/dorm';
 import { WORSHIP_SESSIONS, worshipLabel } from '../data/dormSeed';
-import { formatTime12h } from './date';
+import { formatDateOnly, formatTime12h } from './date';
 
 // How much a violation weighs is set by the grade the offense earns. A demerit
 // is not a score a resident holds; it is work owed until it is redeemed.
@@ -127,6 +127,31 @@ export const violationShortLabel = (category: ViolationCategory): string => {
     other: 'Incident',
   };
   return short[category];
+};
+
+/**
+ * A description that already opens with a date — the Dean writing one by hand,
+ * or a record filed under an older rule — keeps its own, rather than reading the
+ * date twice.
+ */
+const OPENS_WITH_A_DATE =
+  /^\s*(?:\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b)/i;
+
+/**
+ * How a violation reads in full, with the day it happened in front of it:
+ * "September 18, 2026 — Did not help with Room 305's dorm cleaning duty."
+ *
+ * A violation is a sentence about one day, and a column of them is unreadable
+ * without the day attached — which check raised it, and how long ago it was, is
+ * the first thing a reader asks and the last thing the sentence itself says.
+ * Composed here rather than written into the record when it was filed, so the
+ * wording follows the app's own date format and the records already on file
+ * gain the date without being rewritten.
+ */
+export const violationDescription = (v: Pick<Violation, 'date' | 'description'>): string => {
+  const text = (v.description ?? '').trim();
+  if (!v.date || !text || OPENS_WITH_A_DATE.test(text)) return text;
+  return `${formatDateOnly(v.date)} — ${text}`;
 };
 
 /** A violation a check record implies, before it is given an id and filed. */

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { manilaHour, formatFullDate, formatTime12h } from '../utils/date';
-import { demeritLabel, demeritStanding } from '../utils/checkViolations';
+import { demeritLabel, demeritStanding, violationDescription } from '../utils/checkViolations';
 import { useManilaToday } from '../hooks/useManilaToday';
 import {
   AlertTriangle,
@@ -371,7 +371,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onNavigate
                     <p className="text-xs font-semibold text-white truncate">
                       {v.studentName} <span className="text-slate-500 font-normal">· Room {v.roomNumber}</span>
                     </p>
-                    <p className="text-[11px] text-slate-400 line-clamp-2">{v.description}</p>
+                    <p className="text-[11px] text-slate-400 line-clamp-2">{violationDescription(v)}</p>
                   </div>
                   <span className={`ml-auto shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
                     v.status === 'confirmed' ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50' :
